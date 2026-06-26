@@ -1,0 +1,42 @@
+{
+  "name": "bidayax-executive-system",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "BidayaX Executive System design-system supply chain foundation.",
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "dev": "turbo run dev --parallel",
+    "lint": "pnpm -r --if-present lint",
+    "typecheck": "pnpm -r typecheck",
+    "turbo:build": "turbo run build",
+    "turbo:lint": "turbo run lint",
+    "turbo:typecheck": "turbo run typecheck",
+    "storybook": "pnpm --filter @bidayax/design-system storybook",
+    "build:storybook": "pnpm --filter @bidayax/design-system build-storybook"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@storybook/addon-a11y": "^8.6.0",
+    "@storybook/addon-essentials": "^8.6.0",
+    "@storybook/addon-interactions": "^8.6.0",
+    "@storybook/react-vite": "^8.6.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-storybook": "^0.11.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "storybook": "^8.6.0",
+    "tailwindcss": "^4.0.0",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.5"
+  }
+}

@@ -58,7 +58,16 @@ design-system/
 +-- storybook/
 ```
 
-Phase 1 documents this model only. It does not implement components.
+Phase 1 documented this model only.
+
+Phase 2 implements the first governed foundation:
+
+- `packages/tokens` for typed design tokens.
+- `packages/ui` for foundational primitives.
+- `packages/design-system` for Storybook review and governance docs.
+- `packages/config` for shared Tailwind, TypeScript, and ESLint configuration.
+
+Phase 2 does not implement application screens, business-card-specific components, dashboard-specific components, or receptionist-specific components.
 
 ## Governance Rules
 
@@ -157,3 +166,34 @@ Before any production screen is accepted:
 ## Phase 1 Non-Implementation
 
 Phase 1 creates no design tokens, components, Storybook stories, screens, CSS, or frontend code.
+
+## Phase 2 Implementation Boundary
+
+Phase 2 creates:
+
+- Typed token files.
+- Token-backed Tailwind configuration.
+- Foundational UI primitives.
+- Storybook review stories.
+- Governance, accessibility, branding, motion, and validation docs.
+- Root workspace configuration.
+
+Phase 2 does not create:
+
+- Business-card screens.
+- Dashboard screens.
+- Receptionist screens.
+- Backend services.
+- Database implementation.
+- Production deployment automation.
+
+## Phase 2 Review Scope
+
+Review only:
+
+- `packages/tokens`
+- `packages/ui`
+- `packages/design-system`
+- `packages/config`
+- Storybook setup
+- Design governance docs

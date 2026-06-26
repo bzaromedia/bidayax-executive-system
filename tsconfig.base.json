@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@bidayax/tokens": ["packages/tokens/src/index.ts"],
+      "@bidayax/ui": ["packages/ui/src/index.ts"],
+      "@bidayax/types": ["packages/types/src/index.ts"],
+      "@bidayax/config/tailwind": ["packages/config/tailwind/preset.ts"]
+    }
+  }
+}

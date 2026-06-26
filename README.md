@@ -2,7 +2,9 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository is currently in Phase 1: Foundation, Research, and Architecture Lock-In. Phase 1 creates the source-of-truth documentation and monorepo structure only. It intentionally does not include production UI, backend services, database migrations, receptionist logic, or application code.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In. It is now in Phase 2: Design System Supply Chain Foundation.
+
+Phase 2 creates the governed frontend foundation only. It intentionally does not include application screens, the final business card, dashboard UI, receptionist UI, backend services, database migrations, receptionist logic, or production deployment automation.
 
 ## System Definition
 
@@ -42,6 +44,70 @@ Read these documents before starting any implementation phase:
 - [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
+## Phase 2 Design System Foundation
+
+Phase 2 implements the supply chain:
+
+```text
+Source of Truth
+-> Design Tokens
+-> Primitive Components
+-> Composite Components
+-> Patterns
+-> Layouts
+-> Templates
+-> Applications
+```
+
+Only the first reusable foundation layers are implemented:
+
+- `packages/tokens`: typed color, typography, spacing, radius, elevation, motion, z-index, breakpoint, and CSS variable tokens.
+- `packages/ui`: foundational React primitives only.
+- `packages/design-system`: Storybook review surface and governance documentation.
+- `packages/config`: shared Tailwind, TypeScript, and ESLint configuration.
+- `packages/types`: shared type package foundation.
+
+Phase 2 primitives:
+
+- Button
+- Card
+- Badge
+- Input
+- Label
+- Separator
+- Avatar
+- IconButton
+- Surface
+- Container
+- Stack
+- Grid
+- Section
+- VisuallyHidden
+
+## Running The Design System
+
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Run Storybook:
+
+```bash
+pnpm storybook
+```
+
+Run validation:
+
+```bash
+pnpm typecheck
+pnpm lint
+pnpm build:storybook
+```
+
+Storybook is the visual review layer before application screens are created.
+
 ## Repository Structure
 
 ```text
@@ -78,7 +144,7 @@ bidayax-executive-system/
 
 ## Intended Stack
 
-The intended stack is documented but not implemented in Phase 1:
+The intended stack for the design-system foundation is:
 
 - Monorepo with pnpm workspaces and TurboRepo
 - Next.js, React, TypeScript, Tailwind CSS v4
@@ -98,6 +164,14 @@ The intended stack is documented but not implemented in Phase 1:
 - Event-first capture is the bridge between external interactions and executive insight.
 - No screens, components, services, migrations, or receptionist logic are allowed before their phase gates.
 
+## Locked Phase 2 Decisions
+
+- All raw color values live in `packages/tokens`.
+- UI components consume semantic classes and token-backed CSS variables.
+- Storybook must document reusable primitives before screens exist.
+- Application screens must be assembled from approved tokens and primitives.
+- Phase 2 does not create business-card, dashboard, or receptionist-specific UI.
+
 ## Next Gate
 
-Phase 2 should begin only after Phase 1 is reviewed and accepted. The next phase is Design System Supply Chain Foundation.
+Phase 3 should begin only after the Phase 2 design-system foundation is reviewed and accepted.

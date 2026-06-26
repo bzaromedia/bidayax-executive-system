@@ -1,0 +1,14 @@
+{
+  "name": "@bidayax/config",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tailwind": "./tailwind/preset.ts",
+    "./typescript/base": "./typescript/base.json",
+    "./eslint": "./eslint/index.js"
+  },
+  "dependencies": {
+    "@bidayax/tokens": "workspace:*"
+  }
+}

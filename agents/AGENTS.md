@@ -47,6 +47,29 @@ Codex must not create:
 - Production application code.
 - Deployment implementation.
 
+## Phase 2 Boundary
+
+Phase 2 is the Design System Supply Chain Foundation.
+
+Codex may create:
+
+- pnpm workspace configuration.
+- TurboRepo configuration.
+- typed design tokens.
+- foundational UI primitives.
+- Storybook review structure.
+- design governance documentation.
+
+Codex must not create:
+
+- application screens.
+- final business card UI.
+- dashboard UI.
+- receptionist UI.
+- backend services.
+- database implementation.
+- production deployment automation.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:
