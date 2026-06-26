@@ -70,6 +70,8 @@ Responsibilities:
 
 Output: canonical events for scoring, graph updates, dashboards, and automation.
 
+Phase 4 implementation note: the first Event Ledger slice is `POST /api/events` in `apps/card` plus the PostgreSQL `interaction_events` table. It records public card interactions only and intentionally stops before scoring, graph updates, dashboards, and automation.
+
 ### 5. Intent Scoring Layer
 
 Purpose: classify business priority and recommended urgency.

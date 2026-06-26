@@ -99,6 +99,39 @@ Codex must not create:
 - payment system.
 - extra apps.
 
+## Phase 4 Boundary
+
+Phase 4 is the QR Interaction Event Ledger.
+
+Codex may create:
+
+- shared event type definitions.
+- anonymous visitor and session tracking.
+- a single `POST /api/events` route handler.
+- event validation.
+- basic user-agent normalization.
+- IP hashing.
+- the `interaction_events` PostgreSQL migration.
+- interaction event model documentation.
+- card action event emission.
+
+Codex must not create:
+
+- dashboard analytics.
+- charts.
+- CRM functionality.
+- contact records.
+- lead records.
+- receptionist agent logic.
+- call, email, or scheduling automation.
+- intent scoring.
+- contact graph updates.
+- admin portal.
+- login or authentication.
+- payment system.
+- recursive improvement engine implementation.
+- speculative microservices.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

@@ -6,6 +6,7 @@ import { Download, Globe2, Mail, Phone } from "lucide-react";
 import { Button, Grid } from "@bidayax/ui";
 import { motionTokens } from "@bidayax/tokens";
 import type { ExecutiveProfile } from "../data/executives";
+import { emitCardInteraction } from "../lib/events-client";
 import { createVCardDataUri, getVCardFilename } from "../lib/vcard";
 
 type CardActionsProps = {
@@ -48,25 +49,60 @@ export function CardActions({ executive }: CardActionsProps) {
   return (
     <Grid columns={2} gap={3} className="w-full">
       <Button asChild variant="primary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
-        <a href={`tel:${executive.phone.replace(/[^\d+]/g, "")}`}>
+        <a
+          href={`tel:${executive.phone.replace(/[^\d+]/g, "")}`}
+          onClick={() =>
+            emitCardInteraction("call_click", executive.slug, {
+              action: "call_click",
+              surface: "executive_card"
+            })
+          }
+        >
           <Phone aria-hidden="true" size={16} />
           Call
         </a>
       </Button>
       <Button asChild variant="secondary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
-        <a href={`mailto:${executive.email}`}>
+        <a
+          href={`mailto:${executive.email}`}
+          onClick={() =>
+            emitCardInteraction("email_click", executive.slug, {
+              action: "email_click",
+              surface: "executive_card"
+            })
+          }
+        >
           <Mail aria-hidden="true" size={16} />
           Email
         </a>
       </Button>
       <Button asChild variant="secondary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
-        <a href={executive.website} rel="noreferrer" target="_blank">
+        <a
+          href={executive.website}
+          onClick={() =>
+            emitCardInteraction("website_click", executive.slug, {
+              action: "website_click",
+              surface: "executive_card"
+            })
+          }
+          rel="noreferrer"
+          target="_blank"
+        >
           <Globe2 aria-hidden="true" size={16} />
           Website
         </a>
       </Button>
       <Button asChild variant="ghost" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
-        <a download={getVCardFilename(executive)} href={createVCardDataUri(executive)}>
+        <a
+          download={getVCardFilename(executive)}
+          href={createVCardDataUri(executive)}
+          onClick={() =>
+            emitCardInteraction("vcard_download", executive.slug, {
+              action: "vcard_download",
+              surface: "executive_card"
+            })
+          }
+        >
           <Download aria-hidden="true" size={16} />
           vCard
         </a>

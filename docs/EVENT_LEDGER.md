@@ -4,7 +4,7 @@
 
 The Event Ledger is the durable record of external interactions and system actions. It is the foundation that allows scoring, contact graph updates, dashboards, receptionist actions, and automations to remain explainable.
 
-Phase 1 documents the ledger only. It does not implement storage or services.
+Phase 4 implements the first ledger slice for public executive card interactions.
 
 ## Why The Ledger Matters
 
@@ -42,7 +42,7 @@ A future event should include:
 
 ## Event Types
 
-Candidate event types:
+Long-term candidate event types:
 
 - `identity.created`
 - `identity.updated`
@@ -63,6 +63,15 @@ Candidate event types:
 - `graph.contact_linked`
 - `follow_up.recommended`
 - `follow_up.completed`
+
+Phase 4 implemented event types:
+
+- `qr_scan`
+- `card_view`
+- `vcard_download`
+- `call_click`
+- `email_click`
+- `website_click`
 
 ## Ledger Rules
 
@@ -86,6 +95,8 @@ Capture
 -> Trigger workflow
 -> Audit outcome
 ```
+
+Phase 4 stops after `Persist`. Scoring, graph updates, dashboard display, and automation are future phases.
 
 ## Idempotency
 
@@ -111,6 +122,36 @@ Every important downstream decision should trace back to ledger events:
 - Opportunity status update.
 - Notification.
 
-## Non-Implementation Note
+## Phase 4 Implementation
 
-No event service, event schema, queue, database table, or processor is implemented in Phase 1.
+Phase 4 creates:
+
+- `packages/types/src/events.ts` for shared event types.
+- `apps/card/app/api/events/route.ts` for `POST /api/events`.
+- `apps/card/src/lib/session.ts` for anonymous browser IDs.
+- `apps/card/src/lib/events-client.ts` for fail-open event emission.
+- `database/migrations/0001_create_interaction_events.sql` for PostgreSQL persistence.
+- `database/models/interaction-event.md` for model documentation.
+
+The API validates event payloads with Zod, generates the timestamp in PostgreSQL, parses user agent into coarse device/browser/OS fields, hashes request IPs with HMAC-SHA256, and stores only the normalized event.
+
+## Phase 4 Privacy Rules
+
+- No raw IP addresses are stored.
+- No contact records are created.
+- No lead records are created.
+- No CRM data is created.
+- Anonymous visitor IDs are random browser-storage IDs.
+- Session IDs are random session-storage IDs.
+- User-agent parsing is coarse and intended for aggregate analytics.
+
+## Phase 4 Non-Goals
+
+- Analytics dashboard.
+- Intent scoring.
+- Contact graph updates.
+- Receptionist workflows.
+- CRM records.
+- Authentication.
+- Admin tooling.
+- Automation.

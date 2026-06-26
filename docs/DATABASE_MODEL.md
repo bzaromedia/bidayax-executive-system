@@ -73,7 +73,29 @@ Stores access logs, data corrections, consent changes, system actions, and admin
 - Do not merge contacts without retaining merge history.
 - Prefer simple relational modeling first.
 
-## Migration Policy For Future Phases
+## Phase 4 Implemented Table
+
+Phase 4 introduces the first real database table:
+
+```text
+interaction_events
+```
+
+This table stores public executive card interaction events only. It supports future dashboard and intent-scoring phases without creating contacts, leads, CRM data, receptionist workflows, or user accounts.
+
+Migration:
+
+```text
+database/migrations/0001_create_interaction_events.sql
+```
+
+Model documentation:
+
+```text
+database/models/interaction-event.md
+```
+
+## Migration Policy
 
 When migrations are introduced:
 
@@ -84,6 +106,6 @@ When migrations are introduced:
 - Test data should not leak into production seeds.
 - PII fields must be classified before production use.
 
-## Non-Implementation Note
+## Remaining Non-Implementation Note
 
-The `database/migrations` directory exists for future work only. Phase 1 intentionally creates no migration files.
+Only the Phase 4 `interaction_events` migration exists. Contact, scoring, graph, receptionist, CRM, and dashboard tables are intentionally unbuilt.

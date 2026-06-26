@@ -2,9 +2,11 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; and Phase 3: Executive Digital Business Card Vertical Slice.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; and Phase 4: QR Interaction Event Ledger.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
+
+Phase 4 creates the first measurement layer behind the card: a privacy-respecting event ingestion API, anonymous browser session tracking, and the `interaction_events` PostgreSQL ledger table.
 
 ## System Definition
 
@@ -134,6 +136,47 @@ pnpm --filter @bidayax/card build
 
 Phase 3 includes static executive identity data, QR code display, vCard download, call/email/website actions, restrained GSAP motion, responsive layout, and accessibility support.
 
+## Phase 4 QR Interaction Event Ledger
+
+Phase 4 records card interactions as structured events.
+
+Event types:
+
+- `qr_scan`
+- `card_view`
+- `vcard_download`
+- `call_click`
+- `email_click`
+- `website_click`
+
+Database migration:
+
+```bash
+database/migrations/0001_create_interaction_events.sql
+```
+
+Required runtime environment:
+
+```bash
+DATABASE_URL=postgres://...
+BIDAYAX_IP_HASH_SECRET=replace-with-production-secret
+```
+
+Optional runtime environment:
+
+```bash
+DATABASE_SSL=true
+PG_POOL_MAX=5
+```
+
+The card app posts events to:
+
+```text
+POST /api/events
+```
+
+Event logging is fail-open. If the API or database is unavailable, the card still loads and call, email, website, and vCard actions still work.
+
 ## Repository Structure
 
 ```text
@@ -207,6 +250,17 @@ The intended stack for the design-system foundation is:
 - GSAP motion is restrained, token-timed, and reduced-motion aware.
 - No analytics, backend APIs, database logic, receptionist workflows, dashboard UI, auth, or admin features exist in Phase 3.
 
+## Locked Phase 4 Decisions
+
+- `interaction_events` is the first real database table.
+- `POST /api/events` is the only Phase 4 ingestion API.
+- Card route loads emit `card_view`; QR-marked card URLs also emit `qr_scan`.
+- Card actions emit `vcard_download`, `call_click`, `email_click`, and `website_click`.
+- Anonymous visitor IDs live in browser local storage; anonymous session IDs live in session storage.
+- Raw IP addresses are never stored.
+- Database failures return generic errors and never block card actions.
+- No dashboard, CRM, receptionist, intent scoring, authentication, admin, payment, or recursive improvement implementation exists in Phase 4.
+
 ## Next Gate
 
-Phase 4 should begin only after the Phase 3 card vertical slice is reviewed and accepted. Phase 4 is QR Interaction Event Ledger.
+Phase 5 should begin only after the Phase 4 QR Interaction Event Ledger is reviewed and accepted. Phase 5 is Executive Interaction Dashboard.

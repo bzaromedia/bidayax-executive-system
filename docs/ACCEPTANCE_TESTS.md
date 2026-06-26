@@ -182,3 +182,48 @@ Phase 3 must not include:
 - Login or authentication.
 - Payment system.
 - Extra apps.
+
+## Phase 4 Acceptance Criteria
+
+Phase 4 passes when:
+
+1. `interaction_events` table migration exists.
+2. Shared event types exist.
+3. `POST /api/events` exists.
+4. Events are validated.
+5. Events are stored in PostgreSQL when `DATABASE_URL` is configured.
+6. Card route load emits `card_view`.
+7. QR-marked card route load emits `qr_scan`.
+8. vCard download emits `vcard_download`.
+9. Call click emits `call_click`.
+10. Email click emits `email_click`.
+11. Website click emits `website_click`.
+12. Anonymous visitor tracking works without login.
+13. Anonymous session tracking works without login.
+14. Event logging failure does not break the card.
+15. No raw IP addresses are stored.
+16. No dashboard was built.
+17. No CRM was built.
+18. No receptionist was built.
+19. No intent scoring was built.
+20. Documentation explains the ledger clearly.
+
+## Phase 4 Non-Goals
+
+Phase 4 must not include:
+
+- Analytics dashboard.
+- Charts.
+- Receptionist agent.
+- CRM functionality.
+- Contact records.
+- Lead records.
+- Intent scoring.
+- Contact graph updates.
+- Email automation.
+- Call automation.
+- Scheduling system.
+- Admin portal.
+- Login or authentication.
+- Payment system.
+- Recursive improvement implementation.

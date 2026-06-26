@@ -1,4 +1,4 @@
-export type ExecutiveSlug = "ad-garner" | "naimah-barnes" | "sean-hall";
+import type { ExecutiveSlug } from "@bidayax/types";
 
 export type ExecutiveProfile = {
   readonly slug: ExecutiveSlug;

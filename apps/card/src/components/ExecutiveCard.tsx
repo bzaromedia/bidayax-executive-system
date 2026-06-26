@@ -7,6 +7,7 @@ import { QrCode } from "lucide-react";
 import { Button, Stack } from "@bidayax/ui";
 import { motionTokens } from "@bidayax/tokens";
 import type { ExecutiveProfile } from "../data/executives";
+import { emitCardInteraction, getCardLoadEventTypes } from "../lib/events-client";
 import { CardActions } from "./CardActions";
 import { CardFace } from "./CardFace";
 import { ContactDetails } from "./ContactDetails";
@@ -31,7 +32,23 @@ function getReducedMotionPreference() {
 export function ExecutiveCard({ executive }: ExecutiveCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const qrPanelRef = useRef<HTMLDivElement>(null);
+  const cardViewLoggedRef = useRef(false);
   const [qrVisible, setQrVisible] = useState(false);
+
+  useEffect(() => {
+    if (cardViewLoggedRef.current) {
+      return;
+    }
+
+    cardViewLoggedRef.current = true;
+
+    for (const eventType of getCardLoadEventTypes()) {
+      emitCardInteraction(eventType, executive.slug, {
+        action: "route_load",
+        surface: "executive_card"
+      });
+    }
+  }, [executive.slug]);
 
   useEffect(() => {
     if (!cardRef.current || getReducedMotionPreference()) {

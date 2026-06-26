@@ -22,7 +22,13 @@ export default [
         projectService: true
       },
       globals: {
+        Blob: "readonly",
+        console: "readonly",
         document: "readonly",
+        process: "readonly",
+        Request: "readonly",
+        Storage: "readonly",
+        URL: "readonly",
         window: "readonly"
       }
     },

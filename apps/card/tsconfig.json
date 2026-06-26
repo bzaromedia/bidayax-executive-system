@@ -17,6 +17,9 @@
       "@bidayax/tokens": [
         "../../packages/tokens/src/index.ts"
       ],
+      "@bidayax/types": [
+        "../../packages/types/src/index.ts"
+      ],
       "@bidayax/ui": [
         "../../packages/ui/src/index.ts"
       ],

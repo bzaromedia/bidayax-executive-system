@@ -103,6 +103,36 @@ Key risks:
 - Excessive data retention.
 - Unexplained automated scoring decisions.
 
+## Phase 4 Privacy Controls
+
+The QR Interaction Event Ledger stores interaction telemetry only.
+
+Phase 4 collects:
+
+- event type.
+- executive slug.
+- anonymous visitor ID.
+- anonymous session ID.
+- source URL.
+- referrer.
+- user agent.
+- coarse device/browser/OS fields.
+- hashed IP value.
+- small action metadata.
+
+Phase 4 does not collect:
+
+- raw IP addresses.
+- contact names.
+- contact emails.
+- contact phone numbers.
+- message bodies.
+- login identity.
+- CRM records.
+- lead records.
+
+IP hashes use HMAC-SHA256. Production deployments must set `BIDAYAX_IP_HASH_SECRET` so IP-derived values are protected by an environment-specific secret.
+
 ## Controls For Future Implementation
 
 - Strong authentication.
