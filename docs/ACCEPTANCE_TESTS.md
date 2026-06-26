@@ -141,3 +141,44 @@ Review only:
 - `packages/config`
 - Storybook setup.
 - Design governance docs.
+
+## Phase 3 Acceptance Criteria
+
+Phase 3 passes when:
+
+1. `apps/card` exists.
+2. `/card/ad-garner` exists.
+3. `/card/naimah-barnes` exists.
+4. `/card/sean-hall` exists.
+5. Each route renders the correct executive card.
+6. Each route displays a QR code.
+7. Each route supports vCard download.
+8. Call, email, and website actions exist.
+9. Design uses approved tokens.
+10. Components use approved UI primitives.
+11. No dashboard exists.
+12. No receptionist UI exists.
+13. No backend API exists.
+14. No database logic exists.
+15. Motion is restrained and premium.
+16. Layout is responsive.
+17. Accessibility requirements are met.
+18. `apps/card/README.md` explains how to run and test Phase 3.
+
+## Phase 3 Non-Goals
+
+Phase 3 must not include:
+
+- Dashboard analytics.
+- Backend APIs.
+- Database tables.
+- Receptionist agent.
+- Call automation.
+- Email automation.
+- Scheduling system.
+- CRM system.
+- Recursive improvement engine implementation.
+- Admin portal.
+- Login or authentication.
+- Payment system.
+- Extra apps.

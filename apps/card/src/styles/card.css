@@ -1,0 +1,158 @@
+.card-stage {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent 5rem,
+      color-mix(in srgb, var(--bx-color-border-muted) 16%, transparent) 5.0625rem,
+      transparent 5.125rem
+    ),
+    linear-gradient(
+      135deg,
+      var(--bx-color-surface-canvas),
+      var(--bx-color-surface-base) 48%,
+      var(--bx-color-surface-inset)
+    );
+}
+
+.executive-card-grid {
+  display: grid;
+  gap: var(--bx-space-6);
+  grid-template-columns: minmax(0, 1fr);
+  opacity: 1;
+}
+
+.executive-card-wrap {
+  min-height: 24rem;
+  perspective: 1200px;
+}
+
+.card-face {
+  position: relative;
+  min-height: 24rem;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid var(--bx-color-border-muted);
+  border-radius: var(--bx-radius-xl);
+  background:
+    linear-gradient(
+      120deg,
+      var(--bx-color-surface-panel),
+      var(--bx-color-surface-base) 44%,
+      var(--bx-color-surface-panel)
+    );
+  box-shadow: var(--bx-shadow-floating), var(--bx-shadow-hairline);
+  transform:
+    rotateX(var(--tilt-x))
+    rotateY(var(--tilt-y))
+    translateZ(0);
+  transform-style: preserve-3d;
+  transition: box-shadow var(--bx-motion-normal) var(--bx-ease-standard);
+}
+
+.card-metal {
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      102deg,
+      color-mix(in srgb, var(--bx-color-content-primary) 6%, transparent) 0,
+      transparent 1px,
+      color-mix(in srgb, var(--bx-color-content-primary) 3%, transparent) 3px,
+      transparent 7px
+    ),
+    linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--bx-color-content-accent) 18%, transparent) var(--reflection-x),
+      transparent
+    );
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.card-spotlight {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    circle at var(--spotlight-x) var(--spotlight-y),
+    color-mix(in srgb, var(--bx-color-content-primary) 15%, transparent),
+    transparent 34%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.card-mark {
+  display: grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  place-items: center;
+  border: 1px solid var(--bx-color-border-strong);
+  border-radius: var(--bx-radius-lg);
+  color: var(--bx-color-content-accent);
+  font-family: var(--bx-font-heading);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.card-panel {
+  background:
+    linear-gradient(
+      140deg,
+      color-mix(in srgb, var(--bx-color-surface-raised) 92%, transparent),
+      color-mix(in srgb, var(--bx-color-surface-panel) 94%, transparent)
+    );
+}
+
+.qr-panel {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(var(--bx-space-3));
+}
+
+.qr-panel[data-qr-visible="true"] {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.qr-frame {
+  display: inline-flex;
+  padding: var(--bx-space-4);
+  border: 1px solid var(--bx-color-border-strong);
+  border-radius: var(--bx-radius-lg);
+  background: var(--bx-color-content-primary);
+}
+
+@media (min-width: 1024px) {
+  .executive-card-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(22rem, 0.75fr);
+    align-items: center;
+  }
+
+  .executive-card-wrap {
+    min-height: 28rem;
+  }
+
+  .card-face {
+    min-height: 28rem;
+    aspect-ratio: 1.72 / 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  .card-face {
+    transform: none;
+  }
+}

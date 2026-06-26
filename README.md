@@ -2,9 +2,9 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In. It is now in Phase 2: Design System Supply Chain Foundation.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; and Phase 3: Executive Digital Business Card Vertical Slice.
 
-Phase 2 creates the governed frontend foundation only. It intentionally does not include application screens, the final business card, dashboard UI, receptionist UI, backend services, database migrations, receptionist logic, or production deployment automation.
+Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
 ## System Definition
 
@@ -108,6 +108,32 @@ pnpm build:storybook
 
 Storybook is the visual review layer before application screens are created.
 
+## Phase 3 Card App
+
+The first working product surface lives in `apps/card`.
+
+Routes:
+
+- `/card/ad-garner`
+- `/card/naimah-barnes`
+- `/card/sean-hall`
+
+Run the app:
+
+```bash
+pnpm --filter @bidayax/card dev
+```
+
+Validate the app:
+
+```bash
+pnpm --filter @bidayax/card typecheck
+pnpm --filter @bidayax/card lint
+pnpm --filter @bidayax/card build
+```
+
+Phase 3 includes static executive identity data, QR code display, vCard download, call/email/website actions, restrained GSAP motion, responsive layout, and accessibility support.
+
 ## Repository Structure
 
 ```text
@@ -172,6 +198,15 @@ The intended stack for the design-system foundation is:
 - Application screens must be assembled from approved tokens and primitives.
 - Phase 2 does not create business-card, dashboard, or receptionist-specific UI.
 
+## Locked Phase 3 Decisions
+
+- `apps/card` is the only Phase 3 application.
+- Executive card data is static.
+- QR codes route to the public card URLs.
+- vCard export is generated client-side from typed data.
+- GSAP motion is restrained, token-timed, and reduced-motion aware.
+- No analytics, backend APIs, database logic, receptionist workflows, dashboard UI, auth, or admin features exist in Phase 3.
+
 ## Next Gate
 
-Phase 3 should begin only after the Phase 2 design-system foundation is reviewed and accepted.
+Phase 4 should begin only after the Phase 3 card vertical slice is reviewed and accepted. Phase 4 is QR Interaction Event Ledger.

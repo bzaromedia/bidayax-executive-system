@@ -1,0 +1,76 @@
+"use client";
+
+import type { MouseEvent } from "react";
+import gsap from "gsap";
+import { Download, Globe2, Mail, Phone } from "lucide-react";
+import { Button, Grid } from "@bidayax/ui";
+import { motionTokens } from "@bidayax/tokens";
+import type { ExecutiveProfile } from "../data/executives";
+import { createVCardDataUri, getVCardFilename } from "../lib/vcard";
+
+type CardActionsProps = {
+  readonly executive: ExecutiveProfile;
+};
+
+function durationToSeconds(value: string) {
+  return Number.parseFloat(value.replace("ms", "")) / 1000;
+}
+
+function shouldReduceMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function handleMotionEnter(event: MouseEvent<HTMLElement>) {
+  if (shouldReduceMotion()) {
+    return;
+  }
+
+  gsap.to(event.currentTarget, {
+    y: -2,
+    duration: durationToSeconds(motionTokens.duration.fast),
+    ease: motionTokens.easing.standard
+  });
+}
+
+function handleMotionLeave(event: MouseEvent<HTMLElement>) {
+  if (shouldReduceMotion()) {
+    return;
+  }
+
+  gsap.to(event.currentTarget, {
+    y: 0,
+    duration: durationToSeconds(motionTokens.duration.fast),
+    ease: motionTokens.easing.standard
+  });
+}
+
+export function CardActions({ executive }: CardActionsProps) {
+  return (
+    <Grid columns={2} gap={3} className="w-full">
+      <Button asChild variant="primary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
+        <a href={`tel:${executive.phone.replace(/[^\d+]/g, "")}`}>
+          <Phone aria-hidden="true" size={16} />
+          Call
+        </a>
+      </Button>
+      <Button asChild variant="secondary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
+        <a href={`mailto:${executive.email}`}>
+          <Mail aria-hidden="true" size={16} />
+          Email
+        </a>
+      </Button>
+      <Button asChild variant="secondary" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
+        <a href={executive.website} rel="noreferrer" target="_blank">
+          <Globe2 aria-hidden="true" size={16} />
+          Website
+        </a>
+      </Button>
+      <Button asChild variant="ghost" onMouseEnter={handleMotionEnter} onMouseLeave={handleMotionLeave}>
+        <a download={getVCardFilename(executive)} href={createVCardDataUri(executive)}>
+          <Download aria-hidden="true" size={16} />
+          vCard
+        </a>
+      </Button>
+    </Grid>
+  );
+}

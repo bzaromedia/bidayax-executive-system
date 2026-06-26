@@ -20,6 +20,10 @@ export default [
       parser: tsParser,
       parserOptions: {
         projectService: true
+      },
+      globals: {
+        document: "readonly",
+        window: "readonly"
       }
     },
     plugins: {

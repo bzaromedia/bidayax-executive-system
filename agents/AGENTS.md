@@ -70,6 +70,35 @@ Codex must not create:
 - database implementation.
 - production deployment automation.
 
+## Phase 3 Boundary
+
+Phase 3 is the Executive Digital Business Card Vertical Slice.
+
+Codex may create:
+
+- `apps/card`.
+- three executive card routes.
+- static executive data.
+- QR code display.
+- vCard export.
+- call, email, and website actions.
+- restrained GSAP motion.
+- card-specific composition under `apps/card/src/components`.
+
+Codex must not create:
+
+- dashboard analytics.
+- backend APIs.
+- database tables or migrations.
+- receptionist agent logic.
+- call, email, or scheduling automation.
+- CRM workflows.
+- recursive improvement engine implementation.
+- admin portal.
+- login or authentication.
+- payment system.
+- extra apps.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

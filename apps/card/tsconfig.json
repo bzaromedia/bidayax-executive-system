@@ -1,0 +1,39 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowJs": false,
+    "baseUrl": ".",
+    "incremental": true,
+    "noEmit": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@bidayax/tokens": [
+        "../../packages/tokens/src/index.ts"
+      ],
+      "@bidayax/ui": [
+        "../../packages/ui/src/index.ts"
+      ],
+      "@bidayax/config/tailwind": [
+        "../../packages/config/tailwind/preset.ts"
+      ]
+    },
+    "esModuleInterop": true,
+    "jsx": "preserve"
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
