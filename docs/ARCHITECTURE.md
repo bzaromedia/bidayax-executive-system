@@ -143,6 +143,8 @@ Responsibilities:
 
 Output: actionable executive intelligence.
 
+Phase 5 implementation note: the first Dashboard Layer slice is `apps/dashboard`. It reads `interaction_events` and shows truthful aggregate interaction metrics, recent anonymous activity, and basic conversion ratios. It intentionally stops before contact graph intelligence, intent scoring, CRM workflows, and receptionist actions.
+
 ### 9. Automation Layer
 
 Purpose: close the loop with follow-up actions.

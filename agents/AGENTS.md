@@ -132,6 +132,38 @@ Codex must not create:
 - recursive improvement engine implementation.
 - speculative microservices.
 
+## Phase 5 Boundary
+
+Phase 5 is the Executive Interaction Dashboard.
+
+Codex may create:
+
+- `apps/dashboard`.
+- server-side PostgreSQL reads from `interaction_events`.
+- metric cards for real event counts.
+- executive activity breakdown.
+- event-type activity breakdown.
+- recent anonymous interaction feed.
+- simple conversion summaries.
+- empty and unavailable states.
+- dashboard documentation.
+
+Codex must not create:
+
+- receptionist agent logic.
+- CRM functionality.
+- contact records.
+- lead records.
+- lead scoring.
+- intent scoring.
+- contact graph updates.
+- call, email, or scheduling automation.
+- user accounts.
+- complex admin permissions.
+- payment system.
+- recursive improvement engine implementation.
+- full business intelligence platform.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

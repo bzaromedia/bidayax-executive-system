@@ -95,6 +95,18 @@ Model documentation:
 database/models/interaction-event.md
 ```
 
+## Phase 5 Read Model
+
+Phase 5 creates no new tables. `apps/dashboard` reads `interaction_events` for:
+
+- totals by event type.
+- totals by executive slug.
+- recent events.
+- daily event counts.
+- card-view-to-action conversion ratios.
+
+Dashboard queries must not expose raw IPs or create derived contact, lead, CRM, graph, or scoring records.
+
 ## Migration Policy
 
 When migrations are introduced:

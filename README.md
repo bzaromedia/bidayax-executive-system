@@ -2,11 +2,13 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; and Phase 4: QR Interaction Event Ledger.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; and Phase 5: Executive Interaction Dashboard.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
 Phase 4 creates the first measurement layer behind the card: a privacy-respecting event ingestion API, anonymous browser session tracking, and the `interaction_events` PostgreSQL ledger table.
+
+Phase 5 creates the first internal intelligence surface: a truthful dashboard that reads from `interaction_events` and summarizes card views, action clicks, executive activity, recent interactions, and simple conversion ratios.
 
 ## System Definition
 
@@ -177,6 +179,46 @@ POST /api/events
 
 Event logging is fail-open. If the API or database is unavailable, the card still loads and call, email, website, and vCard actions still work.
 
+## Phase 5 Executive Interaction Dashboard
+
+The first internal dashboard lives in `apps/dashboard`.
+
+Run the dashboard:
+
+```bash
+pnpm --filter @bidayax/dashboard dev
+```
+
+Validate the dashboard:
+
+```bash
+pnpm --filter @bidayax/dashboard typecheck
+pnpm --filter @bidayax/dashboard lint
+pnpm --filter @bidayax/dashboard build
+```
+
+Runtime environment:
+
+```bash
+DATABASE_URL=postgres://...
+DATABASE_SSL=true
+PG_POOL_MAX=5
+```
+
+The dashboard reads `interaction_events` and shows:
+
+- total interactions.
+- card views.
+- vCard downloads.
+- call, email, and website clicks.
+- activity by executive.
+- activity by event type.
+- recent anonymous interaction feed.
+- 14-day activity trend.
+- simple action conversion ratios.
+
+If `DATABASE_URL` is missing or no events exist, the dashboard shows an honest empty state instead of fake metrics.
+
 ## Repository Structure
 
 ```text
@@ -261,6 +303,15 @@ The intended stack for the design-system foundation is:
 - Database failures return generic errors and never block card actions.
 - No dashboard, CRM, receptionist, intent scoring, authentication, admin, payment, or recursive improvement implementation exists in Phase 4.
 
+## Locked Phase 5 Decisions
+
+- `apps/dashboard` is the only Phase 5 application.
+- The dashboard reads from `interaction_events` only.
+- No fake metrics, seeded analytics, or invented growth claims are shown.
+- The dashboard exposes anonymous event data only and never shows raw IPs.
+- Conversion summaries are simple ratios from `card_view` to action events.
+- No CRM, receptionist, contact graph, lead scoring, intent scoring, scheduling, authentication, admin, payment, or recursive improvement implementation exists in Phase 5.
+
 ## Next Gate
 
-Phase 5 should begin only after the Phase 4 QR Interaction Event Ledger is reviewed and accepted. Phase 5 is Executive Interaction Dashboard.
+Phase 6 should begin only after the Phase 5 Executive Interaction Dashboard is reviewed and accepted. Phase 6 is Executive Intent Scoring Engine.

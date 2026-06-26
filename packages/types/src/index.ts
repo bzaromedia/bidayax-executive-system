@@ -1,6 +1,13 @@
 export * from "./events";
+export * from "./dashboard";
 
-export type Phase = "phase-1" | "phase-2" | "phase-3" | "phase-4" | "future";
+export type Phase =
+  | "phase-1"
+  | "phase-2"
+  | "phase-3"
+  | "phase-4"
+  | "phase-5"
+  | "future";
 
 export type EvidenceMetric = {
   readonly name: string;

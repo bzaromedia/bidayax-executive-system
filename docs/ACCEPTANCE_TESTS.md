@@ -227,3 +227,43 @@ Phase 4 must not include:
 - Login or authentication.
 - Payment system.
 - Recursive improvement implementation.
+
+## Phase 5 Acceptance Criteria
+
+Phase 5 passes when:
+
+1. `apps/dashboard` exists.
+2. Dashboard reads from `interaction_events`.
+3. Metric cards show real counts.
+4. Executive breakdown works.
+5. Event-type breakdown works.
+6. Recent interaction feed works.
+7. Conversion summaries work.
+8. Empty state works when no data exists or the database is unavailable.
+9. No fake data is shown.
+10. No raw IP is exposed.
+11. No receptionist functionality exists.
+12. No CRM functionality exists.
+13. No lead scoring exists.
+14. No intent scoring exists.
+15. No scheduling exists.
+16. UI uses approved design-system tokens and primitives.
+17. `apps/dashboard/README.md` explains how to run and verify Phase 5.
+
+## Phase 5 Non-Goals
+
+Phase 5 must not include:
+
+- Receptionist agent.
+- CRM functionality.
+- Contact records.
+- Lead records.
+- Lead scoring.
+- Intent scoring.
+- Call automation.
+- Email automation.
+- Scheduling system.
+- User accounts.
+- Complex admin permissions.
+- Full business intelligence platform.
+- Recursive improvement implementation.

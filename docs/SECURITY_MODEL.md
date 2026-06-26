@@ -133,6 +133,32 @@ Phase 4 does not collect:
 
 IP hashes use HMAC-SHA256. Production deployments must set `BIDAYAX_IP_HASH_SECRET` so IP-derived values are protected by an environment-specific secret.
 
+## Phase 5 Dashboard Privacy Controls
+
+The Executive Interaction Dashboard shows anonymous ledger summaries only.
+
+Phase 5 may display:
+
+- event type.
+- executive slug or executive display name.
+- coarse device type.
+- coarse browser.
+- coarse operating system.
+- source or referrer host.
+- event timestamp.
+- aggregate counts and ratios.
+
+Phase 5 must not display:
+
+- raw IP addresses.
+- IP hashes.
+- anonymous visitor IDs.
+- session IDs.
+- contact records.
+- lead records.
+- names, emails, or phone numbers from visitors.
+- private notes or message bodies.
+
 ## Controls For Future Implementation
 
 - Strong authentication.

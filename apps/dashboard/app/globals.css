@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@config "../tailwind.config.ts";
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.dashboard-stage {
+  background: var(--bx-color-surface-canvas);
+}
