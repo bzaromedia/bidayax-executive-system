@@ -2,13 +2,15 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; and Phase 5: Executive Interaction Dashboard.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; and Phase 6: Executive Intent Scoring Engine.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
 Phase 4 creates the first measurement layer behind the card: a privacy-respecting event ingestion API, anonymous browser session tracking, and the `interaction_events` PostgreSQL ledger table.
 
 Phase 5 creates the first internal intelligence surface: a truthful dashboard that reads from `interaction_events` and summarizes card views, action clicks, executive activity, recent interactions, and simple conversion ratios.
+
+Phase 6 creates the first decision-intelligence layer: a deterministic, explainable scoring engine that ranks anonymous interaction groups by business intent.
 
 ## System Definition
 
@@ -219,6 +221,44 @@ The dashboard reads `interaction_events` and shows:
 
 If `DATABASE_URL` is missing or no events exist, the dashboard shows an honest empty state instead of fake metrics.
 
+## Phase 6 Executive Intent Scoring Engine
+
+The deterministic scoring service lives in `services/intent-scoring`.
+
+Run scoring tests:
+
+```bash
+pnpm --filter @bidayax/intent-scoring test
+```
+
+Run manual recalculation:
+
+```bash
+DATABASE_URL=postgres://... pnpm --filter @bidayax/intent-scoring recalculate
+```
+
+Database migration:
+
+```bash
+database/migrations/0002_create_intent_scores.sql
+```
+
+Scoring version:
+
+```text
+v1.0.0
+```
+
+Intent tiers:
+
+- Cold Signal
+- Warm Signal
+- Qualified Signal
+- Executive Priority
+- Strategic Opportunity
+
+The Phase 6 dashboard reads `intent_scores` and shows top anonymous intent signals, tier breakdowns, reason codes, and executive-level summaries. These are signals, not confirmed leads.
+
 ## Repository Structure
 
 ```text
@@ -312,6 +352,16 @@ The intended stack for the design-system foundation is:
 - Conversion summaries are simple ratios from `card_view` to action events.
 - No CRM, receptionist, contact graph, lead scoring, intent scoring, scheduling, authentication, admin, payment, or recursive improvement implementation exists in Phase 5.
 
+## Locked Phase 6 Decisions
+
+- Scoring is deterministic and transparent.
+- Scoring version is `v1.0.0`.
+- Scores are grouped by anonymous visitor, session, and executive.
+- `intent_scores` is derived from `interaction_events`.
+- Reason codes explain every score.
+- Dashboard language uses anonymous signals, not leads or contacts.
+- No machine learning, CRM, receptionist, contact enrichment, scheduling, user accounts, autonomous decisions, or recursive improvement implementation exists in Phase 6.
+
 ## Next Gate
 
-Phase 6 should begin only after the Phase 5 Executive Interaction Dashboard is reviewed and accepted. Phase 6 is Executive Intent Scoring Engine.
+Phase 7 should begin only after the Phase 6 Executive Intent Scoring Engine is reviewed and accepted. Phase 7 is Executive Contact Graph.

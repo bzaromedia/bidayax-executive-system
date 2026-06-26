@@ -164,6 +164,37 @@ Codex must not create:
 - recursive improvement engine implementation.
 - full business intelligence platform.
 
+## Phase 6 Boundary
+
+Phase 6 is the Executive Intent Scoring Engine.
+
+Codex may create:
+
+- shared intent types.
+- deterministic scoring rules.
+- reason codes.
+- tier definitions.
+- pure scoring function.
+- unit tests for scoring behavior.
+- `intent_scores` migration.
+- intent score model documentation.
+- manual score recalculation pathway.
+- dashboard sections for anonymous intent signals.
+
+Codex must not create:
+
+- receptionist agent logic.
+- CRM functionality.
+- scheduling.
+- email automation.
+- call automation.
+- contact enrichment.
+- user accounts.
+- complex machine learning model.
+- autonomous AI decision-making.
+- recursive improvement engine implementation.
+- contact graph implementation.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

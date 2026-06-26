@@ -1,4 +1,5 @@
 export * from "./events";
+export * from "./intent";
 export * from "./dashboard";
 
 export type Phase =
@@ -7,6 +8,7 @@ export type Phase =
   | "phase-3"
   | "phase-4"
   | "phase-5"
+  | "phase-6"
   | "future";
 
 export type EvidenceMetric = {

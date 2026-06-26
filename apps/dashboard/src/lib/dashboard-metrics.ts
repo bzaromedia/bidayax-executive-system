@@ -267,7 +267,10 @@ export function buildDashboardData(
     recentInteractions: source.recentInteractions,
     status: source.status,
     statusMessage: source.statusMessage,
-    totalInteractions
+    totalInteractions,
+    topIntentSignals: [],
+    intentTierBreakdown: [],
+    executiveIntentSummary: []
   };
 }
 

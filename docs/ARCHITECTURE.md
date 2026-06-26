@@ -91,11 +91,13 @@ Responsibilities:
 
 Output categories:
 
-- Cold Contact.
-- Warm Lead.
-- Qualified Opportunity.
+- Cold Signal.
+- Warm Signal.
+- Qualified Signal.
 - Executive Priority.
 - Strategic Opportunity.
+
+Phase 6 implementation note: the first Intent Scoring Layer slice is `services/intent-scoring` plus the PostgreSQL `intent_scores` table. It deterministically scores anonymous interaction groups and exposes reason codes. It intentionally stops before contact graph, CRM, receptionist workflows, machine learning, and automation.
 
 ### 6. Receptionist Agent Layer
 

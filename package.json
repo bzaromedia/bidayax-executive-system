@@ -9,6 +9,7 @@
     "build": "pnpm -r --if-present build",
     "dev": "turbo run dev --parallel",
     "lint": "pnpm -r --if-present lint",
+    "test": "pnpm -r --if-present test",
     "typecheck": "pnpm -r typecheck",
     "turbo:build": "turbo run build",
     "turbo:lint": "turbo run lint",

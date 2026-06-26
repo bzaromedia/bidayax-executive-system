@@ -159,6 +159,34 @@ Phase 5 must not display:
 - names, emails, or phone numbers from visitors.
 - private notes or message bodies.
 
+## Phase 6 Scoring Privacy Controls
+
+The Executive Intent Scoring Engine scores behavior, not identity.
+
+Phase 6 may use:
+
+- event type.
+- anonymous visitor ID.
+- anonymous session ID.
+- executive slug.
+- source or referrer presence.
+- coarse device/browser/OS completeness.
+- event timestamps.
+
+Phase 6 must not use:
+
+- raw IP addresses.
+- IP hashes.
+- demographic inference.
+- location-based discrimination.
+- identity guessing.
+- contact enrichment.
+- external data brokers.
+- CRM data.
+- receptionist notes.
+
+Dashboard labels must describe rows as anonymous signals, not confirmed leads or known contacts.
+
 ## Controls For Future Implementation
 
 - Strong authentication.

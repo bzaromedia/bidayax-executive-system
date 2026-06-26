@@ -4,9 +4,12 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
 import { EventTypeBreakdown } from "@/components/EventTypeBreakdown";
 import { ExecutiveBreakdown } from "@/components/ExecutiveBreakdown";
+import { IntentTierBreakdown } from "@/components/IntentTierBreakdown";
 import { MetricCard } from "@/components/MetricCard";
+import { PrioritySignals } from "@/components/PrioritySignals";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
 import { getDashboardData } from "@/data/dashboard-queries";
+import { getIntentDashboardData } from "@/data/intent-queries";
 import { formatInteger, formatShortDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -58,7 +61,10 @@ function ActivityTrend({
 }
 
 export default async function InteractionsPage() {
-  const data = await getDashboardData();
+  const [data, intentData] = await Promise.all([
+    getDashboardData(),
+    getIntentDashboardData()
+  ]);
   const shouldShowEmptyState = data.status !== "ready" || data.totalInteractions === 0;
 
   return (
@@ -76,6 +82,15 @@ export default async function InteractionsPage() {
         <EventTypeBreakdown rows={data.eventTypeBreakdown} />
       </div>
       <ConversionSummary rows={data.conversions} />
+      <PrioritySignals
+        signals={intentData.topIntentSignals}
+        status={intentData.status}
+        statusMessage={intentData.statusMessage}
+      />
+      <IntentTierBreakdown
+        executiveSummary={intentData.executiveIntentSummary}
+        rows={intentData.intentTierBreakdown}
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <ActivityTrend rows={data.dailyCounts} />
         <RecentInteractionFeed interactions={data.recentInteractions} />

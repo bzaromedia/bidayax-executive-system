@@ -107,6 +107,30 @@ Phase 5 creates no new tables. `apps/dashboard` reads `interaction_events` for:
 
 Dashboard queries must not expose raw IPs or create derived contact, lead, CRM, graph, or scoring records.
 
+## Phase 6 Implemented Table
+
+Phase 6 introduces:
+
+```text
+intent_scores
+```
+
+This table stores deterministic, recalculable intent scores derived from anonymous `interaction_events` groups.
+
+Migration:
+
+```text
+database/migrations/0002_create_intent_scores.sql
+```
+
+Model documentation:
+
+```text
+database/models/intent-score.md
+```
+
+Phase 6 still does not create contact, lead, CRM, receptionist, scheduling, or graph tables.
+
 ## Migration Policy
 
 When migrations are introduced:

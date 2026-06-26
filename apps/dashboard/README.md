@@ -45,6 +45,23 @@ The dashboard reads real `interaction_events` data and displays:
 
 If the database is not configured, unavailable, or empty, the dashboard shows an honest empty state.
 
+## Phase 6 Intent Signals
+
+When `intent_scores` exists, the dashboard also displays:
+
+- top anonymous intent signals.
+- intent tier breakdown.
+- reason codes.
+- executive-level intent summary.
+
+Run scoring recalculation from the service package:
+
+```bash
+DATABASE_URL=postgres://... pnpm --filter @bidayax/intent-scoring recalculate
+```
+
+The dashboard must present these rows as anonymous signals, not confirmed leads.
+
 ## Phase Boundaries
 
-This app must not include CRM functionality, receptionist workflows, lead scoring, intent scoring, scheduling, user accounts, complex permissions, fake analytics, or recursive improvement automation.
+This app must not include CRM functionality, receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, or recursive improvement automation.

@@ -267,3 +267,40 @@ Phase 5 must not include:
 - Complex admin permissions.
 - Full business intelligence platform.
 - Recursive improvement implementation.
+
+## Phase 6 Acceptance Criteria
+
+Phase 6 passes when:
+
+1. `intent_scores` table migration exists.
+2. Intent types exist.
+3. Reason codes exist.
+4. Tier definitions exist.
+5. Pure scoring function exists.
+6. Unit tests exist.
+7. Score recalculation pathway exists.
+8. Dashboard shows top intent signals.
+9. Dashboard shows tier breakdown.
+10. Dashboard shows reason codes.
+11. No CRM was built.
+12. No receptionist was built.
+13. No contact enrichment was built.
+14. No machine learning was added.
+15. No raw IPs are stored or used.
+16. Documentation explains the scoring engine clearly.
+17. README explains how to run and verify Phase 6.
+
+## Phase 6 Non-Goals
+
+Phase 6 must not include:
+
+- Receptionist agent.
+- CRM functionality.
+- Scheduling.
+- Email automation.
+- Call automation.
+- Contact enrichment.
+- User accounts.
+- Complex ML model.
+- Autonomous AI decision-making.
+- Recursive improvement implementation.

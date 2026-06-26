@@ -1,4 +1,5 @@
 import type { ExecutiveSlug, InteractionEventType } from "./events";
+import type { IntentReasonCode, IntentScoringVersion, IntentTier } from "./intent";
 
 export type DashboardStatus = "ready" | "not_configured" | "query_failed";
 
@@ -66,6 +67,33 @@ export type DashboardDailyCount = {
   readonly count: number;
 };
 
+export type DashboardIntentSignal = {
+  readonly id: string;
+  readonly label: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly score: number;
+  readonly tier: IntentTier;
+  readonly reasonCodes: readonly IntentReasonCode[];
+  readonly scoringVersion: IntentScoringVersion;
+  readonly eventCount: number;
+  readonly lastEventAt: string | null;
+};
+
+export type DashboardIntentTierBreakdown = {
+  readonly tier: IntentTier;
+  readonly count: number;
+  readonly share: number;
+};
+
+export type DashboardExecutiveIntentSummary = {
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly signalCount: number;
+  readonly averageScore: number;
+  readonly maxScore: number;
+};
+
 export type ExecutiveInteractionDashboardData = {
   readonly status: DashboardStatus;
   readonly statusMessage: string;
@@ -77,4 +105,7 @@ export type ExecutiveInteractionDashboardData = {
   readonly conversions: readonly DashboardConversionSummary[];
   readonly recentInteractions: readonly DashboardRecentInteraction[];
   readonly dailyCounts: readonly DashboardDailyCount[];
+  readonly topIntentSignals: readonly DashboardIntentSignal[];
+  readonly intentTierBreakdown: readonly DashboardIntentTierBreakdown[];
+  readonly executiveIntentSummary: readonly DashboardExecutiveIntentSummary[];
 };

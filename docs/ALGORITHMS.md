@@ -2,7 +2,9 @@
 
 ## Executive Intent Scoring Algorithm
 
-The first documented algorithm is the Executive Intent Scoring Algorithm. It is not implemented in Phase 1.
+The first documented algorithm is the Executive Intent Scoring Algorithm.
+
+Phase 6 implements version `v1.0.0` as a deterministic scoring engine for anonymous card interaction groups.
 
 The algorithm classifies each interaction by business priority using evidence from identity, source, channel, urgency, business relevance, engagement history, sentiment, follow-up probability, and strategic value.
 
@@ -162,9 +164,29 @@ Strategic value: 15
 
 The total is normalized to 100. Weights are intentionally documented as a starting hypothesis, not a final product truth.
 
+## Phase 6 Implemented Model
+
+Phase 6 scores groups of `interaction_events` by:
+
+- anonymous visitor ID.
+- session ID.
+- executive slug.
+
+The implemented factors are:
+
+- event type value.
+- repeat engagement.
+- action depth.
+- recency.
+- compact multi-action session behavior.
+- source/referrer presence.
+- coarse device metadata completeness.
+
+The engine does not use raw IP addresses, IP hashes, demographic inference, identity resolution, external enrichment, machine learning, or autonomous decision-making.
+
 ## Output Categories
 
-### Cold Contact
+### Cold Signal
 
 Score range: 0 to 24.
 
@@ -172,7 +194,7 @@ Meaning: weak identity, low engagement, unclear relevance, or low-quality source
 
 Recommended action: capture safely, avoid interruption, enrich if useful, and wait for additional signal.
 
-### Warm Lead
+### Warm Signal
 
 Score range: 25 to 49.
 
@@ -180,7 +202,7 @@ Meaning: identifiable or context-rich interaction with some business relevance.
 
 Recommended action: add to contact graph, suggest lightweight follow-up, and watch for repeat engagement.
 
-### Qualified Opportunity
+### Qualified Signal
 
 Score range: 50 to 69.
 
@@ -225,6 +247,7 @@ Recommended action:
 - Never hide score reasoning.
 - Never allow sentiment alone to create a high score.
 - Never classify an unknown identity as strategic without a strong source or manual confirmation.
+- Never present anonymous signals as confirmed leads.
 - Never auto-send sensitive replies without approval.
 - Always retain the source event that produced the score.
 - Always allow score correction after human review.
