@@ -1,0 +1,90 @@
+# Deployment Model
+
+## Purpose
+
+This document defines the intended deployment direction. Phase 1 does not implement deployment, Dockerfiles, Caddy configuration, CI, environments, or hosting automation.
+
+## Intended Runtime Shape
+
+Future deployment should support:
+
+- Public card app.
+- Executive dashboard app.
+- Receptionist console app.
+- API service.
+- Event ledger worker or service.
+- Intent scoring service or module.
+- Receptionist workflow service.
+- Notification worker.
+- PostgreSQL database.
+- Optional Redis only when justified.
+
+## Intended Platform
+
+The preferred deployment direction is:
+
+- Docker for packaging.
+- Caddy for reverse proxy and TLS.
+- Hostinger VPS for initial hosting.
+- PostgreSQL for durable storage.
+- Environment-specific configuration.
+
+## Environments
+
+Future environments should include:
+
+- Local development.
+- Preview or staging.
+- Production.
+
+Each environment should define:
+
+- Domain.
+- Secrets.
+- Database.
+- Logging.
+- Backup policy.
+- Observability.
+- Access controls.
+
+## Monorepo Build Direction
+
+The intended monorepo tooling is:
+
+- pnpm workspaces.
+- TurboRepo task orchestration.
+- Shared TypeScript configuration.
+- Shared lint and formatting configuration.
+- App-specific build outputs.
+- Package-level boundaries.
+
+This tooling is not installed in Phase 1.
+
+## Deployment Principles
+
+- Deploy the simplest working vertical slice first.
+- Do not add orchestration complexity before traffic requires it.
+- Use explicit environment variables.
+- Keep secrets out of source control.
+- Prefer reproducible builds.
+- Make health checks visible.
+- Make rollback possible.
+- Back up production data before risky changes.
+
+## Observability Direction
+
+Future production deployment should expose:
+
+- Request logs.
+- Error logs.
+- Job logs.
+- Event ingestion counts.
+- Scoring outcomes.
+- Follow-up outcomes.
+- Receptionist workflow outcomes.
+- Latency for key flows.
+- Uptime and health checks.
+
+## Non-Implementation Note
+
+The `infrastructure` folders are reserved for future Docker, Caddy, and Hostinger VPS configuration. They contain no deployment implementation in Phase 1.
