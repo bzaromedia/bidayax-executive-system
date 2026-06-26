@@ -131,6 +131,32 @@ database/models/intent-score.md
 
 Phase 6 still does not create contact, lead, CRM, receptionist, scheduling, or graph tables.
 
+## Phase 7 Implemented Tables
+
+Phase 7 introduces:
+
+```text
+contact_graph_nodes
+contact_graph_edges
+contact_graph_snapshots
+```
+
+These tables store a relational graph derived from `interaction_events` and `intent_scores`.
+
+Migration:
+
+```text
+database/migrations/0003_create_contact_graph.sql
+```
+
+Model documentation:
+
+```text
+database/models/executive-contact-graph.md
+```
+
+Phase 7 still does not create contact, company, lead, CRM, receptionist, scheduling, or enrichment tables.
+
 ## Migration Policy
 
 When migrations are introduced:
@@ -144,4 +170,4 @@ When migrations are introduced:
 
 ## Remaining Non-Implementation Note
 
-Only the Phase 4 `interaction_events` migration exists. Contact, scoring, graph, receptionist, CRM, and dashboard tables are intentionally unbuilt.
+The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, and Phase 7 contact graph tables. Contact, company, receptionist, CRM, scheduling, enrichment, and automation tables are intentionally unbuilt.

@@ -248,6 +248,28 @@ importers:
         specifier: ^2.6.0
         version: 2.6.1
 
+  services/contact-graph:
+    dependencies:
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
+    devDependencies:
+      '@types/pg':
+        specifier: ^8.20.0
+        version: 8.20.0
+      tsx:
+        specifier: ^4.20.6
+        version: 4.22.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
   services/intent-scoring:
     dependencies:
       '@bidayax/types':

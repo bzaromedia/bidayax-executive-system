@@ -131,6 +131,8 @@ Responsibilities:
 
 Output: contact intelligence for dashboards, receptionist workflows, and automation.
 
+Phase 7 implementation note: the first Executive Contact Graph slice is `services/contact-graph` plus PostgreSQL `contact_graph_nodes`, `contact_graph_edges`, and `contact_graph_snapshots`. It connects anonymous visitors, sessions, executives, interaction events, and intent scores. It intentionally stops before CRM, receptionist workflows, contact/company records, enrichment, identity resolution, and automation.
+
 ### 8. Dashboard Layer
 
 Purpose: expose executive intelligence.
@@ -145,7 +147,7 @@ Responsibilities:
 
 Output: actionable executive intelligence.
 
-Phase 5 implementation note: the first Dashboard Layer slice is `apps/dashboard`. It reads `interaction_events` and shows truthful aggregate interaction metrics, recent anonymous activity, and basic conversion ratios. It intentionally stops before contact graph intelligence, intent scoring, CRM workflows, and receptionist actions.
+Phase 5 implementation note: the first Dashboard Layer slice is `apps/dashboard`. It reads `interaction_events` and shows truthful aggregate interaction metrics, recent anonymous activity, and basic conversion ratios. Phase 6 adds anonymous intent signals from `intent_scores`. Phase 7 adds graph summaries, relationship snapshots, and engagement paths from contact graph tables. It intentionally stops before CRM workflows and receptionist actions.
 
 ### 9. Automation Layer
 
@@ -241,6 +243,10 @@ Future event ingestion and ledger processing service.
 ### services/intent-scoring
 
 Future scoring service or module once scoring rules are validated.
+
+### services/contact-graph
+
+Future relationship graph builder and rebuild pathway for anonymous first-party interaction intelligence.
 
 ### services/receptionist-agent
 

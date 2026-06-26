@@ -187,6 +187,35 @@ Phase 6 must not use:
 
 Dashboard labels must describe rows as anonymous signals, not confirmed leads or known contacts.
 
+## Phase 7 Graph Privacy Controls
+
+The Executive Contact Graph organizes anonymous first-party relationship structure.
+
+Phase 7 may use:
+
+- anonymous visitor ID.
+- anonymous session ID.
+- executive slug.
+- interaction event IDs.
+- intent score IDs.
+- event types.
+- intent tiers and scores.
+- factual engagement summaries.
+
+Phase 7 must not use or expose:
+
+- raw IP addresses.
+- IP hashes in dashboard surfaces.
+- identity guessing.
+- demographic inference.
+- contact enrichment.
+- external data brokers.
+- contact records.
+- company records.
+- receptionist notes.
+
+Dashboard labels must describe rows as anonymous visitors, visitor signals, relationship snapshots, or engagement paths.
+
 ## Controls For Future Implementation
 
 - Strong authentication.

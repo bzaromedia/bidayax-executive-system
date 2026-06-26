@@ -1,6 +1,6 @@
 # BidayaX Dashboard App
 
-Phase 5 creates the first internal dashboard for card interaction events.
+The dashboard is the internal intelligence surface for card interaction events, intent signals, and anonymous contact graph summaries.
 
 ## Routes
 
@@ -61,6 +61,23 @@ DATABASE_URL=postgres://... pnpm --filter @bidayax/intent-scoring recalculate
 ```
 
 The dashboard must present these rows as anonymous signals, not confirmed leads.
+
+## Phase 7 Contact Graph
+
+When the contact graph tables exist, the dashboard also displays:
+
+- contact graph summary.
+- executive relationship snapshots.
+- engagement paths.
+- graph empty state.
+
+Run graph rebuild from the service package:
+
+```bash
+DATABASE_URL=postgres://... pnpm --filter @bidayax/contact-graph rebuild
+```
+
+The dashboard must present these rows as anonymous relationship signals, not contacts, companies, leads, or verified identities.
 
 ## Phase Boundaries
 

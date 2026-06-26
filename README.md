@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; and Phase 6: Executive Intent Scoring Engine.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; and Phase 7: Executive Contact Graph.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -11,6 +11,8 @@ Phase 4 creates the first measurement layer behind the card: a privacy-respectin
 Phase 5 creates the first internal intelligence surface: a truthful dashboard that reads from `interaction_events` and summarizes card views, action clicks, executive activity, recent interactions, and simple conversion ratios.
 
 Phase 6 creates the first decision-intelligence layer: a deterministic, explainable scoring engine that ranks anonymous interaction groups by business intent.
+
+Phase 7 creates the relationship-intelligence layer: a deterministic, privacy-respecting contact graph that connects anonymous visitors, sessions, executive cards, interaction events, and intent scores without identifying people or building CRM functionality.
 
 ## System Definition
 
@@ -48,6 +50,7 @@ Read these documents before starting any implementation phase:
 - [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md)
 - [docs/DEPLOYMENT_MODEL.md](docs/DEPLOYMENT_MODEL.md)
 - [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)
+- [docs/EXECUTIVE_CONTACT_GRAPH.md](docs/EXECUTIVE_CONTACT_GRAPH.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -259,6 +262,36 @@ Intent tiers:
 
 The Phase 6 dashboard reads `intent_scores` and shows top anonymous intent signals, tier breakdowns, reason codes, and executive-level summaries. These are signals, not confirmed leads.
 
+## Phase 7 Executive Contact Graph
+
+The relationship graph service lives in `services/contact-graph`.
+
+Run graph tests:
+
+```bash
+pnpm --filter @bidayax/contact-graph test
+```
+
+Run graph rebuild:
+
+```bash
+DATABASE_URL=postgres://... pnpm --filter @bidayax/contact-graph rebuild
+```
+
+Database migration:
+
+```bash
+database/migrations/0003_create_contact_graph.sql
+```
+
+Phase 7 adds:
+
+- `contact_graph_nodes`
+- `contact_graph_edges`
+- `contact_graph_snapshots`
+
+The dashboard reads these tables and shows graph summaries, relationship snapshots, and engagement paths. Anonymous visitors remain anonymous. These are relationship signals, not contacts, leads, companies, or confirmed identities.
+
 ## Repository Structure
 
 ```text
@@ -276,6 +309,7 @@ bidayax-executive-system/
 |   +-- sdk/
 +-- services/
 |   +-- api/
+|   +-- contact-graph/
 |   +-- event-ledger/
 |   +-- intent-scoring/
 |   +-- receptionist-agent/
@@ -362,6 +396,15 @@ The intended stack for the design-system foundation is:
 - Dashboard language uses anonymous signals, not leads or contacts.
 - No machine learning, CRM, receptionist, contact enrichment, scheduling, user accounts, autonomous decisions, or recursive improvement implementation exists in Phase 6.
 
+## Locked Phase 7 Decisions
+
+- The graph uses PostgreSQL relational tables, not a separate graph database.
+- Nodes use stable keys so rebuilds are idempotent.
+- Edges are typed and duplicate-protected.
+- Snapshots are factual summaries of observed anonymous behavior.
+- Dashboard language uses anonymous visitors, relationship snapshots, and engagement paths.
+- No CRM, receptionist, external enrichment, contact/company records, identity guessing, sales pipeline, or automation implementation exists in Phase 7.
+
 ## Next Gate
 
-Phase 7 should begin only after the Phase 6 Executive Intent Scoring Engine is reviewed and accepted. Phase 7 is Executive Contact Graph.
+Phase 8 should begin only after the Phase 7 Executive Contact Graph is reviewed and accepted. Phase 8 is Polyglot Receptionist OS Foundation.

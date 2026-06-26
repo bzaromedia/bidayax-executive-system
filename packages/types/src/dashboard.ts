@@ -1,4 +1,5 @@
 import type { ExecutiveSlug, InteractionEventType } from "./events";
+import type { ContactGraphEdgeType } from "./graph";
 import type { IntentReasonCode, IntentScoringVersion, IntentTier } from "./intent";
 
 export type DashboardStatus = "ready" | "not_configured" | "query_failed";
@@ -92,6 +93,37 @@ export type DashboardExecutiveIntentSummary = {
   readonly signalCount: number;
   readonly averageScore: number;
   readonly maxScore: number;
+};
+
+export type DashboardContactGraphSummary = {
+  readonly nodeCount: number;
+  readonly edgeCount: number;
+  readonly snapshotCount: number;
+  readonly visitorCount: number;
+  readonly sessionCount: number;
+  readonly executiveCount: number;
+  readonly highestIntentScore: number | null;
+};
+
+export type DashboardRelationshipSnapshot = {
+  readonly id: string;
+  readonly label: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly totalEvents: number;
+  readonly highestIntentScore: number | null;
+  readonly highestIntentTier: IntentTier | null;
+  readonly engagementSummary: string;
+  readonly lastActivityAt: string | null;
+};
+
+export type DashboardEngagementPath = {
+  readonly id: string;
+  readonly edgeType: ContactGraphEdgeType;
+  readonly sourceLabel: string;
+  readonly targetLabel: string;
+  readonly weight: number;
+  readonly createdAt: string | null;
 };
 
 export type ExecutiveInteractionDashboardData = {

@@ -304,3 +304,44 @@ Phase 6 must not include:
 - Complex ML model.
 - Autonomous AI decision-making.
 - Recursive improvement implementation.
+
+## Phase 7 Acceptance Criteria
+
+Phase 7 passes when:
+
+1. `contact_graph_nodes` table exists.
+2. `contact_graph_edges` table exists.
+3. `contact_graph_snapshots` table exists.
+4. Graph node types exist.
+5. Graph edge types exist.
+6. Deterministic graph builder exists.
+7. Stable keys are used.
+8. Duplicate graph entries are prevented.
+9. Graph snapshots are created.
+10. Dashboard shows graph summaries.
+11. Dashboard shows engagement paths.
+12. Anonymous visitors remain anonymous.
+13. No CRM was built.
+14. No receptionist was built.
+15. No external enrichment was added.
+16. No identity guessing was added.
+17. Tests exist.
+18. Documentation explains the graph system clearly.
+19. README explains how to run and verify Phase 7.
+
+## Phase 7 Non-Goals
+
+Phase 7 must not include:
+
+- Full CRM.
+- Contact enrichment.
+- Identity guessing.
+- Email automation.
+- Call automation.
+- Receptionist agent.
+- Scheduling workflows.
+- Lead pipeline.
+- Sales pipeline.
+- External data broker integrations.
+- AI identity resolution.
+- Recursive improvement implementation.

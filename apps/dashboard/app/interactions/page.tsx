@@ -1,14 +1,19 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Grid } from "@bidayax/ui";
 import { ConversionSummary } from "@/components/ConversionSummary";
+import { ContactGraphSummary } from "@/components/ContactGraphSummary";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EmptyState } from "@/components/EmptyState";
+import { EngagementPathList } from "@/components/EngagementPathList";
 import { EventTypeBreakdown } from "@/components/EventTypeBreakdown";
+import { ExecutiveRelationshipSnapshot } from "@/components/ExecutiveRelationshipSnapshot";
 import { ExecutiveBreakdown } from "@/components/ExecutiveBreakdown";
+import { GraphEmptyState } from "@/components/GraphEmptyState";
 import { IntentTierBreakdown } from "@/components/IntentTierBreakdown";
 import { MetricCard } from "@/components/MetricCard";
 import { PrioritySignals } from "@/components/PrioritySignals";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
 import { getDashboardData } from "@/data/dashboard-queries";
+import { getGraphDashboardData } from "@/data/graph-queries";
 import { getIntentDashboardData } from "@/data/intent-queries";
 import { formatInteger, formatShortDate } from "@/lib/formatters";
 
@@ -61,11 +66,14 @@ function ActivityTrend({
 }
 
 export default async function InteractionsPage() {
-  const [data, intentData] = await Promise.all([
+  const [data, intentData, graphData] = await Promise.all([
     getDashboardData(),
-    getIntentDashboardData()
+    getIntentDashboardData(),
+    getGraphDashboardData()
   ]);
   const shouldShowEmptyState = data.status !== "ready" || data.totalInteractions === 0;
+  const shouldShowGraphEmptyState =
+    graphData.status !== "ready" || graphData.summary.nodeCount === 0;
 
   return (
     <DashboardShell generatedAt={data.generatedAt} status={data.status}>
@@ -91,6 +99,20 @@ export default async function InteractionsPage() {
         executiveSummary={intentData.executiveIntentSummary}
         rows={intentData.intentTierBreakdown}
       />
+      {shouldShowGraphEmptyState ? (
+        <GraphEmptyState
+          status={graphData.status}
+          statusMessage={graphData.statusMessage}
+        />
+      ) : (
+        <>
+          <ContactGraphSummary summary={graphData.summary} />
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ExecutiveRelationshipSnapshot snapshots={graphData.snapshots} />
+            <EngagementPathList paths={graphData.engagementPaths} />
+          </div>
+        </>
+      )}
       <div className="grid gap-6 xl:grid-cols-2">
         <ActivityTrend rows={data.dailyCounts} />
         <RecentInteractionFeed interactions={data.recentInteractions} />

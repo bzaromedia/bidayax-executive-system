@@ -195,6 +195,36 @@ Codex must not create:
 - recursive improvement engine implementation.
 - contact graph implementation.
 
+## Phase 7 Boundary
+
+Phase 7 is the Executive Contact Graph.
+
+Codex may create:
+
+- shared graph node and edge types.
+- relational graph migrations.
+- a deterministic graph builder.
+- tests for graph building and snapshots.
+- a manual graph rebuild pathway.
+- dashboard sections for graph summaries, relationship snapshots, and engagement paths.
+
+Codex must not create:
+
+- receptionist agent logic.
+- CRM functionality.
+- contact enrichment.
+- identity guessing.
+- company records.
+- contact records.
+- scheduling.
+- email automation.
+- call automation.
+- lead pipeline.
+- sales pipeline.
+- external data broker integrations.
+- AI identity resolution.
+- recursive improvement engine implementation.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

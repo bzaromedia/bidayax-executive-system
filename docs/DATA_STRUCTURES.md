@@ -2,9 +2,9 @@
 
 ## Executive Contact Graph
 
-The Executive Contact Graph is the core intelligence data structure. It links people, companies, interactions, scores, relationship strength, follow-up history, and opportunity state.
+The Executive Contact Graph is the core intelligence data structure. The long-term graph links people, companies, interactions, scores, relationship strength, follow-up history, and opportunity state.
 
-It is documented in Phase 1 but not implemented.
+Phase 7 implements the first privacy-respecting graph slice. It links anonymous visitors, sessions, executive cards, interaction events, and intent scores. It does not create person, company, contact, CRM, receptionist, or follow-up records.
 
 ## Why A Graph
 
@@ -24,7 +24,24 @@ Opportunity -> belongs to -> Company
 Follow-up -> responds to -> Interaction
 ```
 
-## Node Types
+## Phase 7 Implemented Node Types
+
+- `visitor`
+- `session`
+- `executive`
+- `interaction_event`
+- `intent_score`
+
+## Phase 7 Implemented Edge Types
+
+- `visitor_has_session`
+- `session_viewed_executive`
+- `session_generated_event`
+- `event_targets_executive`
+- `session_has_intent_score`
+- `visitor_engaged_executive`
+
+## Future Node Types
 
 ### Executive
 
@@ -157,7 +174,7 @@ Key attributes:
 - Message summary.
 - Completion result.
 
-## Edge Types
+## Future Edge Types
 
 - `WORKS_AT`: person to company.
 - `SCANNED`: person or unknown actor to QR scan.
@@ -188,7 +205,7 @@ Automation triggers actions.
 
 ## Minimum Future Graph
 
-The first implemented graph should be small:
+Future graph expansion should stay small:
 
 - Executive.
 - Person.
@@ -222,4 +239,4 @@ The graph should eventually answer:
 
 ## Non-Implementation Note
 
-This document defines the conceptual structure only. It does not create database tables, migrations, graph storage, indexes, or application types.
+Phase 7 implements only the anonymous relational graph foundation. Person, company, relationship strength, opportunity, follow-up, CRM, receptionist, and enrichment structures remain future work.
