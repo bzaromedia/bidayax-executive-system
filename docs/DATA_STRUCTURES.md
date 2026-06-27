@@ -240,3 +240,17 @@ The graph should eventually answer:
 ## Non-Implementation Note
 
 Phase 7 implements only the anonymous relational graph foundation. Person, company, relationship strength, opportunity, follow-up, CRM, receptionist, and enrichment structures remain future work.
+
+## Polyglot Receptionist OS Foundation
+
+Phase 8 adds receptionist foundation structures:
+
+- receptionist interaction.
+- receptionist task.
+- conversation turn.
+- workflow event.
+- language profile.
+- intent classification.
+- escalation recommendation.
+
+These structures are simulated and deterministic. They do not represent live calls, sent emails, calendar bookings, or production receptionist activity.

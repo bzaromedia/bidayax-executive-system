@@ -12,9 +12,15 @@ import { IntentTierBreakdown } from "@/components/IntentTierBreakdown";
 import { MetricCard } from "@/components/MetricCard";
 import { PrioritySignals } from "@/components/PrioritySignals";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
+import { ReceptionistEmptyState } from "@/components/ReceptionistEmptyState";
+import { ReceptionistInteractionFeed } from "@/components/ReceptionistInteractionFeed";
+import { ReceptionistLanguageBreakdown } from "@/components/ReceptionistLanguageBreakdown";
+import { ReceptionistSummary } from "@/components/ReceptionistSummary";
+import { ReceptionistTaskList } from "@/components/ReceptionistTaskList";
 import { getDashboardData } from "@/data/dashboard-queries";
 import { getGraphDashboardData } from "@/data/graph-queries";
 import { getIntentDashboardData } from "@/data/intent-queries";
+import { getReceptionistDashboardData } from "@/data/receptionist-queries";
 import { formatInteger, formatShortDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -66,14 +72,18 @@ function ActivityTrend({
 }
 
 export default async function InteractionsPage() {
-  const [data, intentData, graphData] = await Promise.all([
+  const [data, intentData, graphData, receptionistData] = await Promise.all([
     getDashboardData(),
     getIntentDashboardData(),
-    getGraphDashboardData()
+    getGraphDashboardData(),
+    getReceptionistDashboardData()
   ]);
   const shouldShowEmptyState = data.status !== "ready" || data.totalInteractions === 0;
   const shouldShowGraphEmptyState =
     graphData.status !== "ready" || graphData.summary.nodeCount === 0;
+  const shouldShowReceptionistEmptyState =
+    receptionistData.status !== "ready" ||
+    receptionistData.summary.interactionCount === 0;
 
   return (
     <DashboardShell generatedAt={data.generatedAt} status={data.status}>
@@ -110,6 +120,24 @@ export default async function InteractionsPage() {
           <div className="grid gap-6 xl:grid-cols-2">
             <ExecutiveRelationshipSnapshot snapshots={graphData.snapshots} />
             <EngagementPathList paths={graphData.engagementPaths} />
+          </div>
+        </>
+      )}
+      {shouldShowReceptionistEmptyState ? (
+        <ReceptionistEmptyState
+          status={receptionistData.status}
+          statusMessage={receptionistData.statusMessage}
+        />
+      ) : (
+        <>
+          <ReceptionistSummary summary={receptionistData.summary} />
+          <ReceptionistLanguageBreakdown
+            intents={receptionistData.intentBreakdown}
+            languages={receptionistData.languageBreakdown}
+          />
+          <div className="grid gap-6 xl:grid-cols-2">
+            <ReceptionistInteractionFeed interactions={receptionistData.interactions} />
+            <ReceptionistTaskList tasks={receptionistData.tasks} />
           </div>
         </>
       )}

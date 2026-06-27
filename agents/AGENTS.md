@@ -225,6 +225,36 @@ Codex must not create:
 - AI identity resolution.
 - recursive improvement engine implementation.
 
+## Phase 8 Boundary
+
+Phase 8 is the Polyglot Receptionist OS Foundation.
+
+Codex may create:
+
+- shared receptionist types.
+- receptionist foundation database migrations.
+- deterministic intent classification.
+- deterministic task generation.
+- deterministic escalation recommendations.
+- simulated conversation workflow logic.
+- tests for simulation behavior.
+- dashboard sections for simulated receptionist data.
+
+Codex must not create:
+
+- live phone calling.
+- Twilio integration.
+- OpenAI Realtime integration.
+- real outbound calls.
+- real email sending.
+- real calendar booking.
+- full CRM.
+- payment systems.
+- autonomous receptionist deployment.
+- production phone routing.
+- external API dependencies.
+- external workflow engine integration.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

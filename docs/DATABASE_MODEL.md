@@ -157,6 +157,33 @@ database/models/executive-contact-graph.md
 
 Phase 7 still does not create contact, company, lead, CRM, receptionist, scheduling, or enrichment tables.
 
+## Phase 8 Implemented Tables
+
+Phase 8 introduces:
+
+```text
+receptionist_interactions
+receptionist_tasks
+receptionist_conversation_turns
+receptionist_workflow_events
+```
+
+These tables store simulated receptionist foundation data.
+
+Migration:
+
+```text
+database/migrations/0004_create_receptionist_foundation.sql
+```
+
+Model documentation:
+
+```text
+database/models/receptionist-os.md
+```
+
+Phase 8 still does not create live telephony records, call recordings, sent email records, calendar booking records, CRM tables, payment tables, or external workflow state.
+
 ## Migration Policy
 
 When migrations are introduced:
@@ -170,4 +197,4 @@ When migrations are introduced:
 
 ## Remaining Non-Implementation Note
 
-The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, and Phase 7 contact graph tables. Contact, company, receptionist, CRM, scheduling, enrichment, and automation tables are intentionally unbuilt.
+The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, Phase 7 contact graph tables, and Phase 8 receptionist foundation tables. Contact, company, CRM, live telephony, scheduling, enrichment, payment, and production automation tables are intentionally unbuilt.

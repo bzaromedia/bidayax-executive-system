@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; and Phase 7: Executive Contact Graph.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; and Phase 8: Polyglot Receptionist OS Foundation.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -13,6 +13,8 @@ Phase 5 creates the first internal intelligence surface: a truthful dashboard th
 Phase 6 creates the first decision-intelligence layer: a deterministic, explainable scoring engine that ranks anonymous interaction groups by business intent.
 
 Phase 7 creates the relationship-intelligence layer: a deterministic, privacy-respecting contact graph that connects anonymous visitors, sessions, executive cards, interaction events, and intent scores without identifying people or building CRM functionality.
+
+Phase 8 creates the receptionist foundation: simulated receptionist interactions, deterministic intent classification, language profiles, task generation, escalation recommendations, and dashboard visibility without live calls, emails, calendars, or external workflow integrations.
 
 ## System Definition
 
@@ -51,6 +53,7 @@ Read these documents before starting any implementation phase:
 - [docs/DEPLOYMENT_MODEL.md](docs/DEPLOYMENT_MODEL.md)
 - [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)
 - [docs/EXECUTIVE_CONTACT_GRAPH.md](docs/EXECUTIVE_CONTACT_GRAPH.md)
+- [docs/POLYGLOT_RECEPTIONIST_OS.md](docs/POLYGLOT_RECEPTIONIST_OS.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -292,6 +295,31 @@ Phase 7 adds:
 
 The dashboard reads these tables and shows graph summaries, relationship snapshots, and engagement paths. Anonymous visitors remain anonymous. These are relationship signals, not contacts, leads, companies, or confirmed identities.
 
+## Phase 8 Polyglot Receptionist OS Foundation
+
+The receptionist foundation service lives in `services/receptionist-agent`.
+
+Run receptionist tests:
+
+```bash
+pnpm --filter @bidayax/receptionist-agent test
+```
+
+Database migration:
+
+```bash
+database/migrations/0004_create_receptionist_foundation.sql
+```
+
+Phase 8 adds:
+
+- `receptionist_interactions`
+- `receptionist_tasks`
+- `receptionist_conversation_turns`
+- `receptionist_workflow_events`
+
+The dashboard can read these tables and show simulated receptionist summaries, tasks, language breakdowns, and interaction feeds. Phase 8 does not connect live calling, email, calendars, Twilio, OpenAI Realtime, Gmail, Microsoft 365, or external workflow engines.
+
 ## Repository Structure
 
 ```text
@@ -405,6 +433,15 @@ The intended stack for the design-system foundation is:
 - Dashboard language uses anonymous visitors, relationship snapshots, and engagement paths.
 - No CRM, receptionist, external enrichment, contact/company records, identity guessing, sales pipeline, or automation implementation exists in Phase 7.
 
+## Locked Phase 8 Decisions
+
+- Receptionist behavior is simulated only.
+- Intent classification is deterministic, not LLM-based.
+- Escalation is a recommendation only and never contacts an executive automatically.
+- Language profiles are metadata models, not claims of live fluency.
+- Dashboard copy labels receptionist data as simulated/foundation data.
+- No Twilio, OpenAI Realtime, Gmail, Microsoft 365, calendar, n8n, CRM, live calling, real email, real booking, or external workflow integration exists in Phase 8.
+
 ## Next Gate
 
-Phase 8 should begin only after the Phase 7 Executive Contact Graph is reviewed and accepted. Phase 8 is Polyglot Receptionist OS Foundation.
+Phase 9 should begin only after the Phase 8 Polyglot Receptionist OS Foundation is reviewed and accepted. Phase 9 is Live Voice + Telephony Integration Preparation.

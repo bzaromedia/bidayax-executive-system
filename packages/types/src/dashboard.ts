@@ -1,6 +1,14 @@
 import type { ExecutiveSlug, InteractionEventType } from "./events";
 import type { ContactGraphEdgeType } from "./graph";
 import type { IntentReasonCode, IntentScoringVersion, IntentTier } from "./intent";
+import type {
+  ReceptionistChannel,
+  ReceptionistIntentCategory,
+  ReceptionistInteractionType,
+  ReceptionistPriority,
+  ReceptionistTaskStatus,
+  ReceptionistTaskType
+} from "./receptionist";
 
 export type DashboardStatus = "ready" | "not_configured" | "query_failed";
 
@@ -124,6 +132,50 @@ export type DashboardEngagementPath = {
   readonly targetLabel: string;
   readonly weight: number;
   readonly createdAt: string | null;
+};
+
+export type DashboardReceptionistSummary = {
+  readonly interactionCount: number;
+  readonly simulatedCount: number;
+  readonly taskCount: number;
+  readonly escalationCount: number;
+  readonly languageCount: number;
+};
+
+export type DashboardReceptionistInteraction = {
+  readonly id: string;
+  readonly interactionType: ReceptionistInteractionType;
+  readonly channel: ReceptionistChannel;
+  readonly status: string;
+  readonly language: string;
+  readonly dialect: string | null;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly summary: string;
+  readonly priority: ReceptionistPriority;
+  readonly createdAt: string;
+};
+
+export type DashboardReceptionistTask = {
+  readonly id: string;
+  readonly taskType: ReceptionistTaskType;
+  readonly status: ReceptionistTaskStatus;
+  readonly priority: ReceptionistPriority;
+  readonly assignedTo: string | null;
+  readonly dueAt: string | null;
+  readonly description: string;
+  readonly createdAt: string;
+};
+
+export type DashboardReceptionistLanguageBreakdown = {
+  readonly language: string;
+  readonly count: number;
+  readonly share: number;
+};
+
+export type DashboardReceptionistIntentBreakdown = {
+  readonly intent: ReceptionistIntentCategory;
+  readonly count: number;
 };
 
 export type ExecutiveInteractionDashboardData = {

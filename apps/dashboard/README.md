@@ -79,6 +79,18 @@ DATABASE_URL=postgres://... pnpm --filter @bidayax/contact-graph rebuild
 
 The dashboard must present these rows as anonymous relationship signals, not contacts, companies, leads, or verified identities.
 
+## Phase 8 Receptionist Foundation
+
+When the receptionist foundation tables exist, the dashboard also displays:
+
+- receptionist foundation summary.
+- simulated interaction feed.
+- receptionist task list.
+- language breakdown.
+- intent classification preview.
+
+The dashboard must present these rows as simulated foundation records, not live calls, sent emails, booked meetings, or production receptionist actions.
+
 ## Phase Boundaries
 
 This app must not include CRM functionality, receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, or recursive improvement automation.

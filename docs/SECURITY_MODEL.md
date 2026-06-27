@@ -216,6 +216,37 @@ Phase 7 must not use or expose:
 
 Dashboard labels must describe rows as anonymous visitors, visitor signals, relationship snapshots, or engagement paths.
 
+## Phase 8 Receptionist Privacy Controls
+
+The Polyglot Receptionist OS foundation stores simulated receptionist data only.
+
+Phase 8 may use:
+
+- simulated interaction type.
+- simulated channel.
+- simulated language and dialect metadata.
+- limited optional caller or sender label.
+- executive slug.
+- anonymous visitor ID and session ID when present.
+- simulated summary.
+- simulated sentiment and priority.
+- generated task descriptions.
+- workflow event payloads.
+
+Phase 8 must not use or store:
+
+- raw call recordings.
+- real voice session media.
+- payment data.
+- sensitive personal data.
+- inferred protected traits.
+- external enrichment results.
+- real sent email bodies.
+- calendar booking confirmations.
+- production phone routing data.
+
+Dashboard labels must describe receptionist rows as simulated or foundation data.
+
 ## Controls For Future Implementation
 
 - Strong authentication.

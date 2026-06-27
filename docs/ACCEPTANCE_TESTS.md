@@ -345,3 +345,44 @@ Phase 7 must not include:
 - External data broker integrations.
 - AI identity resolution.
 - Recursive improvement implementation.
+
+## Phase 8 Acceptance Criteria
+
+Phase 8 passes when:
+
+1. All work is inside `D:\bidayax-executive-system`.
+2. `receptionist_interactions` table migration exists.
+3. `receptionist_tasks` table migration exists.
+4. `receptionist_conversation_turns` table migration exists.
+5. `receptionist_workflow_events` table migration exists.
+6. Receptionist shared types exist.
+7. Deterministic intent categories exist.
+8. Language profile model exists.
+9. Escalation rules exist.
+10. Task generation rules exist.
+11. Simulation workflow exists.
+12. Unit tests exist.
+13. Dashboard shows receptionist foundation data.
+14. Dashboard clearly avoids fake production claims.
+15. No live calls are made.
+16. No real emails are sent.
+17. No real calendar events are booked.
+18. No external API integration is added.
+19. Documentation explains the receptionist foundation clearly.
+20. README explains how to run and verify Phase 8.
+
+## Phase 8 Non-Goals
+
+Phase 8 must not include:
+
+- Live phone calling.
+- Twilio integration.
+- OpenAI Realtime integration.
+- Real outbound calls.
+- Real email sending.
+- Real calendar booking.
+- Full CRM.
+- Payment systems.
+- Autonomous receptionist deployment.
+- Production phone number routing.
+- External workflow engines.

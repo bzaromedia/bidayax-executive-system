@@ -116,6 +116,8 @@ Responsibilities:
 
 Output: logged receptionist actions and follow-up recommendations.
 
+Phase 8 implementation note: the first Receptionist Agent Layer slice is `services/receptionist-agent` plus PostgreSQL receptionist foundation tables. It models simulated interactions, deterministic intent classification, language metadata, task generation, workflow events, and escalation recommendations. It intentionally stops before live calls, live voice sessions, real email sending, real calendar booking, CRM, external workflow engines, and autonomous production workflows.
+
 ### 7. Executive Contact Graph Layer
 
 Purpose: connect people, companies, interactions, scores, history, and opportunity state.
@@ -147,7 +149,7 @@ Responsibilities:
 
 Output: actionable executive intelligence.
 
-Phase 5 implementation note: the first Dashboard Layer slice is `apps/dashboard`. It reads `interaction_events` and shows truthful aggregate interaction metrics, recent anonymous activity, and basic conversion ratios. Phase 6 adds anonymous intent signals from `intent_scores`. Phase 7 adds graph summaries, relationship snapshots, and engagement paths from contact graph tables. It intentionally stops before CRM workflows and receptionist actions.
+Phase 5 implementation note: the first Dashboard Layer slice is `apps/dashboard`. It reads `interaction_events` and shows truthful aggregate interaction metrics, recent anonymous activity, and basic conversion ratios. Phase 6 adds anonymous intent signals from `intent_scores`. Phase 7 adds graph summaries, relationship snapshots, and engagement paths from contact graph tables. Phase 8 adds simulated receptionist foundation visibility. It intentionally stops before CRM workflows and live receptionist actions.
 
 ### 9. Automation Layer
 
@@ -251,6 +253,8 @@ Future relationship graph builder and rebuild pathway for anonymous first-party 
 ### services/receptionist-agent
 
 Future receptionist workflow runtime.
+
+Phase 8 starts this as a deterministic simulation package only.
 
 ### services/notification-worker
 

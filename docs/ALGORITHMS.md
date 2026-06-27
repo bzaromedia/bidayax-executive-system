@@ -276,3 +276,17 @@ These are candidates for later phases, not Phase 1 implementation:
 - Meeting outcome classification.
 - Source quality calibration.
 - Receptionist handoff confidence.
+
+## Phase 8 Receptionist Foundation Rules
+
+Phase 8 adds deterministic receptionist rules, not machine learning.
+
+Implemented deterministic rules:
+
+- keyword-based receptionist intent classification.
+- simple sentiment classification.
+- priority assignment from intent and sentiment.
+- task generation from intent.
+- escalation recommendation from intent, priority, sentiment, and task type.
+
+These rules are intentionally simple so future live integrations can be reviewed against transparent behavior before any production automation is enabled.
