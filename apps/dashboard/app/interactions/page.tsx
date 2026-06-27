@@ -14,6 +14,7 @@ import { LiveProviderReadinessPanel } from "@/components/LiveProviderReadinessPa
 import { MetricCard } from "@/components/MetricCard";
 import { PrioritySignals } from "@/components/PrioritySignals";
 import { ProductionCallWarning } from "@/components/ProductionCallWarning";
+import { ProductionHardeningWarnings } from "@/components/ProductionHardeningWarnings";
 import { ProviderConfigurationChecklist } from "@/components/ProviderConfigurationChecklist";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
 import { ReceptionistEmptyState } from "@/components/ReceptionistEmptyState";
@@ -177,6 +178,10 @@ export default async function InteractionsPage() {
         </>
       )}
       <LiveProviderReadinessPanel data={liveProviderData} />
+      <ProductionHardeningWarnings
+        databaseStatus={data.status}
+        liveProviderData={liveProviderData}
+      />
       <div className="grid gap-6 xl:grid-cols-2">
         <VoiceRuntimeSafetyPanel voiceRuntime={liveProviderData.voiceRuntime} />
         <TestCallModeStatus summary={liveProviderData.summary} />

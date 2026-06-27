@@ -1,0 +1,45 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bidayax}
+      POSTGRES_USER: ${POSTGRES_USER:-bidayax}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - bidayax_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bidayax} -d ${POSTGRES_DB:-bidayax}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  card:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.card
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.dashboard
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+volumes:
+  bidayax_postgres:
+

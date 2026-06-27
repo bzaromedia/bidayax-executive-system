@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; and Phase 10: Live Provider Integration + Voice Runtime Safety Gate.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; Phase 10: Live Provider Integration + Voice Runtime Safety Gate; and Phase 11: Production Hardening.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -19,6 +19,8 @@ Phase 8 creates the receptionist foundation: simulated receptionist interactions
 Phase 9 creates the telephony preparation layer: provider abstraction, mock provider behavior, inbound webhook scaffolding, outbound request safety gates, call lifecycle tracking, voice session metadata, and dashboard readiness visibility without real call execution.
 
 Phase 10 creates the controlled live provider integration layer: Twilio-compatible adapter behavior, Twilio-shaped inbound webhook handling, safe TwiML responses, OpenAI Realtime readiness checks, voice runtime readiness records, dashboard live-readiness panels, and production voice safety gates without autonomous voice operation.
+
+Phase 11 creates the production hardening layer: centralized environment validation, security headers, health/readiness endpoints, structured logging, safe error helpers, migration verification, database checks, Docker/Caddy deployment assets, Hostinger VPS runbooks, backup/restore scripts, rollback docs, and dashboard production warnings without adding product features.
 
 ## System Definition
 
@@ -62,6 +64,14 @@ Read these documents before starting any implementation phase:
 - [docs/TELEPHONY_SAFETY_MODEL.md](docs/TELEPHONY_SAFETY_MODEL.md)
 - [docs/LIVE_PROVIDER_INTEGRATION_VOICE_RUNTIME_SAFETY_GATE.md](docs/LIVE_PROVIDER_INTEGRATION_VOICE_RUNTIME_SAFETY_GATE.md)
 - [docs/PRODUCTION_VOICE_SAFETY_GATE.md](docs/PRODUCTION_VOICE_SAFETY_GATE.md)
+- [docs/PRODUCTION_HARDENING.md](docs/PRODUCTION_HARDENING.md)
+- [docs/SECURITY_BASELINE.md](docs/SECURITY_BASELINE.md)
+- [docs/ENVIRONMENT_CONFIGURATION.md](docs/ENVIRONMENT_CONFIGURATION.md)
+- [docs/DEPLOYMENT_RUNBOOK.md](docs/DEPLOYMENT_RUNBOOK.md)
+- [docs/BACKUP_AND_RESTORE.md](docs/BACKUP_AND_RESTORE.md)
+- [docs/ROLLBACK_PLAN.md](docs/ROLLBACK_PLAN.md)
+- [docs/PRODUCTION_READINESS_CHECKLIST.md](docs/PRODUCTION_READINESS_CHECKLIST.md)
+- [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -399,6 +409,54 @@ ALLOW_PRODUCTION_CALLS=false
 
 The dashboard shows live provider readiness, Twilio configuration status, OpenAI Realtime readiness, test-call mode, voice safety gates, production call warnings, and blocked reason codes. Phase 10 does not execute unrestricted outbound calls, stream live audio to OpenAI Realtime, activate an autonomous receptionist, send email, book calendars, or build CRM functionality.
 
+## Phase 11 Production Hardening
+
+Production hardening is implemented across `packages/config`, `scripts`, `apps/dashboard`, `infrastructure`, and `docs`.
+
+Environment templates:
+
+```bash
+.env.example
+.env.production.example
+```
+
+Core verification:
+
+```bash
+pnpm verify
+pnpm verify:production
+pnpm db:migrations:verify
+pnpm db:check
+```
+
+`pnpm db:check` requires `DATABASE_URL`.
+
+Health and readiness endpoints:
+
+```text
+GET /api/system/health
+GET /api/system/readiness
+```
+
+Operational scripts:
+
+```powershell
+pwsh scripts/backup-database.ps1
+pwsh scripts/restore-database.ps1 -BackupPath backups\file.dump -ConfirmRestore
+pwsh infrastructure/hostinger-vps/DEPLOY.ps1
+pwsh infrastructure/hostinger-vps/ROLLBACK.ps1 -GitRef <commit-or-tag>
+```
+
+Deployment assets:
+
+- `infrastructure/docker/Dockerfile.card`
+- `infrastructure/docker/Dockerfile.dashboard`
+- `infrastructure/docker/docker-compose.production.yml`
+- `infrastructure/caddy/Caddyfile`
+- `infrastructure/hostinger-vps/DEPLOYMENT_GUIDE.md`
+
+The dashboard shows production hardening warnings for mock provider mode, missing database readiness, disabled production calls, disabled outbound calls, disabled voice agent, test mode, missing provider credentials, and failed safety reason codes.
+
 ## Repository Structure
 
 ```text
@@ -546,6 +604,19 @@ The intended stack for the design-system foundation is:
 - Dashboard language uses readiness, test mode, blocked, and safety-gated status.
 - No autonomous receptionist, unrestricted outbound calls, live audio streaming, email sending, calendar booking, CRM, enrichment, payment, or recursive improvement implementation exists in Phase 10.
 
+## Locked Phase 11 Decisions
+
+- Phase 11 adds hardening only, not new product capabilities.
+- Environment validation is centralized in `packages/config`.
+- Security headers apply to both Next apps.
+- Health and readiness endpoints expose status without secrets.
+- Migration verification is file-based and non-destructive.
+- Backup and restore scripts require explicit environment configuration.
+- Restore requires `-ConfirmRestore`.
+- Docker/Caddy/Hostinger assets are VPS-oriented and intentionally minimal.
+- Dashboard warnings must remain truthful and must not claim production readiness unless readiness checks pass.
+- Production calls, outbound calls, live voice, email automation, calendar booking, CRM, enrichment, payments, autonomous agents, and recursive improvement remain unbuilt or disabled by default.
+
 ## Next Gate
 
-Phase 11 should begin only after the Phase 10 Live Provider Integration + Voice Runtime Safety Gate is reviewed and accepted. Phase 11 is Production Hardening.
+Phase 12 should begin only after the Phase 11 Production Hardening layer is reviewed and accepted. Phase 12 is Observability & Telemetry Layer.

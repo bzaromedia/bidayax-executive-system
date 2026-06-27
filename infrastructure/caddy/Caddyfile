@@ -1,0 +1,14 @@
+{
+	email {$CADDY_ADMIN_EMAIL}
+}
+
+{$CARD_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy card:3000
+}
+
+{$DASHBOARD_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy dashboard:3001
+}
+
