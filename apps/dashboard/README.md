@@ -124,6 +124,29 @@ API routes:
 - `POST /api/live-provider/voice-runtime`
 - `POST /api/telephony/twilio/inbound`
 
+## Phase 12 Observability
+
+The dashboard also displays:
+
+- observability summary.
+- recent telemetry events.
+- system metric cards.
+- normalized error events.
+- safety gate telemetry.
+- subsystem health matrix.
+
+Observability route:
+
+- `/observability`
+
+Telemetry API routes:
+
+- `POST /api/telemetry/events`
+- `POST /api/telemetry/metrics`
+- `GET /api/telemetry/summary`
+
+The dashboard must show real telemetry only. If no telemetry exists, it shows an empty state instead of fake uptime, fake metrics, or invented coverage.
+
 ## Phase Boundaries
 
 This app must not include CRM functionality, autonomous receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, unrestricted live calling, or recursive improvement automation.

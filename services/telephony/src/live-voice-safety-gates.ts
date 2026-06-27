@@ -5,6 +5,7 @@ import type {
   OutboundCallApprovalStatus,
   OutboundCallRequestStatus
 } from "@bidayax/types";
+import { createTelemetrySafetyGateEvent } from "@bidayax/telemetry";
 
 function sortReasonCodes(
   reasons: Iterable<LiveVoiceSafetyReasonCode>
@@ -55,16 +56,29 @@ export function evaluateProductionVoiceSafety(
 
   const reasonCodes = sortReasonCodes(reasons);
   const allowed = reasonCodes.length === 0;
-
-  return {
+  const result = {
     allowed,
     reasonCodes,
     safetyGateStatus: allowed
-      ? "approved_for_production"
+      ? ("approved_for_production" as const)
       : config.voiceTestMode
-        ? "test_mode_only"
-        : "missing_configuration"
+        ? ("test_mode_only" as const)
+        : ("missing_configuration" as const)
   };
+
+  console.info(
+    JSON.stringify({
+      component: "telephony-safety-telemetry",
+      safetyGate: createTelemetrySafetyGateEvent({
+        decision: result.allowed ? "allowed" : "blocked",
+        gateName: "production_voice",
+        reasonCodes: result.reasonCodes,
+        subsystem: "telephony"
+      })
+    })
+  );
+
+  return result;
 }
 
 export function evaluateOutboundLiveCallSafety({
@@ -92,11 +106,25 @@ export function evaluateOutboundLiveCallSafety({
 
   const reasonCodes = sortReasonCodes(reasons);
   const allowed = reasonCodes.length === 0;
-
-  return {
+  const result = {
     allowed,
     reasonCodes,
-    safetyGateStatus: allowed ? "approved_for_production" : "blocked_by_default"
+    safetyGateStatus: allowed
+      ? ("approved_for_production" as const)
+      : ("blocked_by_default" as const)
   };
-}
 
+  console.info(
+    JSON.stringify({
+      component: "telephony-safety-telemetry",
+      safetyGate: createTelemetrySafetyGateEvent({
+        decision: result.allowed ? "allowed" : "blocked",
+        gateName: "outbound_live_call",
+        reasonCodes: result.reasonCodes,
+        subsystem: "telephony"
+      })
+    })
+  );
+
+  return result;
+}

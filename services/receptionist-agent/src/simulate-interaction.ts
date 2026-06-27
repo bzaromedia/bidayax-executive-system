@@ -2,6 +2,10 @@ import type {
   SimulateReceptionistInteractionInput,
   SimulateReceptionistInteractionResult
 } from "@bidayax/types";
+import {
+  createTelemetryEvent,
+  createTelemetrySafetyGateEvent
+} from "@bidayax/telemetry";
 import { evaluateEscalation } from "./escalation-rules";
 import { createLanguageProfile } from "./language-profile";
 import {
@@ -31,6 +35,7 @@ function logReceptionistEvent(
 export function simulateReceptionistInteraction(
   input: SimulateReceptionistInteractionInput
 ): SimulateReceptionistInteractionResult {
+  const startedAt = Date.now();
   if (!input.text.trim()) {
     logReceptionistEvent("validation_failure", {
       reason: "empty_text"
@@ -92,7 +97,7 @@ export function simulateReceptionistInteraction(
     workflowEventCount: workflowEvents.length
   });
 
-  return {
+  const result: SimulateReceptionistInteractionResult = {
     channel: input.channel,
     classifiedIntent,
     conversationTurns: [
@@ -120,4 +125,28 @@ export function simulateReceptionistInteraction(
     tasks,
     workflowEvents
   };
+
+  console.info(
+    JSON.stringify({
+      component: "receptionist-telemetry",
+      event: createTelemetryEvent({
+        durationMs: Math.round(Date.now() - startedAt),
+        eventName: "receptionist_interaction_simulated",
+        metadata: {
+          intent: classifiedIntent,
+          taskCount: tasks.length
+        },
+        status: "success",
+        subsystem: "receptionist"
+      }),
+      safetyGate: createTelemetrySafetyGateEvent({
+        decision: escalation.shouldEscalate ? "warning" : "skipped",
+        gateName: "human_escalation_recommendation",
+        reasonCodes: escalation.reasonCodes,
+        subsystem: "receptionist"
+      })
+    })
+  );
+
+  return result;
 }

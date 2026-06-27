@@ -6,6 +6,7 @@ import type {
   ContactGraphNode,
   ExecutiveSlug
 } from "@bidayax/types";
+import { createTelemetryEvent, createTelemetryMetric } from "@bidayax/telemetry";
 import { createEdge, edgeStableKey, graphEdgeTypes } from "./graph-edge-types";
 import {
   createNode,
@@ -216,6 +217,7 @@ export function buildGraphFromEvents({
   events,
   intentScores
 }: BuildGraphFromEventsInput): ContactGraphBuildResult {
+  const startedAt = Date.now();
   const nodes = new Map<string, ContactGraphNode>();
   const edges = new Map<string, ContactGraphEdge>();
   const duplicateCounts = {
@@ -381,7 +383,7 @@ export function buildGraphFromEvents({
       });
     });
 
-  return {
+  const result = {
     duplicateEdgesSkipped: duplicateCounts.duplicateEdgesSkipped,
     duplicateNodesSkipped: duplicateCounts.duplicateNodesSkipped,
     edges: Array.from(edges.values()).sort((left, right) =>
@@ -392,4 +394,29 @@ export function buildGraphFromEvents({
     ),
     snapshots
   };
+
+  console.info(
+    JSON.stringify({
+      component: "contact-graph-telemetry",
+      event: createTelemetryEvent({
+        durationMs: Math.round(Date.now() - startedAt),
+        eventName: "contact_graph_built",
+        metadata: {
+          edgeCount: result.edges.length,
+          nodeCount: result.nodes.length,
+          snapshotCount: result.snapshots.length
+        },
+        status: "success",
+        subsystem: "contact_graph"
+      }),
+      metric: createTelemetryMetric({
+        metricName: "graph_build_duration_ms",
+        metricUnit: "milliseconds",
+        metricValue: Math.round(Date.now() - startedAt),
+        subsystem: "contact_graph"
+      })
+    })
+  );
+
+  return result;
 }

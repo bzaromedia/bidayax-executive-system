@@ -4,6 +4,7 @@ export * from "./graph";
 export * from "./receptionist";
 export * from "./telephony";
 export * from "./live-provider";
+export * from "./telemetry";
 export * from "./dashboard";
 
 export type Phase =
@@ -17,6 +18,8 @@ export type Phase =
   | "phase-8"
   | "phase-9"
   | "phase-10"
+  | "phase-11"
+  | "phase-12"
   | "future";
 
 export type EvidenceMetric = {

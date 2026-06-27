@@ -6,6 +6,12 @@ import {
   getProviderReadinessChecks,
   prepareVoiceRuntimeReadiness
 } from "@bidayax/telephony";
+import {
+  createTelemetryEvent,
+  createTelemetrySafetyGateEvent,
+  writeTelemetryEvent,
+  writeTelemetrySafetyGateEvent
+} from "@bidayax/telemetry";
 
 let pool: Pool | null = null;
 
@@ -51,6 +57,7 @@ function logReadinessRouteEvent(
 }
 
 export async function GET() {
+  const startedAt = Date.now();
   const config = getLiveProviderRuntimeConfig();
   const checks = getProviderReadinessChecks(config);
   const voiceRuntime = prepareVoiceRuntimeReadiness(config);
@@ -93,6 +100,32 @@ export async function GET() {
     } catch {
       logReadinessRouteEvent("error", "readiness_storage_failed");
     }
+
+    await Promise.all([
+      writeTelemetryEvent(
+        database,
+        createTelemetryEvent({
+          durationMs: Math.round(Date.now() - startedAt),
+          eventName: "telephony_readiness_checked",
+          metadata: {
+            checkCount: checks.length,
+            providerMode: config.telephonyProvider
+          },
+          severity: voiceRuntime.reasonCodes.length > 0 ? "warning" : "info",
+          status: voiceRuntime.reasonCodes.length > 0 ? "degraded" : "success",
+          subsystem: "provider_readiness"
+        })
+      ),
+      writeTelemetrySafetyGateEvent(
+        database,
+        createTelemetrySafetyGateEvent({
+          decision: voiceRuntime.reasonCodes.length > 0 ? "blocked" : "allowed",
+          gateName: "voice_runtime_readiness",
+          reasonCodes: voiceRuntime.reasonCodes,
+          subsystem: "provider_readiness"
+        })
+      )
+    ]).catch(() => undefined);
   }
 
   logReadinessRouteEvent("info", "readiness_check_completed", {
@@ -105,4 +138,3 @@ export async function GET() {
     voiceRuntime
   });
 }
-

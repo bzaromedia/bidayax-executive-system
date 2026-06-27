@@ -6,6 +6,7 @@ import {
   type IntentScoringEvent,
   type InteractionEventType
 } from "@bidayax/types";
+import { createTelemetryEvent, createTelemetryMetric } from "@bidayax/telemetry";
 import {
   actionDepthScores,
   eventTypeBaseScores,
@@ -93,6 +94,7 @@ export function scoreEventGroup({
   events,
   scoredAt
 }: ScoreEventGroupInput): IntentScoreResult {
+  const startedAt = Date.now();
   const orderedEvents = [...events].sort(
     (left, right) => toTimestamp(left.createdAt) - toTimestamp(right.createdAt)
   );
@@ -102,7 +104,7 @@ export function scoreEventGroup({
   if (orderedEvents.length === 0) {
     addReason(reasons, "NO_EVENTS");
 
-    return {
+    const emptyResult = {
       ...groupIdentity,
       eventCount: 0,
       firstEventAt: null,
@@ -112,6 +114,24 @@ export function scoreEventGroup({
       scoringVersion: intentScoringVersion,
       tier: getIntentTier(0)
     };
+
+    console.info(
+      JSON.stringify({
+        component: "intent-scoring-telemetry",
+        event: createTelemetryEvent({
+          durationMs: Math.round(Date.now() - startedAt),
+          eventName: "intent_score_calculated",
+          metadata: {
+            eventCount: emptyResult.eventCount,
+            tier: emptyResult.tier
+          },
+          status: "skipped",
+          subsystem: "intent_scoring"
+        })
+      })
+    );
+
+    return emptyResult;
   }
 
   const eventTypes = orderedEvents.map((event) => event.eventType);
@@ -184,7 +204,7 @@ export function scoreEventGroup({
     scoringRules.strategicOpportunityCap
   );
 
-  return {
+  const result = {
     ...groupIdentity,
     eventCount: orderedEvents.length,
     firstEventAt,
@@ -194,4 +214,28 @@ export function scoreEventGroup({
     scoringVersion: intentScoringVersion,
     tier: getIntentTier(normalizedScore)
   };
+
+  console.info(
+    JSON.stringify({
+      component: "intent-scoring-telemetry",
+      event: createTelemetryEvent({
+        durationMs: Math.round(Date.now() - startedAt),
+        eventName: "intent_score_calculated",
+        metadata: {
+          eventCount: result.eventCount,
+          tier: result.tier
+        },
+        status: "success",
+        subsystem: "intent_scoring"
+      }),
+      metric: createTelemetryMetric({
+        metricName: "intent_score_count",
+        metricUnit: "count",
+        metricValue: 1,
+        subsystem: "intent_scoring"
+      })
+    })
+  );
+
+  return result;
 }

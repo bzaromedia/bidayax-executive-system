@@ -3,6 +3,15 @@ import { NextResponse } from "next/server";
 import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 import { z } from "zod";
+import { getOrCreateCorrelationId } from "@bidayax/config";
+import {
+  createTelemetryError,
+  createTelemetryEvent,
+  createTelemetryMetric,
+  writeTelemetryError,
+  writeTelemetryEvent,
+  writeTelemetryMetric
+} from "@bidayax/telemetry";
 import { executiveSlugs, interactionEventTypes } from "@bidayax/types";
 
 export const runtime = "nodejs";
@@ -235,7 +244,67 @@ async function storeEvent(event: EventRequest, request: Request) {
   return result.rows.at(0) ?? null;
 }
 
+async function writeEventLedgerTelemetry({
+  durationMs,
+  event,
+  request,
+  status
+}: {
+  readonly durationMs: number;
+  readonly event: EventRequest;
+  readonly request: Request;
+  readonly status: "success" | "failure";
+}) {
+  const database = getDatabasePool();
+
+  if (!database) {
+    return;
+  }
+
+  const correlationId = getOrCreateCorrelationId(
+    request.headers.get("x-bidayax-correlation-id")
+  );
+
+  try {
+    await writeTelemetryEvent(
+      database,
+      createTelemetryEvent({
+        anonymousVisitorId: event.anonymousVisitorId,
+        correlationId,
+        durationMs,
+        eventName:
+          status === "success"
+            ? "interaction_event_created"
+            : "api_request_failed",
+        executiveSlug: event.executiveSlug,
+        metadata: {
+          eventType: event.eventType
+        },
+        sessionId: event.sessionId,
+        severity: status === "success" ? "info" : "error",
+        status,
+        subsystem: "event_ledger"
+      })
+    );
+    await writeTelemetryMetric(
+      database,
+      createTelemetryMetric({
+        dimensions: {
+          eventType: event.eventType
+        },
+        metricName: "event_ledger_write_duration_ms",
+        metricUnit: "milliseconds",
+        metricValue: durationMs,
+        subsystem: "event_ledger"
+      })
+    );
+  } catch {
+    // Telemetry must never block card/event-ledger behavior.
+  }
+}
+
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const body = await parseJson(request);
   const parsed = eventRequestSchema.safeParse(body);
 
@@ -262,6 +331,13 @@ export async function POST(request: Request) {
     const storedEvent = await storeEvent(parsed.data, request);
 
     if (!storedEvent) {
+      await writeEventLedgerTelemetry({
+        durationMs: Math.round(Date.now() - startedAt),
+        event: parsed.data,
+        request,
+        status: "failure"
+      });
+
       return NextResponse.json(
         {
           error: "event_store_unavailable",
@@ -277,6 +353,13 @@ export async function POST(request: Request) {
       executiveSlug: parsed.data.executiveSlug
     });
 
+    await writeEventLedgerTelemetry({
+      durationMs: Math.round(Date.now() - startedAt),
+      event: parsed.data,
+      request,
+      status: "success"
+    });
+
     return NextResponse.json(
       {
         eventId: storedEvent.id,
@@ -289,6 +372,23 @@ export async function POST(request: Request) {
       eventType: parsed.data.eventType,
       executiveSlug: parsed.data.executiveSlug
     });
+
+    const database = getDatabasePool();
+
+    if (database) {
+      await writeTelemetryError(
+        database,
+        createTelemetryError({
+          errorCategory: "database",
+          errorCode: "INTERACTION_EVENT_STORE_FAILED",
+          metadata: {
+            eventType: parsed.data.eventType
+          },
+          safeMessage: "Interaction event storage failed safely.",
+          subsystem: "event_ledger"
+        })
+      ).catch(() => undefined);
+    }
 
     return NextResponse.json(
       {

@@ -7,6 +7,12 @@ import type {
   VoiceRuntimeReadinessResult
 } from "./live-provider";
 import type {
+  TelemetrySafetyGateDecision,
+  TelemetrySeverity,
+  TelemetryStatus,
+  TelemetrySubsystem
+} from "./telemetry";
+import type {
   ReceptionistChannel,
   ReceptionistIntentCategory,
   ReceptionistInteractionType,
@@ -261,6 +267,71 @@ export type DashboardLiveProviderReadinessData = {
   readonly summary: DashboardLiveProviderSummary;
   readonly readinessChecks: readonly ProviderReadinessCheck[];
   readonly voiceRuntime: VoiceRuntimeReadinessResult;
+};
+
+export type DashboardObservabilitySummary = {
+  readonly eventCount: number;
+  readonly metricCount: number;
+  readonly errorCount: number;
+  readonly safetyGateEventCount: number;
+  readonly blockedSafetyGateCount: number;
+  readonly subsystemCount: number;
+};
+
+export type DashboardTelemetryEvent = {
+  readonly id: string;
+  readonly eventName: string;
+  readonly subsystem: TelemetrySubsystem;
+  readonly severity: TelemetrySeverity;
+  readonly status: TelemetryStatus;
+  readonly durationMs: number | null;
+  readonly correlationId: string | null;
+  readonly createdAt: string;
+};
+
+export type DashboardTelemetryMetric = {
+  readonly metricName: string;
+  readonly subsystem: TelemetrySubsystem;
+  readonly value: number;
+  readonly unit: string;
+};
+
+export type DashboardTelemetryError = {
+  readonly id: string;
+  readonly subsystem: TelemetrySubsystem;
+  readonly errorCode: string;
+  readonly errorCategory: string;
+  readonly severity: TelemetrySeverity;
+  readonly safeMessage: string;
+  readonly createdAt: string;
+};
+
+export type DashboardTelemetrySafetyGate = {
+  readonly id: string;
+  readonly gateName: string;
+  readonly subsystem: TelemetrySubsystem;
+  readonly decision: TelemetrySafetyGateDecision;
+  readonly reasonCodes: readonly string[];
+  readonly createdAt: string;
+};
+
+export type DashboardSubsystemHealth = {
+  readonly subsystem: TelemetrySubsystem;
+  readonly eventCount: number;
+  readonly errorCount: number;
+  readonly blockedSafetyGateCount: number;
+  readonly status: "healthy" | "degraded" | "attention";
+};
+
+export type DashboardObservabilityData = {
+  readonly status: DashboardStatus;
+  readonly statusMessage: string;
+  readonly summary: DashboardObservabilitySummary;
+  readonly events: readonly DashboardTelemetryEvent[];
+  readonly metrics: readonly DashboardTelemetryMetric[];
+  readonly errors: readonly DashboardTelemetryError[];
+  readonly safetyGateEvents: readonly DashboardTelemetrySafetyGate[];
+  readonly subsystemHealth: readonly DashboardSubsystemHealth[];
 };
 
 export type ExecutiveInteractionDashboardData = {

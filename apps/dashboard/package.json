@@ -13,6 +13,7 @@
   "dependencies": {
     "@bidayax/config": "workspace:*",
     "@bidayax/telephony": "workspace:*",
+    "@bidayax/telemetry": "workspace:*",
     "@bidayax/tokens": "workspace:*",
     "@bidayax/types": "workspace:*",
     "@bidayax/ui": "workspace:*",

@@ -12,6 +12,14 @@ import {
   getLiveProviderRuntimeConfig,
   getProviderReadinessChecks
 } from "@bidayax/telephony";
+import {
+  createTelemetryEvent,
+  createTelemetryMetric,
+  createTelemetrySafetyGateEvent,
+  writeTelemetryEvent,
+  writeTelemetryMetric,
+  writeTelemetrySafetyGateEvent
+} from "@bidayax/telemetry";
 
 type MigrationRow = {
   readonly table_name: string;
@@ -95,6 +103,7 @@ async function checkDatabaseReadiness() {
 }
 
 export async function GET(request: Request) {
+  const startedAt = Date.now();
   const rateLimit = checkInMemoryRateLimit({
     key: "system-readiness",
     limit: 60,
@@ -140,6 +149,52 @@ export async function GET(request: Request) {
       providerCheckCount: providerChecks.length,
       voiceAllowed: voiceSafety.allowed
     });
+
+    if (getDatabasePool()) {
+      const telemetryDatabase = getDatabasePool();
+
+      if (telemetryDatabase) {
+        await Promise.all([
+          writeTelemetryEvent(
+            telemetryDatabase,
+            createTelemetryEvent({
+              durationMs: Math.round(Date.now() - startedAt),
+              eventName: "api_request_completed",
+              metadata: {
+                route: "/api/system/readiness"
+              },
+              severity: notReady ? "warning" : "info",
+              status: notReady ? "degraded" : "success",
+              subsystem: "system"
+            })
+          ),
+          writeTelemetryMetric(
+            telemetryDatabase,
+            createTelemetryMetric({
+              dimensions: {
+                route: "/api/system/readiness"
+              },
+              metricName: "api_latency_ms",
+              metricUnit: "milliseconds",
+              metricValue: Math.round(Date.now() - startedAt),
+              subsystem: "system"
+            })
+          ),
+          writeTelemetrySafetyGateEvent(
+            telemetryDatabase,
+            createTelemetrySafetyGateEvent({
+              decision: voiceSafety.allowed ? "allowed" : "blocked",
+              gateName: "production_voice",
+              metadata: {
+                route: "/api/system/readiness"
+              },
+              reasonCodes: voiceSafety.reasonCodes,
+              subsystem: "telephony"
+            })
+          )
+        ]).catch(() => undefined);
+      }
+    }
 
     return NextResponse.json({
       checks: {

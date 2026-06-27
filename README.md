@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; Phase 10: Live Provider Integration + Voice Runtime Safety Gate; and Phase 11: Production Hardening.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; Phase 10: Live Provider Integration + Voice Runtime Safety Gate; Phase 11: Production Hardening; and Phase 12: Observability & Telemetry Layer.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -21,6 +21,8 @@ Phase 9 creates the telephony preparation layer: provider abstraction, mock prov
 Phase 10 creates the controlled live provider integration layer: Twilio-compatible adapter behavior, Twilio-shaped inbound webhook handling, safe TwiML responses, OpenAI Realtime readiness checks, voice runtime readiness records, dashboard live-readiness panels, and production voice safety gates without autonomous voice operation.
 
 Phase 11 creates the production hardening layer: centralized environment validation, security headers, health/readiness endpoints, structured logging, safe error helpers, migration verification, database checks, Docker/Caddy deployment assets, Hostinger VPS runbooks, backup/restore scripts, rollback docs, and dashboard production warnings without adding product features.
+
+Phase 12 creates the observability and telemetry layer: telemetry event tables, metric snapshots, safe error records, safety gate telemetry, correlation IDs, telemetry sanitization, an observability dashboard, and verification scripts without adding recursive improvement or autonomous behavior.
 
 ## System Definition
 
@@ -72,6 +74,11 @@ Read these documents before starting any implementation phase:
 - [docs/ROLLBACK_PLAN.md](docs/ROLLBACK_PLAN.md)
 - [docs/PRODUCTION_READINESS_CHECKLIST.md](docs/PRODUCTION_READINESS_CHECKLIST.md)
 - [docs/INCIDENT_RESPONSE.md](docs/INCIDENT_RESPONSE.md)
+- [docs/OBSERVABILITY_TELEMETRY_LAYER.md](docs/OBSERVABILITY_TELEMETRY_LAYER.md)
+- [docs/TELEMETRY_EVENT_CATALOG.md](docs/TELEMETRY_EVENT_CATALOG.md)
+- [docs/METRICS_CATALOG.md](docs/METRICS_CATALOG.md)
+- [docs/CORRELATION_ID_MODEL.md](docs/CORRELATION_ID_MODEL.md)
+- [docs/PRIVACY_SAFE_TELEMETRY.md](docs/PRIVACY_SAFE_TELEMETRY.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -457,6 +464,54 @@ Deployment assets:
 
 The dashboard shows production hardening warnings for mock provider mode, missing database readiness, disabled production calls, disabled outbound calls, disabled voice agent, test mode, missing provider credentials, and failed safety reason codes.
 
+## Phase 12 Observability & Telemetry Layer
+
+The telemetry service lives in `services/telemetry`.
+
+Run telemetry tests:
+
+```bash
+pnpm --filter @bidayax/telemetry test
+```
+
+Database migration:
+
+```bash
+database/migrations/0007_create_observability_telemetry.sql
+```
+
+Phase 12 adds:
+
+- `telemetry_events`
+- `telemetry_metrics`
+- `telemetry_error_events`
+- `telemetry_safety_gate_events`
+
+Observability route:
+
+```text
+GET /observability
+```
+
+Telemetry APIs:
+
+```text
+POST /api/telemetry/events
+POST /api/telemetry/metrics
+GET /api/telemetry/summary
+```
+
+Telemetry scripts:
+
+```bash
+pnpm telemetry:smoke
+pnpm telemetry:verify
+pnpm telemetry:retention
+pnpm verify:observability
+```
+
+Telemetry is privacy-safe by default: no raw IPs, no secrets, no raw provider payloads, no raw call audio, no recordings, no payment data, and no CRM identity data. Phase 12 does not build recursive improvement, autonomous agents, A/B testing, automatic deployment, CRM, email automation, calendar booking, or unrestricted voice automation.
+
 ## Repository Structure
 
 ```text
@@ -617,6 +672,18 @@ The intended stack for the design-system foundation is:
 - Dashboard warnings must remain truthful and must not claim production readiness unless readiness checks pass.
 - Production calls, outbound calls, live voice, email automation, calendar booking, CRM, enrichment, payments, autonomous agents, and recursive improvement remain unbuilt or disabled by default.
 
+## Locked Phase 12 Decisions
+
+- Telemetry measures behavior but does not improve or modify the system.
+- PostgreSQL is the telemetry store for Local and Production-lite observability.
+- The observability dashboard shows real telemetry only.
+- Empty telemetry states must remain honest.
+- Telemetry metadata is sanitized before storage.
+- Safety gate decisions are first-class telemetry.
+- Retention is reported but not automatically destructive.
+- OpenTelemetry, Grafana, Prometheus, and Loki remain future optional integrations.
+- No recursive improvement engine, autonomous agents, A/B testing, auto-deployment, CRM, email automation, calendar booking, or unsafe voice behavior exists in Phase 12.
+
 ## Next Gate
 
-Phase 12 should begin only after the Phase 11 Production Hardening layer is reviewed and accepted. Phase 12 is Observability & Telemetry Layer.
+Phase 13 should begin only after the Phase 12 Observability & Telemetry Layer is reviewed and accepted. Phase 13 is BidayaX Evolutionary Improvement Engine.

@@ -11,6 +11,12 @@ import {
   type ExecutiveSlug,
   type InteractionEventType
 } from "@bidayax/types";
+import {
+  createTelemetryError,
+  createTelemetryMetric,
+  writeTelemetryError,
+  writeTelemetryMetric
+} from "@bidayax/telemetry";
 import { buildDashboardData, createEmptyDashboardData } from "../lib/dashboard-metrics";
 import { executiveLabels } from "../lib/formatters";
 
@@ -186,6 +192,7 @@ function normalizeDailyCounts(
 }
 
 export async function getDashboardData(): Promise<ExecutiveInteractionDashboardData> {
+  const startedAt = Date.now();
   const database = getDatabasePool();
 
   if (!database) {
@@ -267,9 +274,32 @@ export async function getDashboardData(): Promise<ExecutiveInteractionDashboardD
       });
     }
 
+    await writeTelemetryMetric(
+      database,
+      createTelemetryMetric({
+        dimensions: {
+          query: "executive_interaction_dashboard"
+        },
+        metricName: "dashboard_query_duration_ms",
+        metricUnit: "milliseconds",
+        metricValue: Math.round(Date.now() - startedAt),
+        subsystem: "dashboard"
+      })
+    ).catch(() => undefined);
+
     return data;
   } catch {
     logDashboardEvent("error", "dashboard_query_failure");
+
+    await writeTelemetryError(
+      database,
+      createTelemetryError({
+        errorCategory: "database",
+        errorCode: "DASHBOARD_QUERY_FAILED",
+        safeMessage: "Dashboard query failed safely.",
+        subsystem: "dashboard"
+      })
+    ).catch(() => undefined);
 
     return createEmptyDashboardData(
       "query_failed",
