@@ -8,6 +8,8 @@ export type {
   DashboardIntentTierBreakdown,
   DashboardContactGraphSummary,
   DashboardEngagementPath,
+  DashboardLiveProviderReadinessData,
+  DashboardLiveProviderSummary,
   DashboardRelationshipSnapshot,
   DashboardReceptionistInteraction,
   DashboardReceptionistIntentBreakdown,

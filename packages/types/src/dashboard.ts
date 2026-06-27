@@ -2,6 +2,11 @@ import type { ExecutiveSlug, InteractionEventType } from "./events";
 import type { ContactGraphEdgeType } from "./graph";
 import type { IntentReasonCode, IntentScoringVersion, IntentTier } from "./intent";
 import type {
+  LiveVoiceSafetyReasonCode,
+  ProviderReadinessCheck,
+  VoiceRuntimeReadinessResult
+} from "./live-provider";
+import type {
   ReceptionistChannel,
   ReceptionistIntentCategory,
   ReceptionistInteractionType,
@@ -232,6 +237,30 @@ export type DashboardOutboundCallApproval = {
   readonly approvalStatus: OutboundCallApprovalStatus;
   readonly status: OutboundCallRequestStatus;
   readonly createdAt: string;
+};
+
+export type DashboardLiveProviderSummary = {
+  readonly providerMode: "mock" | "twilio";
+  readonly twilioConfigured: boolean;
+  readonly openAiRealtimeConfigured: boolean;
+  readonly voiceAgentEnabled: boolean;
+  readonly voiceRuntimeProvider: "none" | "openai_realtime";
+  readonly voiceTestMode: boolean;
+  readonly liveInboundCallsEnabled: boolean;
+  readonly outboundCallsEnabled: boolean;
+  readonly requireHumanApproval: boolean;
+  readonly allowProductionCalls: boolean;
+  readonly productionVoiceAllowed: boolean;
+  readonly lastCheckedAt: string;
+  readonly blockedReasonCodes: readonly LiveVoiceSafetyReasonCode[];
+};
+
+export type DashboardLiveProviderReadinessData = {
+  readonly status: DashboardStatus;
+  readonly statusMessage: string;
+  readonly summary: DashboardLiveProviderSummary;
+  readonly readinessChecks: readonly ProviderReadinessCheck[];
+  readonly voiceRuntime: VoiceRuntimeReadinessResult;
 };
 
 export type ExecutiveInteractionDashboardData = {

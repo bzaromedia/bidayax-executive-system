@@ -104,6 +104,26 @@ When the telephony preparation tables exist, the dashboard also displays:
 
 The dashboard must present these rows as preparation data, not production calling activity. Phone numbers should be masked.
 
+## Phase 10 Live Provider Readiness
+
+The dashboard also displays:
+
+- live provider readiness.
+- Twilio configuration checklist.
+- OpenAI Realtime readiness.
+- voice runtime safety gate.
+- test-call mode status.
+- production call warning.
+- blocked reason codes.
+
+The dashboard must present Phase 10 as safety-gated readiness, not autonomous production voice operation. It must not display secrets.
+
+API routes:
+
+- `GET /api/live-provider/readiness`
+- `POST /api/live-provider/voice-runtime`
+- `POST /api/telephony/twilio/inbound`
+
 ## Phase Boundaries
 
-This app must not include CRM functionality, receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, or recursive improvement automation.
+This app must not include CRM functionality, autonomous receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, unrestricted live calling, or recursive improvement automation.

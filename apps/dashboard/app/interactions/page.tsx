@@ -10,8 +10,11 @@ import { ExecutiveRelationshipSnapshot } from "@/components/ExecutiveRelationshi
 import { ExecutiveBreakdown } from "@/components/ExecutiveBreakdown";
 import { GraphEmptyState } from "@/components/GraphEmptyState";
 import { IntentTierBreakdown } from "@/components/IntentTierBreakdown";
+import { LiveProviderReadinessPanel } from "@/components/LiveProviderReadinessPanel";
 import { MetricCard } from "@/components/MetricCard";
 import { PrioritySignals } from "@/components/PrioritySignals";
+import { ProductionCallWarning } from "@/components/ProductionCallWarning";
+import { ProviderConfigurationChecklist } from "@/components/ProviderConfigurationChecklist";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
 import { ReceptionistEmptyState } from "@/components/ReceptionistEmptyState";
 import { ReceptionistInteractionFeed } from "@/components/ReceptionistInteractionFeed";
@@ -21,10 +24,13 @@ import { ReceptionistTaskList } from "@/components/ReceptionistTaskList";
 import { OutboundCallApprovalList } from "@/components/OutboundCallApprovalList";
 import { TelephonyEmptyState } from "@/components/TelephonyEmptyState";
 import { TelephonyReadinessSummary } from "@/components/TelephonyReadinessSummary";
+import { TestCallModeStatus } from "@/components/TestCallModeStatus";
+import { VoiceRuntimeSafetyPanel } from "@/components/VoiceRuntimeSafetyPanel";
 import { VoiceSessionStatus } from "@/components/VoiceSessionStatus";
 import { getDashboardData } from "@/data/dashboard-queries";
 import { getGraphDashboardData } from "@/data/graph-queries";
 import { getIntentDashboardData } from "@/data/intent-queries";
+import { getLiveProviderDashboardData } from "@/data/live-provider-queries";
 import { getReceptionistDashboardData } from "@/data/receptionist-queries";
 import { getTelephonyDashboardData } from "@/data/telephony-queries";
 import { formatInteger, formatShortDate } from "@/lib/formatters";
@@ -78,13 +84,14 @@ function ActivityTrend({
 }
 
 export default async function InteractionsPage() {
-  const [data, intentData, graphData, receptionistData, telephonyData] =
+  const [data, intentData, graphData, receptionistData, telephonyData, liveProviderData] =
     await Promise.all([
     getDashboardData(),
     getIntentDashboardData(),
     getGraphDashboardData(),
     getReceptionistDashboardData(),
-    getTelephonyDashboardData()
+    getTelephonyDashboardData(),
+    getLiveProviderDashboardData()
   ]);
   const shouldShowEmptyState = data.status !== "ready" || data.totalInteractions === 0;
   const shouldShowGraphEmptyState =
@@ -169,6 +176,15 @@ export default async function InteractionsPage() {
           <OutboundCallApprovalList requests={telephonyData.outboundApprovals} />
         </>
       )}
+      <LiveProviderReadinessPanel data={liveProviderData} />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <VoiceRuntimeSafetyPanel voiceRuntime={liveProviderData.voiceRuntime} />
+        <TestCallModeStatus summary={liveProviderData.summary} />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <ProviderConfigurationChecklist summary={liveProviderData.summary} />
+        <ProductionCallWarning summary={liveProviderData.summary} />
+      </div>
       <div className="grid gap-6 xl:grid-cols-2">
         <ActivityTrend rows={data.dailyCounts} />
         <RecentInteractionFeed interactions={data.recentInteractions} />

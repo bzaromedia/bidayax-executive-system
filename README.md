@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; and Phase 9: Live Voice + Telephony Integration Preparation.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; and Phase 10: Live Provider Integration + Voice Runtime Safety Gate.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -17,6 +17,8 @@ Phase 7 creates the relationship-intelligence layer: a deterministic, privacy-re
 Phase 8 creates the receptionist foundation: simulated receptionist interactions, deterministic intent classification, language profiles, task generation, escalation recommendations, and dashboard visibility without live calls, emails, calendars, or external workflow integrations.
 
 Phase 9 creates the telephony preparation layer: provider abstraction, mock provider behavior, inbound webhook scaffolding, outbound request safety gates, call lifecycle tracking, voice session metadata, and dashboard readiness visibility without real call execution.
+
+Phase 10 creates the controlled live provider integration layer: Twilio-compatible adapter behavior, Twilio-shaped inbound webhook handling, safe TwiML responses, OpenAI Realtime readiness checks, voice runtime readiness records, dashboard live-readiness panels, and production voice safety gates without autonomous voice operation.
 
 ## System Definition
 
@@ -58,6 +60,8 @@ Read these documents before starting any implementation phase:
 - [docs/POLYGLOT_RECEPTIONIST_OS.md](docs/POLYGLOT_RECEPTIONIST_OS.md)
 - [docs/LIVE_VOICE_TELEPHONY_INTEGRATION_PREPARATION.md](docs/LIVE_VOICE_TELEPHONY_INTEGRATION_PREPARATION.md)
 - [docs/TELEPHONY_SAFETY_MODEL.md](docs/TELEPHONY_SAFETY_MODEL.md)
+- [docs/LIVE_PROVIDER_INTEGRATION_VOICE_RUNTIME_SAFETY_GATE.md](docs/LIVE_PROVIDER_INTEGRATION_VOICE_RUNTIME_SAFETY_GATE.md)
+- [docs/PRODUCTION_VOICE_SAFETY_GATE.md](docs/PRODUCTION_VOICE_SAFETY_GATE.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -358,6 +362,43 @@ REQUIRE_HUMAN_APPROVAL=true
 
 The dashboard can read these tables and show telephony readiness, call lifecycle events, voice session metadata, outbound approval requests, mock provider status, and safety gate status. Phase 9 does not execute real calls, Twilio calls, OpenAI Realtime sessions, real emails, or real calendar bookings.
 
+## Phase 10 Live Provider Integration + Voice Runtime Safety Gate
+
+The controlled provider integration layer lives in `services/telephony` and `apps/dashboard`.
+
+Run telephony tests:
+
+```bash
+pnpm --filter @bidayax/telephony test
+```
+
+Database migration:
+
+```bash
+database/migrations/0006_create_live_provider_readiness.sql
+```
+
+Phase 10 adds:
+
+- `provider_readiness_checks`
+- `voice_runtime_sessions`
+
+Safe environment defaults:
+
+```bash
+TELEPHONY_PROVIDER=mock
+TWILIO_WEBHOOK_SIGNING_ENABLED=false
+VOICE_AGENT_ENABLED=false
+VOICE_RUNTIME_PROVIDER=none
+VOICE_TEST_MODE=true
+LIVE_INBOUND_CALLS_ENABLED=false
+OUTBOUND_CALLS_ENABLED=false
+REQUIRE_HUMAN_APPROVAL=true
+ALLOW_PRODUCTION_CALLS=false
+```
+
+The dashboard shows live provider readiness, Twilio configuration status, OpenAI Realtime readiness, test-call mode, voice safety gates, production call warnings, and blocked reason codes. Phase 10 does not execute unrestricted outbound calls, stream live audio to OpenAI Realtime, activate an autonomous receptionist, send email, book calendars, or build CRM functionality.
+
 ## Repository Structure
 
 ```text
@@ -492,6 +533,19 @@ The intended stack for the design-system foundation is:
 - Dashboard phone numbers are masked.
 - No real Twilio execution, OpenAI Realtime connection, live voice streaming, real email, calendar booking, CRM, enrichment, or autonomous voice behavior exists in Phase 9.
 
+## Locked Phase 10 Decisions
+
+- Telephony provider still defaults to `mock`.
+- Twilio support is adapter and webhook compatibility, not unrestricted call execution.
+- Twilio inbound webhooks return safe TwiML and hang up safely.
+- OpenAI Realtime is readiness-checked only.
+- Voice runtime records do not start audio sessions.
+- Voice test mode is enabled by default.
+- Live inbound calls, outbound calls, and production calls are disabled by default.
+- Safety gates return reason codes for blocked production voice.
+- Dashboard language uses readiness, test mode, blocked, and safety-gated status.
+- No autonomous receptionist, unrestricted outbound calls, live audio streaming, email sending, calendar booking, CRM, enrichment, payment, or recursive improvement implementation exists in Phase 10.
+
 ## Next Gate
 
-Phase 10 should begin only after the Phase 9 Live Voice + Telephony Integration Preparation is reviewed and accepted. Phase 10 is Live Provider Integration + Voice Runtime Safety Gate.
+Phase 11 should begin only after the Phase 10 Live Provider Integration + Voice Runtime Safety Gate is reviewed and accepted. Phase 11 is Production Hardening.

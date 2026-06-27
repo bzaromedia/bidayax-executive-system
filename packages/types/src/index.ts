@@ -3,6 +3,7 @@ export * from "./intent";
 export * from "./graph";
 export * from "./receptionist";
 export * from "./telephony";
+export * from "./live-provider";
 export * from "./dashboard";
 
 export type Phase =
@@ -15,6 +16,7 @@ export type Phase =
   | "phase-7"
   | "phase-8"
   | "phase-9"
+  | "phase-10"
   | "future";
 
 export type EvidenceMetric = {

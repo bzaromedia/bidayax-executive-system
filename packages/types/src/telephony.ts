@@ -101,7 +101,13 @@ export type TelephonyRuntimeConfig = {
   readonly twilioAccountSid?: string | null;
   readonly twilioAuthToken?: string | null;
   readonly twilioPhoneNumber?: string | null;
+  readonly twilioWebhookSigningEnabled?: boolean;
   readonly openAiApiKey?: string | null;
+  readonly openAiRealtimeModel?: string | null;
+  readonly voiceRuntimeProvider?: "none" | "openai_realtime";
+  readonly voiceTestMode?: boolean;
+  readonly liveInboundCallsEnabled?: boolean;
+  readonly allowProductionCalls?: boolean;
 };
 
 export type TelephonyProviderValidation = {
