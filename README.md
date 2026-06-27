@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; and Phase 8: Polyglot Receptionist OS Foundation.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; and Phase 9: Live Voice + Telephony Integration Preparation.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -15,6 +15,8 @@ Phase 6 creates the first decision-intelligence layer: a deterministic, explaina
 Phase 7 creates the relationship-intelligence layer: a deterministic, privacy-respecting contact graph that connects anonymous visitors, sessions, executive cards, interaction events, and intent scores without identifying people or building CRM functionality.
 
 Phase 8 creates the receptionist foundation: simulated receptionist interactions, deterministic intent classification, language profiles, task generation, escalation recommendations, and dashboard visibility without live calls, emails, calendars, or external workflow integrations.
+
+Phase 9 creates the telephony preparation layer: provider abstraction, mock provider behavior, inbound webhook scaffolding, outbound request safety gates, call lifecycle tracking, voice session metadata, and dashboard readiness visibility without real call execution.
 
 ## System Definition
 
@@ -54,6 +56,8 @@ Read these documents before starting any implementation phase:
 - [docs/ACCEPTANCE_TESTS.md](docs/ACCEPTANCE_TESTS.md)
 - [docs/EXECUTIVE_CONTACT_GRAPH.md](docs/EXECUTIVE_CONTACT_GRAPH.md)
 - [docs/POLYGLOT_RECEPTIONIST_OS.md](docs/POLYGLOT_RECEPTIONIST_OS.md)
+- [docs/LIVE_VOICE_TELEPHONY_INTEGRATION_PREPARATION.md](docs/LIVE_VOICE_TELEPHONY_INTEGRATION_PREPARATION.md)
+- [docs/TELEPHONY_SAFETY_MODEL.md](docs/TELEPHONY_SAFETY_MODEL.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -320,6 +324,40 @@ Phase 8 adds:
 
 The dashboard can read these tables and show simulated receptionist summaries, tasks, language breakdowns, and interaction feeds. Phase 8 does not connect live calling, email, calendars, Twilio, OpenAI Realtime, Gmail, Microsoft 365, or external workflow engines.
 
+## Phase 9 Live Voice + Telephony Integration Preparation
+
+The telephony preparation service lives in `services/telephony`.
+
+Run telephony tests:
+
+```bash
+pnpm --filter @bidayax/telephony test
+```
+
+Database migration:
+
+```bash
+database/migrations/0005_create_telephony_preparation.sql
+```
+
+Phase 9 adds:
+
+- `telephony_calls`
+- `telephony_call_events`
+- `voice_sessions`
+- `outbound_call_requests`
+
+Safe environment defaults:
+
+```bash
+TELEPHONY_PROVIDER=mock
+VOICE_AGENT_ENABLED=false
+OUTBOUND_CALLS_ENABLED=false
+REQUIRE_HUMAN_APPROVAL=true
+```
+
+The dashboard can read these tables and show telephony readiness, call lifecycle events, voice session metadata, outbound approval requests, mock provider status, and safety gate status. Phase 9 does not execute real calls, Twilio calls, OpenAI Realtime sessions, real emails, or real calendar bookings.
+
 ## Repository Structure
 
 ```text
@@ -341,6 +379,7 @@ bidayax-executive-system/
 |   +-- event-ledger/
 |   +-- intent-scoring/
 |   +-- receptionist-agent/
+|   +-- telephony/
 |   +-- notification-worker/
 +-- database/
 |   +-- models/
@@ -442,6 +481,17 @@ The intended stack for the design-system foundation is:
 - Dashboard copy labels receptionist data as simulated/foundation data.
 - No Twilio, OpenAI Realtime, Gmail, Microsoft 365, calendar, n8n, CRM, live calling, real email, real booking, or external workflow integration exists in Phase 8.
 
+## Locked Phase 9 Decisions
+
+- Telephony provider defaults to `mock`.
+- Outbound calls are disabled by default.
+- Voice agent execution is disabled by default.
+- Human approval is required by default.
+- Only a mock provider implementation exists.
+- API routes scaffold inbound and outbound preparation but do not execute real provider calls.
+- Dashboard phone numbers are masked.
+- No real Twilio execution, OpenAI Realtime connection, live voice streaming, real email, calendar booking, CRM, enrichment, or autonomous voice behavior exists in Phase 9.
+
 ## Next Gate
 
-Phase 9 should begin only after the Phase 8 Polyglot Receptionist OS Foundation is reviewed and accepted. Phase 9 is Live Voice + Telephony Integration Preparation.
+Phase 10 should begin only after the Phase 9 Live Voice + Telephony Integration Preparation is reviewed and accepted. Phase 10 is Live Provider Integration + Voice Runtime Safety Gate.

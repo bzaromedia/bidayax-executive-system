@@ -255,6 +255,38 @@ Codex must not create:
 - external API dependencies.
 - external workflow engine integration.
 
+## Phase 9 Boundary
+
+Phase 9 is Live Voice + Telephony Integration Preparation.
+
+Codex may create:
+
+- shared telephony types.
+- telephony preparation database migrations.
+- provider interfaces.
+- mock telephony provider.
+- inbound webhook scaffolds.
+- outbound call request scaffolds.
+- deterministic call lifecycle validation.
+- voice session metadata models.
+- safety gates.
+- dashboard telephony readiness sections.
+- tests for mock and safety behavior.
+
+Codex must not create:
+
+- real outbound calling.
+- real Twilio call execution.
+- OpenAI Realtime connections.
+- live audio streaming.
+- unapproved email sending.
+- calendar booking.
+- autonomous voice agent behavior.
+- CRM pipeline.
+- payment collection.
+- external enrichment.
+- recursive improvement implementation.
+
 ## Design Governance
 
 No screen may introduce new visual decisions without approval through:

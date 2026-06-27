@@ -290,3 +290,19 @@ Implemented deterministic rules:
 - escalation recommendation from intent, priority, sentiment, and task type.
 
 These rules are intentionally simple so future live integrations can be reviewed against transparent behavior before any production automation is enabled.
+
+## Phase 9 Telephony Preparation Rules
+
+Phase 9 adds deterministic telephony safety and lifecycle rules.
+
+Implemented deterministic rules:
+
+- provider config defaults to mock.
+- outbound calls default to disabled.
+- voice agent defaults to disabled.
+- human approval defaults to required.
+- call lifecycle transitions are explicit.
+- invalid call lifecycle transitions are rejected.
+- outbound call requests remain blocked unless safety gates pass.
+
+These rules prepare live provider work without enabling autonomous production calling.

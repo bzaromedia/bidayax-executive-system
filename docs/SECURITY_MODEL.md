@@ -247,6 +247,36 @@ Phase 8 must not use or store:
 
 Dashboard labels must describe receptionist rows as simulated or foundation data.
 
+## Phase 9 Telephony Safety Controls
+
+The Live Voice + Telephony Integration Preparation layer stores call preparation metadata only.
+
+Phase 9 may use:
+
+- provider name.
+- provider call ID.
+- call direction.
+- from and to phone number fields.
+- executive slug.
+- call status.
+- language and dialect metadata.
+- call lifecycle events.
+- outbound approval status.
+- voice session metadata.
+
+Phase 9 must not use or store:
+
+- raw call recordings.
+- raw audio streams.
+- payment data.
+- contact enrichment results.
+- inferred identity from phone numbers.
+- real sent email bodies.
+- calendar booking confirmations.
+- uncontrolled AI voice output.
+
+Dashboard phone numbers should be masked when displayed. Logs must not include secrets, raw payloads, or sensitive phone details.
+
 ## Controls For Future Implementation
 
 - Strong authentication.

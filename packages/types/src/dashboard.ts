@@ -9,6 +9,15 @@ import type {
   ReceptionistTaskStatus,
   ReceptionistTaskType
 } from "./receptionist";
+import type {
+  OutboundCallApprovalStatus,
+  OutboundCallRequestStatus,
+  TelephonyCallDirection,
+  TelephonyCallEventType,
+  TelephonyCallStatus,
+  TelephonyProviderName,
+  VoiceSessionStatus
+} from "./telephony";
 
 export type DashboardStatus = "ready" | "not_configured" | "query_failed";
 
@@ -176,6 +185,53 @@ export type DashboardReceptionistLanguageBreakdown = {
 export type DashboardReceptionistIntentBreakdown = {
   readonly intent: ReceptionistIntentCategory;
   readonly count: number;
+};
+
+export type DashboardTelephonyReadinessSummary = {
+  readonly provider: TelephonyProviderName;
+  readonly providerConfigured: boolean;
+  readonly outboundCallsEnabled: boolean;
+  readonly voiceAgentEnabled: boolean;
+  readonly requireHumanApproval: boolean;
+  readonly callCount: number;
+  readonly voiceSessionCount: number;
+  readonly pendingApprovalCount: number;
+};
+
+export type DashboardTelephonyCallEvent = {
+  readonly id: string;
+  readonly eventType: TelephonyCallEventType;
+  readonly provider: TelephonyProviderName;
+  readonly direction: TelephonyCallDirection;
+  readonly status: TelephonyCallStatus;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly maskedFromNumber: string | null;
+  readonly maskedToNumber: string | null;
+  readonly createdAt: string;
+};
+
+export type DashboardVoiceSession = {
+  readonly id: string;
+  readonly provider: TelephonyProviderName;
+  readonly voiceModel: string;
+  readonly status: VoiceSessionStatus;
+  readonly transcriptStatus: string;
+  readonly summaryStatus: string;
+  readonly language: string | null;
+  readonly createdAt: string;
+};
+
+export type DashboardOutboundCallApproval = {
+  readonly id: string;
+  readonly requestedBy: string;
+  readonly maskedToNumber: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly executiveName: string;
+  readonly reason: string;
+  readonly approvalStatus: OutboundCallApprovalStatus;
+  readonly status: OutboundCallRequestStatus;
+  readonly createdAt: string;
 };
 
 export type ExecutiveInteractionDashboardData = {

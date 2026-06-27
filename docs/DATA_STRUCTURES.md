@@ -254,3 +254,16 @@ Phase 8 adds receptionist foundation structures:
 - escalation recommendation.
 
 These structures are simulated and deterministic. They do not represent live calls, sent emails, calendar bookings, or production receptionist activity.
+
+## Live Voice + Telephony Preparation
+
+Phase 9 adds telephony preparation structures:
+
+- telephony call.
+- telephony call event.
+- voice session.
+- outbound call request.
+- provider validation result.
+- outbound safety gate result.
+
+These structures prepare live integration but do not represent active autonomous calling or live AI voice runtime.

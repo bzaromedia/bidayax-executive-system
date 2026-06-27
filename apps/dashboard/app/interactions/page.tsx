@@ -1,4 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, Grid } from "@bidayax/ui";
+import { CallLifecycleFeed } from "@/components/CallLifecycleFeed";
 import { ConversionSummary } from "@/components/ConversionSummary";
 import { ContactGraphSummary } from "@/components/ContactGraphSummary";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -17,10 +18,15 @@ import { ReceptionistInteractionFeed } from "@/components/ReceptionistInteractio
 import { ReceptionistLanguageBreakdown } from "@/components/ReceptionistLanguageBreakdown";
 import { ReceptionistSummary } from "@/components/ReceptionistSummary";
 import { ReceptionistTaskList } from "@/components/ReceptionistTaskList";
+import { OutboundCallApprovalList } from "@/components/OutboundCallApprovalList";
+import { TelephonyEmptyState } from "@/components/TelephonyEmptyState";
+import { TelephonyReadinessSummary } from "@/components/TelephonyReadinessSummary";
+import { VoiceSessionStatus } from "@/components/VoiceSessionStatus";
 import { getDashboardData } from "@/data/dashboard-queries";
 import { getGraphDashboardData } from "@/data/graph-queries";
 import { getIntentDashboardData } from "@/data/intent-queries";
 import { getReceptionistDashboardData } from "@/data/receptionist-queries";
+import { getTelephonyDashboardData } from "@/data/telephony-queries";
 import { formatInteger, formatShortDate } from "@/lib/formatters";
 
 export const dynamic = "force-dynamic";
@@ -72,11 +78,13 @@ function ActivityTrend({
 }
 
 export default async function InteractionsPage() {
-  const [data, intentData, graphData, receptionistData] = await Promise.all([
+  const [data, intentData, graphData, receptionistData, telephonyData] =
+    await Promise.all([
     getDashboardData(),
     getIntentDashboardData(),
     getGraphDashboardData(),
-    getReceptionistDashboardData()
+    getReceptionistDashboardData(),
+    getTelephonyDashboardData()
   ]);
   const shouldShowEmptyState = data.status !== "ready" || data.totalInteractions === 0;
   const shouldShowGraphEmptyState =
@@ -84,6 +92,8 @@ export default async function InteractionsPage() {
   const shouldShowReceptionistEmptyState =
     receptionistData.status !== "ready" ||
     receptionistData.summary.interactionCount === 0;
+  const shouldShowTelephonyEmptyState =
+    telephonyData.status !== "ready" || telephonyData.summary.callCount === 0;
 
   return (
     <DashboardShell generatedAt={data.generatedAt} status={data.status}>
@@ -139,6 +149,24 @@ export default async function InteractionsPage() {
             <ReceptionistInteractionFeed interactions={receptionistData.interactions} />
             <ReceptionistTaskList tasks={receptionistData.tasks} />
           </div>
+        </>
+      )}
+      {shouldShowTelephonyEmptyState ? (
+        <>
+          <TelephonyReadinessSummary summary={telephonyData.summary} />
+          <TelephonyEmptyState
+            status={telephonyData.status}
+            statusMessage={telephonyData.statusMessage}
+          />
+        </>
+      ) : (
+        <>
+          <TelephonyReadinessSummary summary={telephonyData.summary} />
+          <div className="grid gap-6 xl:grid-cols-2">
+            <CallLifecycleFeed events={telephonyData.callEvents} />
+            <VoiceSessionStatus sessions={telephonyData.voiceSessions} />
+          </div>
+          <OutboundCallApprovalList requests={telephonyData.outboundApprovals} />
         </>
       )}
       <div className="grid gap-6 xl:grid-cols-2">

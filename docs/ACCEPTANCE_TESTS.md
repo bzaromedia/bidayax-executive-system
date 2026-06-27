@@ -386,3 +386,43 @@ Phase 8 must not include:
 - Autonomous receptionist deployment.
 - Production phone number routing.
 - External workflow engines.
+
+## Phase 9 Acceptance Criteria
+
+Phase 9 passes when:
+
+1. All work is inside `D:\bidayax-executive-system`.
+2. `telephony_calls` table migration exists.
+3. `telephony_call_events` table migration exists.
+4. `voice_sessions` table migration exists.
+5. `outbound_call_requests` table migration exists.
+6. Telephony shared types exist.
+7. Telephony provider interface exists.
+8. Mock telephony provider exists.
+9. Inbound webhook scaffold exists.
+10. Outbound call request scaffold exists.
+11. Call lifecycle validation exists.
+12. Voice session model exists.
+13. Safety gates exist.
+14. Dashboard shows telephony readiness.
+15. Dashboard shows safety gate status.
+16. Unit tests exist.
+17. No real outbound calls are made.
+18. No real OpenAI Realtime connection is made.
+19. No real Twilio call execution is made.
+20. Documentation explains live integration preparation clearly.
+21. README explains how to run and verify Phase 9.
+
+## Phase 9 Non-Goals
+
+Phase 9 must not include:
+
+- Fully autonomous outbound calling.
+- Unapproved live email sending.
+- Unapproved calendar booking.
+- Uncontrolled AI voice agent.
+- Public production receptionist without safety gates.
+- CRM pipeline.
+- Payment collection.
+- External data enrichment.
+- Recursive improvement implementation.

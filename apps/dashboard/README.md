@@ -91,6 +91,19 @@ When the receptionist foundation tables exist, the dashboard also displays:
 
 The dashboard must present these rows as simulated foundation records, not live calls, sent emails, booked meetings, or production receptionist actions.
 
+## Phase 9 Telephony Readiness
+
+When the telephony preparation tables exist, the dashboard also displays:
+
+- telephony readiness summary.
+- call lifecycle feed.
+- voice session status.
+- outbound call approval list.
+- mock provider status.
+- safety gate status.
+
+The dashboard must present these rows as preparation data, not production calling activity. Phone numbers should be masked.
+
 ## Phase Boundaries
 
 This app must not include CRM functionality, receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, or recursive improvement automation.

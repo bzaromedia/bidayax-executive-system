@@ -184,6 +184,33 @@ database/models/receptionist-os.md
 
 Phase 8 still does not create live telephony records, call recordings, sent email records, calendar booking records, CRM tables, payment tables, or external workflow state.
 
+## Phase 9 Implemented Tables
+
+Phase 9 introduces:
+
+```text
+telephony_calls
+telephony_call_events
+voice_sessions
+outbound_call_requests
+```
+
+These tables store call preparation, lifecycle, voice session, and outbound approval records.
+
+Migration:
+
+```text
+database/migrations/0005_create_telephony_preparation.sql
+```
+
+Model documentation:
+
+```text
+database/models/telephony-integration.md
+```
+
+Phase 9 still does not store raw recordings, raw audio streams, real provider execution records, sent email records, calendar booking records, payment data, contact enrichment, or CRM pipeline records.
+
 ## Migration Policy
 
 When migrations are introduced:
@@ -197,4 +224,4 @@ When migrations are introduced:
 
 ## Remaining Non-Implementation Note
 
-The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, Phase 7 contact graph tables, and Phase 8 receptionist foundation tables. Contact, company, CRM, live telephony, scheduling, enrichment, payment, and production automation tables are intentionally unbuilt.
+The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, Phase 7 contact graph tables, Phase 8 receptionist foundation tables, and Phase 9 telephony preparation tables. Contact, company, CRM, live provider execution, scheduling, enrichment, payment, and production automation tables are intentionally unbuilt.

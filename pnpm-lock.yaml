@@ -123,6 +123,9 @@ importers:
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@bidayax/telephony':
+        specifier: workspace:*
+        version: link:../../services/telephony
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -293,6 +296,19 @@ importers:
         version: 2.1.9(@types/node@22.20.0)
 
   services/receptionist-agent:
+    dependencies:
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
+  services/telephony:
     dependencies:
       '@bidayax/types':
         specifier: workspace:*
