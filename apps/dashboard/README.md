@@ -147,6 +147,33 @@ Telemetry API routes:
 
 The dashboard must show real telemetry only. If no telemetry exists, it shows an empty state instead of fake uptime, fake metrics, or invented coverage.
 
+## Phase 13 Improvement Engine
+
+The dashboard also displays:
+
+- improvement engine summary.
+- detected telemetry-backed opportunities.
+- candidate review list.
+- evidence score.
+- risk score.
+- lineage archive.
+- human approval gate status.
+
+Improvement route:
+
+- `/improvement-engine`
+
+Improvement API routes:
+
+- `GET /api/improvement-engine/opportunities`
+- `POST /api/improvement-engine/opportunities/detect`
+- `GET /api/improvement-engine/candidates`
+- `POST /api/improvement-engine/candidates/generate`
+- `POST /api/improvement-engine/approval`
+- `GET /api/improvement-engine/summary`
+
+The dashboard must present candidates as proposals only. It must not claim automatic implementation, production deployment, self-improvement, or autonomous agent completion.
+
 ## Phase Boundaries
 
 This app must not include CRM functionality, autonomous receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, unrestricted live calling, or recursive improvement automation.

@@ -7,6 +7,15 @@ import type {
   VoiceRuntimeReadinessResult
 } from "./live-provider";
 import type {
+  ImprovementApprovalStatus,
+  ImprovementCandidateStatus,
+  ImprovementEngineSummary,
+  ImprovementOpportunityStatus,
+  ImprovementOpportunityType,
+  ImprovementSeverity,
+  ImprovementSubsystem
+} from "./improvement";
+import type {
   TelemetrySafetyGateDecision,
   TelemetrySeverity,
   TelemetryStatus,
@@ -332,6 +341,67 @@ export type DashboardObservabilityData = {
   readonly errors: readonly DashboardTelemetryError[];
   readonly safetyGateEvents: readonly DashboardTelemetrySafetyGate[];
   readonly subsystemHealth: readonly DashboardSubsystemHealth[];
+};
+
+export type DashboardImprovementOpportunity = {
+  readonly id: string;
+  readonly subsystem: ImprovementSubsystem;
+  readonly opportunityType: ImprovementOpportunityType;
+  readonly evidenceSummary: string;
+  readonly sourceMetric: string;
+  readonly baselineValue: number;
+  readonly severity: ImprovementSeverity;
+  readonly status: ImprovementOpportunityStatus;
+  readonly createdAt: string;
+};
+
+export type DashboardImprovementCandidate = {
+  readonly id: string;
+  readonly opportunityId: string | null;
+  readonly title: string;
+  readonly hypothesis: string;
+  readonly targetSubsystem: ImprovementSubsystem;
+  readonly proposedChangeSummary: string;
+  readonly expectedMetric: string;
+  readonly expectedImpact: number;
+  readonly riskScore: number;
+  readonly evidenceScore: number;
+  readonly complexityScore: number;
+  readonly priorityScore: number;
+  readonly status: ImprovementCandidateStatus;
+  readonly createdAt: string;
+};
+
+export type DashboardImprovementLineage = {
+  readonly id: string;
+  readonly candidateId: string | null;
+  readonly variantId: string;
+  readonly targetArea: ImprovementSubsystem;
+  readonly hypothesis: string;
+  readonly riskScore: number;
+  readonly approvalStatus: ImprovementApprovalStatus;
+  readonly rollbackPlan: string;
+  readonly metricsAfterIsEmpty: boolean;
+  readonly createdAt: string;
+};
+
+export type DashboardImprovementApproval = {
+  readonly id: string;
+  readonly candidateId: string;
+  readonly decision: string;
+  readonly decidedBy: string;
+  readonly decisionNotes: string;
+  readonly createdAt: string;
+};
+
+export type DashboardImprovementEngineData = {
+  readonly status: DashboardStatus;
+  readonly statusMessage: string;
+  readonly summary: ImprovementEngineSummary;
+  readonly opportunities: readonly DashboardImprovementOpportunity[];
+  readonly candidates: readonly DashboardImprovementCandidate[];
+  readonly lineage: readonly DashboardImprovementLineage[];
+  readonly approvals: readonly DashboardImprovementApproval[];
 };
 
 export type ExecutiveInteractionDashboardData = {

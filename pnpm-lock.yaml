@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@bidayax/improvement-engine':
+        specifier: workspace:*
+        version: link:services/improvement-engine
       '@eslint/js':
         specifier: ^9.17.0
         version: 9.39.4
@@ -132,6 +135,9 @@ importers:
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@bidayax/improvement-engine':
+        specifier: workspace:*
+        version: link:../../services/improvement-engine
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry
@@ -306,6 +312,22 @@ importers:
       tsx:
         specifier: ^4.20.6
         version: 4.22.4
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
+  services/improvement-engine:
+    dependencies:
+      '@bidayax/telemetry':
+        specifier: workspace:*
+        version: link:../telemetry
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

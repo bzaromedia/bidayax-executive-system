@@ -22,6 +22,11 @@ export type {
   DashboardVoiceSession,
   DashboardMetric,
   DashboardMetricKey,
+  DashboardImprovementApproval,
+  DashboardImprovementCandidate,
+  DashboardImprovementEngineData,
+  DashboardImprovementLineage,
+  DashboardImprovementOpportunity,
   DashboardRecentInteraction,
   DashboardStatus,
   ExecutiveInteractionDashboardData

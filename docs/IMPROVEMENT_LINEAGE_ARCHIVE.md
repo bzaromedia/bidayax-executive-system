@@ -2,11 +2,32 @@
 
 ## Status
 
-This document defines a future archive model only. It does not create a database schema, migration, service, storage bucket, workflow, or automation.
+This document originally defined the future archive model. Phase 13 now implements the first database-backed lineage table, `improvement_lineage_archive`, while still avoiding automation, code mutation, and production deployment.
 
 ## Purpose
 
 The Improvement Lineage Archive is the permanent memory of the future BidayaX Evolutionary Improvement Engine (TM). It records every proposed improvement, every variant, every benchmark, every critique, every safety review, every decision, and every rollback requirement.
+
+## Phase 13 Implemented Table
+
+`improvement_lineage_archive` stores:
+
+- candidate reference
+- parent candidate reference
+- variant id
+- target area
+- hypothesis
+- design and code diff summaries
+- metrics before
+- metrics after, kept null in Phase 13
+- test results, kept null in Phase 13
+- benchmark results, kept null in Phase 13
+- review notes
+- risk score
+- approval status
+- rollback plan
+
+Phase 13 does not fake `metrics_after`, `test_results`, or `benchmark_results`.
 
 The archive prevents the system from pretending that only successful ideas existed. Failed, unsafe, inconclusive, and superseded variants are valuable evidence.
 

@@ -10,6 +10,10 @@
     "dev": "turbo run dev --parallel",
     "db:check": "node --experimental-strip-types scripts/check-db-connection.ts",
     "db:migrations:verify": "node --experimental-strip-types scripts/verify-migrations.ts",
+    "improvement:detect": "node --experimental-strip-types scripts/detect-improvement-opportunities.ts",
+    "improvement:generate": "node --experimental-strip-types scripts/generate-improvement-candidates.ts",
+    "improvement:smoke": "node --experimental-strip-types scripts/improvement-engine-smoke-test.ts",
+    "improvement:verify": "node --experimental-strip-types scripts/verify-improvement-engine.ts",
     "lint": "pnpm -r --if-present lint",
     "test": "pnpm -r --if-present test",
     "test:integration": "pnpm db:migrations:verify",
@@ -29,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@bidayax/improvement-engine": "workspace:*",
     "@storybook/addon-a11y": "^8.6.0",
     "@storybook/addon-essentials": "^8.6.0",
     "@storybook/addon-interactions": "^8.6.0",

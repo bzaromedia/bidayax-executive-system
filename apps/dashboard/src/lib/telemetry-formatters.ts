@@ -11,6 +11,7 @@ export const telemetrySubsystemLabels = {
   dashboard: "Dashboard",
   database: "Database",
   event_ledger: "Event ledger",
+  improvement_engine: "Improvement engine",
   intent_scoring: "Intent scoring",
   provider_readiness: "Provider readiness",
   receptionist: "Receptionist",
@@ -55,4 +56,3 @@ export function formatMetricValue(value: number, unit: string) {
     maximumFractionDigits: 2
   }).format(value)} ${unit}`;
 }
-

@@ -2,7 +2,7 @@
 
 BidayaX Executive System is an Executive Identity Intelligence System. Its purpose is to turn every external business interaction into structured executive intelligence.
 
-This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; Phase 10: Live Provider Integration + Voice Runtime Safety Gate; Phase 11: Production Hardening; and Phase 12: Observability & Telemetry Layer.
+This repository has completed Phase 1: Foundation, Research, and Architecture Lock-In; Phase 2: Design System Supply Chain Foundation; Phase 3: Executive Digital Business Card Vertical Slice; Phase 4: QR Interaction Event Ledger; Phase 5: Executive Interaction Dashboard; Phase 6: Executive Intent Scoring Engine; Phase 7: Executive Contact Graph; Phase 8: Polyglot Receptionist OS Foundation; Phase 9: Live Voice + Telephony Integration Preparation; Phase 10: Live Provider Integration + Voice Runtime Safety Gate; Phase 11: Production Hardening; Phase 12: Observability & Telemetry Layer; and Phase 13: BidayaX Evolutionary Improvement Engine.
 
 Phase 3 creates the first visible product surface: a static, luxury executive digital business card app. It intentionally does not include dashboard analytics, receptionist UI, backend services, database migrations, receptionist logic, CRM workflows, authentication, or production deployment automation.
 
@@ -23,6 +23,8 @@ Phase 10 creates the controlled live provider integration layer: Twilio-compatib
 Phase 11 creates the production hardening layer: centralized environment validation, security headers, health/readiness endpoints, structured logging, safe error helpers, migration verification, database checks, Docker/Caddy deployment assets, Hostinger VPS runbooks, backup/restore scripts, rollback docs, and dashboard production warnings without adding product features.
 
 Phase 12 creates the observability and telemetry layer: telemetry event tables, metric snapshots, safe error records, safety gate telemetry, correlation IDs, telemetry sanitization, an observability dashboard, and verification scripts without adding recursive improvement or autonomous behavior.
+
+Phase 13 creates the controlled evolutionary improvement foundation: telemetry-backed opportunities, proposed candidates, deterministic evidence and risk scoring, lineage archive records, human approval events, improvement dashboard visibility, and verification scripts without automatic code changes, deployments, experiments, or agent swarms.
 
 ## System Definition
 
@@ -79,6 +81,10 @@ Read these documents before starting any implementation phase:
 - [docs/METRICS_CATALOG.md](docs/METRICS_CATALOG.md)
 - [docs/CORRELATION_ID_MODEL.md](docs/CORRELATION_ID_MODEL.md)
 - [docs/PRIVACY_SAFE_TELEMETRY.md](docs/PRIVACY_SAFE_TELEMETRY.md)
+- [docs/BIDAYAX_EVOLUTIONARY_IMPROVEMENT_ENGINE.md](docs/BIDAYAX_EVOLUTIONARY_IMPROVEMENT_ENGINE.md)
+- [docs/EVIDENCE_WEIGHTED_VARIANT_SELECTION.md](docs/EVIDENCE_WEIGHTED_VARIANT_SELECTION.md)
+- [docs/HUMAN_APPROVAL_GATE.md](docs/HUMAN_APPROVAL_GATE.md)
+- [docs/SANDBOX_EVALUATION_MODEL.md](docs/SANDBOX_EVALUATION_MODEL.md)
 - [agents/AGENTS.md](agents/AGENTS.md)
 
 ## Phase 2 Design System Foundation
@@ -512,6 +518,57 @@ pnpm verify:observability
 
 Telemetry is privacy-safe by default: no raw IPs, no secrets, no raw provider payloads, no raw call audio, no recordings, no payment data, and no CRM identity data. Phase 12 does not build recursive improvement, autonomous agents, A/B testing, automatic deployment, CRM, email automation, calendar booking, or unrestricted voice automation.
 
+## Phase 13 BidayaX Evolutionary Improvement Engine
+
+The controlled improvement engine lives in `services/improvement-engine`.
+
+Run improvement engine tests:
+
+```bash
+pnpm --filter @bidayax/improvement-engine test
+```
+
+Database migration:
+
+```bash
+database/migrations/0008_create_evolutionary_improvement_engine.sql
+```
+
+Phase 13 adds:
+
+- `improvement_opportunities`
+- `improvement_candidates`
+- `improvement_lineage_archive`
+- `improvement_approval_events`
+
+Improvement dashboard route:
+
+```text
+GET /improvement-engine
+```
+
+Improvement APIs:
+
+```text
+GET /api/improvement-engine/opportunities
+POST /api/improvement-engine/opportunities/detect
+GET /api/improvement-engine/candidates
+POST /api/improvement-engine/candidates/generate
+POST /api/improvement-engine/approval
+GET /api/improvement-engine/summary
+```
+
+Improvement scripts:
+
+```bash
+pnpm improvement:detect
+pnpm improvement:generate
+pnpm improvement:verify
+pnpm improvement:smoke
+```
+
+Phase 13 is proposal-only. It does not rewrite code, deploy changes, run A/B tests, activate voice providers, create a recursive agent swarm, or claim fake metric improvement.
+
 ## Repository Structure
 
 ```text
@@ -531,6 +588,7 @@ bidayax-executive-system/
 |   +-- api/
 |   +-- contact-graph/
 |   +-- event-ledger/
+|   +-- improvement-engine/
 |   +-- intent-scoring/
 |   +-- receptionist-agent/
 |   +-- telephony/
@@ -684,6 +742,17 @@ The intended stack for the design-system foundation is:
 - OpenTelemetry, Grafana, Prometheus, and Loki remain future optional integrations.
 - No recursive improvement engine, autonomous agents, A/B testing, auto-deployment, CRM, email automation, calendar booking, or unsafe voice behavior exists in Phase 12.
 
+## Locked Phase 13 Decisions
+
+- Improvement opportunities must be backed by telemetry.
+- Candidate generation is deterministic and explainable.
+- Evidence-weighted priority scoring and risk scoring are pure functions.
+- Human approval is mandatory before an approved candidate state.
+- Approved means ready for future sandbox consideration only.
+- Lineage records preserve rollback plans and keep `metrics_after`, `test_results`, and `benchmark_results` null in Phase 13.
+- Dashboard language uses proposed improvement, needs review, sandbox required, and human approval required.
+- No automatic code changes, production deployments, A/B testing, specialist agent collective, provider activation, voice runtime activation, or fake metric improvements exist in Phase 13.
+
 ## Next Gate
 
-Phase 13 should begin only after the Phase 12 Observability & Telemetry Layer is reviewed and accepted. Phase 13 is BidayaX Evolutionary Improvement Engine.
+Phase 14 should begin only after the Phase 13 BidayaX Evolutionary Improvement Engine is reviewed and accepted. Phase 14 is Specialist Agent Collective.

@@ -9,6 +9,7 @@ export const telemetrySubsystems = [
   "receptionist",
   "telephony",
   "provider_readiness",
+  "improvement_engine",
   "system",
   "database",
   "security"
@@ -155,4 +156,3 @@ export function isTelemetrySeverity(value: string): value is TelemetrySeverity {
 export function isTelemetryStatus(value: string): value is TelemetryStatus {
   return (telemetryStatuses as readonly string[]).includes(value);
 }
-

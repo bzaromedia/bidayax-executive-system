@@ -4,8 +4,10 @@ import type { DashboardStatus } from "../types/dashboard";
 
 type DashboardShellProps = {
   readonly children: ReactNode;
+  readonly description?: string;
   readonly generatedAt: string;
   readonly status: DashboardStatus;
+  readonly title?: string;
 };
 
 const statusLabels = {
@@ -14,7 +16,13 @@ const statusLabels = {
   ready: "Ledger connected"
 } as const satisfies Record<DashboardStatus, string>;
 
-export function DashboardShell({ children, generatedAt, status }: DashboardShellProps) {
+export function DashboardShell({
+  children,
+  description = "Anonymous card interaction activity from the QR Interaction Event Ledger.",
+  generatedAt,
+  status,
+  title = "Executive Interaction Dashboard"
+}: DashboardShellProps) {
   return (
     <Section tone="canvas" spacing="lg" className="dashboard-stage min-h-screen">
       <Container size="xl">
@@ -24,10 +32,10 @@ export function DashboardShell({ children, generatedAt, status }: DashboardShell
               {statusLabels[status]}
             </Badge>
             <h1 className="mt-4 font-display text-3xl font-semibold tracking-normal text-content-primary md:text-4xl">
-              Executive Interaction Dashboard
+              {title}
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-content-secondary">
-              Anonymous card interaction activity from the QR Interaction Event Ledger.
+              {description}
             </p>
           </div>
           <p className="text-sm text-content-muted">
