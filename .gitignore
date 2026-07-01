@@ -33,4 +33,5 @@ Thumbs.db
 
 # Recovery Phase 0 blocked artifacts
 .git-index-codex
+.git-broken-acl-backup-*/
 ip-rights/
