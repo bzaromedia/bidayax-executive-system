@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The Executive Contact Graph is the Phase 7 relationship intelligence layer for BidayaX Executive System. It connects anonymous visitors, sessions, executive cards, interaction events, and deterministic intent scores into a queryable structure.
+The Executive Contact Graph is the Phase 7 relationship intelligence layer for The Executive Card. It connects anonymous visitors, sessions, executive cards, interaction events, and deterministic intent scores into a queryable structure.
 
 The graph does not identify anonymous people. It does not enrich contacts. It does not create CRM records. It organizes first-party interaction facts so future receptionist and contact workflows can start from traceable evidence.
 

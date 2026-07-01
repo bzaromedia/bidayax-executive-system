@@ -1,12 +1,14 @@
 # dependencies
 node_modules/
 .pnpm-store/
+pnpm-store/
 
 # builds
 dist/
 storybook-static/
 .turbo/
 .next/
+.next-build/
 coverage/
 *.tsbuildinfo
 
@@ -28,3 +30,10 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+
+# Recovery Phase 0 blocked artifacts
+.git-index-codex
+ip-rights/
+services/policy-enforcement/
+packages/types/src/data-trust.ts
+packages/types/src/policy-enforcement.ts

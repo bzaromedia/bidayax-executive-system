@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`interaction_events` is the first durable ledger table for BidayaX Executive System. It records meaningful public card interactions as immutable business events.
+`interaction_events` is the first durable ledger table for The Executive Card. It records meaningful public card interactions as immutable business events.
 
 ## Table
 

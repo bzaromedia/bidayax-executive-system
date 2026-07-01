@@ -2,7 +2,7 @@
 
 ## Goal
 
-Phase 6 creates the first deterministic decision-intelligence layer for BidayaX Executive System.
+Phase 6 creates the first deterministic decision-intelligence layer for The Executive Card.
 
 It ranks anonymous executive-card interaction groups using explainable rules and stores the results in `intent_scores`.
 

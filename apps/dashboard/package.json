@@ -4,11 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3001",
-    "build": "next build",
-    "start": "next start -p 3001",
-    "lint": "eslint app src --ext .ts,.tsx",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "dev": "node ../../node_modules/next/dist/bin/next dev -p 3001",
+    "build": "node ../../node_modules/next/dist/bin/next build",
+    "start": "node ../../node_modules/next/dist/bin/next start -p 3001",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js app src --ext .ts,.tsx",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@bidayax/config": "workspace:*",
@@ -21,7 +21,8 @@
     "next": "^15.1.4",
     "pg": "^8.22.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/pg": "^8.20.0",

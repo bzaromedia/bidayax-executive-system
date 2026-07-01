@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 import {
+  createSafeImprovementApiError,
   detectImprovementOpportunities,
+  improvementApiErrorStatus,
   type TelemetryEvidenceSummary
 } from "@bidayax/improvement-engine";
 import {
@@ -128,10 +130,10 @@ export async function POST() {
 
   if (!database) {
     return NextResponse.json(
-      {
-        error: "DATABASE_URL is not configured.",
-        status: "not_configured"
-      },
+      createSafeImprovementApiError({
+        message: "DATABASE_URL is not configured.",
+        status: improvementApiErrorStatus.notConfigured
+      }),
       { status: 503 }
     );
   }
@@ -188,9 +190,10 @@ export async function POST() {
     });
   } catch {
     return NextResponse.json(
-      {
-        error: "Improvement opportunity detection failed safely."
-      },
+      createSafeImprovementApiError({
+        message: "Improvement opportunity detection failed safely.",
+        status: improvementApiErrorStatus.safeFailure
+      }),
       { status: 500 }
     );
   }

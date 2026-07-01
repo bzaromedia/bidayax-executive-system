@@ -1,6 +1,6 @@
 # Live Provider Integration + Voice Runtime Safety Gate
 
-Phase 10 connects BidayaX Executive System to provider-compatible live
+Phase 10 connects The Executive Card to provider-compatible live
 integration surfaces while keeping production voice behavior blocked by
 default.
 

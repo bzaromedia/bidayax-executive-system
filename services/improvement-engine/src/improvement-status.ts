@@ -21,3 +21,27 @@ export const approvalStatus = {
   pending: "pending",
   rejected: "rejected"
 } as const;
+
+export const improvementApiErrorStatus = {
+  invalidRequest: "invalid_request",
+  notConfigured: "not_configured",
+  safeFailure: "safe_failure"
+} as const;
+
+export type ImprovementApiErrorStatus =
+  (typeof improvementApiErrorStatus)[keyof typeof improvementApiErrorStatus];
+
+export type ImprovementApiErrorPayload = {
+  readonly error: string;
+  readonly status: ImprovementApiErrorStatus;
+};
+
+export function createSafeImprovementApiError(input: {
+  readonly message: string;
+  readonly status: ImprovementApiErrorStatus;
+}): ImprovementApiErrorPayload {
+  return {
+    error: input.message,
+    status: input.status
+  };
+}

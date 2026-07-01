@@ -10,9 +10,9 @@
     "./eslint": "./eslint/index.js"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "build": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js src --ext .ts",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@bidayax/tokens": "workspace:*"

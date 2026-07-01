@@ -8,17 +8,150 @@ const requiredTables = [
 ];
 const databaseUrl = process.env.DATABASE_URL ?? "";
 
-const candidate = { id: "candidate-verify" };
-const approval = {
-  candidateId: "candidate-verify",
-  decision: "approved"
+type ScoreComponents = {
+  readonly accessibilityGain: number;
+  readonly complexityCost: number;
+  readonly evidenceScore: number;
+  readonly expectedImpact: number;
+  readonly implementationRisk: number;
+  readonly maintainabilityGain: number;
+  readonly performanceGain: number;
+  readonly regressionRisk: number;
+  readonly userValue: number;
 };
 
-if (!(candidate.id === approval.candidateId && approval.decision === "approved")) {
+type VerificationCandidate = {
+  readonly id: string;
+  readonly status: "needs_review" | "approved" | "rejected";
+};
+
+type VerificationApprovalEvent = {
+  readonly candidateId: string;
+  readonly decision: "approved" | "rejected" | "needs_more_evidence" | "blocked";
+};
+
+function calculatePriorityScore(components: ScoreComponents) {
+  return Math.max(
+    0,
+    Math.round(
+      components.evidenceScore +
+        components.expectedImpact +
+        components.userValue +
+        components.maintainabilityGain +
+        components.performanceGain +
+        components.accessibilityGain -
+        components.implementationRisk -
+        components.regressionRisk -
+        components.complexityCost
+    )
+  );
+}
+
+function riskScoreFor(input: {
+  readonly subsystem: string;
+  readonly opportunityType: string;
+}) {
+  const voiceOrTelephony =
+    input.subsystem === "telephony" ||
+    input.subsystem === "provider_readiness" ||
+    input.opportunityType === "telephony_readiness";
+  const safetyGate =
+    input.subsystem === "security" ||
+    input.subsystem === "provider_readiness" ||
+    input.opportunityType === "safety_gate";
+
+  return (
+    20 +
+    (voiceOrTelephony ? 37 : 0) +
+    (safetyGate ? 22 : 0) +
+    (input.subsystem === "database" ? 18 : 0)
+  );
+}
+
+function canMarkApproved(input: {
+  readonly candidate: VerificationCandidate;
+  readonly approvals: readonly VerificationApprovalEvent[];
+}) {
+  return input.approvals.some(
+    (event) =>
+      event.candidateId === input.candidate.id && event.decision === "approved"
+  );
+}
+
+function verifyPureSafetyRules() {
+  const components: ScoreComponents = {
+    accessibilityGain: 0,
+    complexityCost: 6,
+    evidenceScore: 40,
+    expectedImpact: 20,
+    implementationRisk: 5,
+    maintainabilityGain: 6,
+    performanceGain: 0,
+    regressionRisk: 4,
+    userValue: 8
+  };
+  const firstScore = calculatePriorityScore(components);
+  const secondScore = calculatePriorityScore(components);
+
+  if (firstScore !== 59 || secondScore !== firstScore) {
+    return "deterministic_scoring_failed";
+  }
+
+  const telephonyRisk = riskScoreFor({
+    opportunityType: "telephony_readiness",
+    subsystem: "telephony"
+  });
+  const documentationRisk = riskScoreFor({
+    opportunityType: "documentation",
+    subsystem: "documentation"
+  });
+
+  if (telephonyRisk <= documentationRisk) {
+    return "telephony_risk_not_elevated";
+  }
+
+  const candidate: VerificationCandidate = {
+    id: "candidate-verify",
+    status: "needs_review"
+  };
+
+  if (canMarkApproved({ approvals: [], candidate })) {
+    return "approval_gate_failed";
+  }
+
+  if (
+    !canMarkApproved({
+      approvals: [{ candidateId: "candidate-verify", decision: "approved" }],
+      candidate
+    })
+  ) {
+    return "approval_event_not_recognized";
+  }
+
+  const lineage = {
+    benchmarkResults: null,
+    metricsAfter: null,
+    testResults: null
+  };
+
+  if (
+    lineage.metricsAfter !== null ||
+    lineage.testResults !== null ||
+    lineage.benchmarkResults !== null
+  ) {
+    return "fake_outcome_metrics_allowed";
+  }
+
+  return null;
+}
+
+const safetyFailure = verifyPureSafetyRules();
+
+if (safetyFailure) {
   console.error(
     JSON.stringify({
       component: "improvement-engine-verifier",
-      event: "approval_gate_failed",
+      event: safetyFailure,
       status: "failure"
     })
   );

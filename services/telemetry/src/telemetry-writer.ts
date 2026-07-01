@@ -9,6 +9,15 @@ export type TelemetryQueryExecutor = {
   readonly query: (sql: string, values: readonly unknown[]) => Promise<unknown>;
 };
 
+async function safeWrite(operation: () => Promise<void>) {
+  try {
+    await operation();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function writeTelemetryEvent(
   executor: TelemetryQueryExecutor,
   event: TelemetryEvent
@@ -46,6 +55,13 @@ export async function writeTelemetryEvent(
   );
 }
 
+export function safeWriteTelemetryEvent(
+  executor: TelemetryQueryExecutor,
+  event: TelemetryEvent
+) {
+  return safeWrite(() => writeTelemetryEvent(executor, event));
+}
+
 export async function writeTelemetryMetric(
   executor: TelemetryQueryExecutor,
   metric: TelemetryMetric
@@ -71,6 +87,13 @@ export async function writeTelemetryMetric(
       metric.measuredAt
     ]
   );
+}
+
+export function safeWriteTelemetryMetric(
+  executor: TelemetryQueryExecutor,
+  metric: TelemetryMetric
+) {
+  return safeWrite(() => writeTelemetryMetric(executor, metric));
 }
 
 export async function writeTelemetryError(
@@ -104,6 +127,13 @@ export async function writeTelemetryError(
   );
 }
 
+export function safeWriteTelemetryError(
+  executor: TelemetryQueryExecutor,
+  error: TelemetryErrorEvent
+) {
+  return safeWrite(() => writeTelemetryError(executor, error));
+}
+
 export async function writeTelemetrySafetyGateEvent(
   executor: TelemetryQueryExecutor,
   event: TelemetrySafetyGateEvent
@@ -133,3 +163,9 @@ export async function writeTelemetrySafetyGateEvent(
   );
 }
 
+export function safeWriteTelemetrySafetyGateEvent(
+  executor: TelemetryQueryExecutor,
+  event: TelemetrySafetyGateEvent
+) {
+  return safeWrite(() => writeTelemetrySafetyGateEvent(executor, event));
+}

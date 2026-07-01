@@ -2,6 +2,7 @@ import type { NextConfig } from "next";
 import { getSecurityHeaders } from "@bidayax/config";
 
 const nextConfig: NextConfig = {
+  distDir: ".next-build",
   async headers() {
     return [
       {

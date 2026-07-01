@@ -4,8 +4,8 @@ import { cssVariableTokens } from "@bidayax/tokens";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BidayaX Executive Cards",
-  description: "Luxury executive digital business cards for BidayaX LLC."
+  title: "The Executive Card",
+  description: "Luxury executive digital business cards by BidayaX LLC."
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {

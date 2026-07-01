@@ -1,6 +1,6 @@
 # Production Hardening
 
-Phase 11 hardens the existing BidayaX Executive System without adding product
+Phase 11 hardens the existing The Executive Card platform without adding product
 features.
 
 ## Hardening Scope
@@ -34,4 +34,3 @@ pnpm db:check
 Production calls, outbound calls, and voice agent behavior remain disabled by
 default. Phase 11 does not enable live unsupervised voice, email automation,
 calendar booking, CRM, enrichment, payments, or recursive improvement.
-

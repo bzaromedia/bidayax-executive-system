@@ -1,6 +1,6 @@
 # Design Governance
 
-Phase 2 creates the governed frontend foundation only. It does not create application screens.
+Phase 2 creates the governed The Executive Card frontend foundation only. It does not create application screens.
 
 ## Rules
 
@@ -14,6 +14,9 @@ Phase 2 creates the governed frontend foundation only. It does not create applic
 8. Storybook must document every reusable component.
 9. Accessibility is mandatory.
 10. Performance is a design requirement.
+11. No trust interface may bypass the design-system supply chain.
+12. No enterprise data-room view may bypass the design-system supply chain.
+13. No application may introduce raw colors, raw spacing, raw typography, raw motion, raw shadows, unapproved components, or unapproved icons.
 
 ## Review Questions
 
@@ -31,7 +34,16 @@ Every token group and component must answer:
 Visual decisions flow through:
 
 ```text
-requirements -> tokens -> primitives -> components -> patterns -> layouts -> applications
+Single Source of Truth
+-> Design Tokens
+-> Primitive Components
+-> Composite Components
+-> Patterns
+-> Layouts
+-> Templates
+-> Applications
+-> Trust Interfaces
+-> Enterprise Data Room
 ```
 
 No application surface can bypass this path.

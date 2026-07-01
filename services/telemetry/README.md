@@ -1,6 +1,6 @@
 # BidayaX Telemetry Service
 
-`@bidayax/telemetry` is the Phase 12 measurement package for BidayaX Executive System.
+`@bidayax/telemetry` is the Phase 12 measurement package for The Executive Card.
 
 It creates privacy-safe telemetry records for major system behavior:
 
@@ -24,7 +24,7 @@ Core modules:
 - `telemetry-error.ts`: creates sanitized error telemetry.
 - `telemetry-safety-gate.ts`: records safety gate decisions.
 - `telemetry-sanitizer.ts`: removes secrets, tokens, raw IPs, and unsafe payload fields.
-- `telemetry-writer.ts`: writes telemetry to PostgreSQL with fail-open behavior.
+- `telemetry-writer.ts`: writes telemetry to PostgreSQL with strict writers and fail-open safe writer helpers.
 - `telemetry-aggregator.ts`: aggregates telemetry records for dashboard views.
 
 ## Safe Defaults

@@ -9,9 +9,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json",
-    "typecheck": "tsc --project tsconfig.json --noEmit",
-    "lint": "eslint src --ext .ts"
+    "build": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js src --ext .ts"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

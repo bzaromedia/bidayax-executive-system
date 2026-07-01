@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Polyglot Receptionist OS is the future receptionist operating layer for BidayaX Executive System. It will eventually support inbound calls, outbound calls, multilingual conversation, email handling, scheduling requests, contact logging, escalation, executive summaries, and workflow automation.
+Polyglot Receptionist OS is the future receptionist operating layer for The Executive Card. It will eventually support inbound calls, outbound calls, multilingual conversation, email handling, scheduling requests, contact logging, escalation, executive summaries, and workflow automation.
 
 Phase 8 implements only the safe foundation. It does not connect live calling, email, calendar, voice, or workflow providers.
 

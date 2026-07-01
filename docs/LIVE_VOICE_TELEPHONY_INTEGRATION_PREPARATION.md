@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Phase 9 prepares BidayaX Executive System for live voice and telephony integration without enabling uncontrolled production calling.
+Phase 9 prepares The Executive Card for live voice and telephony integration without enabling uncontrolled production calling.
 
 The phase creates the bridge from the simulated receptionist foundation to future telephony providers, voice sessions, lifecycle events, and approval gates.
 

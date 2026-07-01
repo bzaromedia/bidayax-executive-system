@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { Pool } from "pg";
 import type { PoolConfig } from "pg";
+import {
+  createSafeImprovementApiError,
+  improvementApiErrorStatus
+} from "@bidayax/improvement-engine";
 import { isImprovementApprovalDecision } from "@bidayax/types";
 import {
   createTelemetryEvent,
@@ -39,10 +43,10 @@ export async function POST(request: Request) {
 
   if (!database) {
     return NextResponse.json(
-      {
-        error: "DATABASE_URL is not configured.",
-        status: "not_configured"
-      },
+      createSafeImprovementApiError({
+        message: "DATABASE_URL is not configured.",
+        status: improvementApiErrorStatus.notConfigured
+      }),
       { status: 503 }
     );
   }
@@ -60,9 +64,10 @@ export async function POST(request: Request) {
 
     if (!candidateId || !isImprovementApprovalDecision(decision)) {
       return NextResponse.json(
-        {
-          error: "Invalid approval payload."
-        },
+        createSafeImprovementApiError({
+          message: "Invalid approval payload.",
+          status: improvementApiErrorStatus.invalidRequest
+        }),
         { status: 400 }
       );
     }
@@ -129,9 +134,10 @@ export async function POST(request: Request) {
     });
   } catch {
     return NextResponse.json(
-      {
-        error: "Improvement approval event failed safely."
-      },
+      createSafeImprovementApiError({
+        message: "Improvement approval event failed safely.",
+        status: improvementApiErrorStatus.safeFailure
+      }),
       { status: 500 }
     );
   }

@@ -1,7 +1,7 @@
 # Observability & Telemetry Layer
 
-Phase 12 adds a self-hosted measurement foundation for BidayaX Executive
-System. It records operational, reliability, performance, product usage, and
+Phase 12 adds a self-hosted measurement foundation for The Executive Card.
+It records operational, reliability, performance, product usage, and
 safety-gate signals without changing system behavior.
 
 ## Implemented Levels
@@ -39,4 +39,3 @@ pnpm verify:observability
 ```
 
 The telemetry scripts require `DATABASE_URL`.
-

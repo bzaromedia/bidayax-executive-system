@@ -9,10 +9,10 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit",
-    "lint": "eslint src tests --ext .ts",
-    "test": "vitest run",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "build": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js src tests --ext .ts",
+    "test": "node ../../node_modules/vitest/vitest.mjs run",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@bidayax/config": "workspace:*",
@@ -23,4 +23,3 @@
     "vitest": "^2.1.8"
   }
 }
-

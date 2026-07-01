@@ -1,6 +1,6 @@
 # Telephony Integration Preparation Model
 
-Phase 9 prepares BidayaX Executive System for live voice and telephony integration without enabling uncontrolled production calling.
+Phase 9 prepares The Executive Card for live voice and telephony integration without enabling uncontrolled production calling.
 
 ## Tables
 

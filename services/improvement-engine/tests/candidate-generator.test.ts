@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateImprovementCandidate } from "../src/candidate-generator";
+import { calculatePriorityScore } from "../src/evidence-weighted-selection";
 import type { ImprovementOpportunity } from "@bidayax/types";
 
 const opportunity: ImprovementOpportunity = {
@@ -21,5 +22,15 @@ describe("generateImprovementCandidate", () => {
     expect(candidate.expectedMetric).toBe("api_latency_ms");
     expect(candidate.reasonCodes).toContain("HUMAN_APPROVAL_REQUIRED");
     expect(candidate.proposedChangeSummary).not.toContain("deploy");
+  });
+
+  it("keeps priority scores explainable from score components", () => {
+    const candidate = generateImprovementCandidate(opportunity);
+
+    expect(candidate.priorityScore).toBe(
+      calculatePriorityScore(candidate.scoreComponents)
+    );
+    expect(candidate.scoreComponents.evidenceScore).toBe(candidate.evidenceScore);
+    expect(candidate.scoreComponents.complexityCost).toBe(candidate.complexityScore);
   });
 });

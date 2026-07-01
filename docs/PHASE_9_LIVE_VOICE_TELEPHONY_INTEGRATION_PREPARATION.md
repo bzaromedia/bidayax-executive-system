@@ -2,7 +2,7 @@
 
 ## Goal
 
-Phase 9 prepares BidayaX Executive System for live voice and telephony infrastructure while keeping all execution safety-gated.
+Phase 9 prepares The Executive Card for live voice and telephony infrastructure while keeping all execution safety-gated.
 
 All work is inside `D:\bidayax-executive-system`.
 

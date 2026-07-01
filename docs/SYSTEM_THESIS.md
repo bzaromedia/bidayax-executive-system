@@ -2,7 +2,7 @@
 
 ## Thesis
 
-BidayaX Executive System works because it connects executive identity to every external business interaction, converts those interactions into durable events, scores their business intent, and turns the resulting intelligence into executive action.
+The Executive Card works because it connects executive identity to every external business interaction, converts those interactions into durable events, scores their business intent, and turns the resulting intelligence into executive action.
 
 The product is not valuable because QR codes, business cards, AI receptionists, CRMs, dashboards, or scheduling tools are new. Those categories already exist. The value is the operating model that joins them into one intelligence loop:
 

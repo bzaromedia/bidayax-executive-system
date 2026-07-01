@@ -2,7 +2,7 @@
 
 ## Project Identity
 
-BidayaX Executive System is an Executive Identity Intelligence System. It is not a generic digital card, receptionist bot, CRM clone, or dashboard.
+The Executive Card is an Executive Identity Intelligence System owned by BidayaX LLC. It is not a generic digital card, receptionist bot, CRM clone, or dashboard.
 
 Every change must support the loop:
 

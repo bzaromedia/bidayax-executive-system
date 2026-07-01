@@ -3,7 +3,9 @@ import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 import {
   createLineageEntry,
-  generateImprovementCandidate
+  createSafeImprovementApiError,
+  generateImprovementCandidate,
+  improvementApiErrorStatus
 } from "@bidayax/improvement-engine";
 import {
   createTelemetryEvent,
@@ -54,10 +56,10 @@ export async function POST() {
 
   if (!database) {
     return NextResponse.json(
-      {
-        error: "DATABASE_URL is not configured.",
-        status: "not_configured"
-      },
+      createSafeImprovementApiError({
+        message: "DATABASE_URL is not configured.",
+        status: improvementApiErrorStatus.notConfigured
+      }),
       { status: 503 }
     );
   }
@@ -204,9 +206,10 @@ export async function POST() {
     });
   } catch {
     return NextResponse.json(
-      {
-        error: "Improvement candidate generation failed safely."
-      },
+      createSafeImprovementApiError({
+        message: "Improvement candidate generation failed safely.",
+        status: improvementApiErrorStatus.safeFailure
+      }),
       { status: 500 }
     );
   }

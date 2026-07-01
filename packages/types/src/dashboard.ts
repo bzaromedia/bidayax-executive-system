@@ -38,7 +38,6 @@ import type {
   TelephonyProviderName,
   VoiceSessionStatus
 } from "./telephony";
-
 export type DashboardStatus = "ready" | "not_configured" | "query_failed";
 
 export type DashboardMetricKey =

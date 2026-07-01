@@ -4,8 +4,8 @@ import { cssVariableTokens } from "@bidayax/tokens";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BidayaX Executive Interaction Dashboard",
-  description: "Internal interaction dashboard for BidayaX card ledger events."
+  title: "The Executive Card Interaction Dashboard",
+  description: "Internal interaction dashboard for The Executive Card ledger events."
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
