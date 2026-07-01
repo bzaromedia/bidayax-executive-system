@@ -34,6 +34,3 @@ Thumbs.db
 # Recovery Phase 0 blocked artifacts
 .git-index-codex
 ip-rights/
-services/policy-enforcement/
-packages/types/src/data-trust.ts
-packages/types/src/policy-enforcement.ts

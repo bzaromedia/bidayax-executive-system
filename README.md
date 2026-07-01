@@ -6,7 +6,7 @@ Production URL: https://theexecutivecard.online
 
 ## Current Scope
 
-This repository is in Recovery Phase 0: repository stabilization and rename alignment. It currently contains the implemented foundation for:
+This repository is in Recovery Phase 1: missing trust package rebuild. It currently contains the implemented foundation for:
 
 - digital executive card app;
 - interaction event ledger;
@@ -17,9 +17,10 @@ This repository is in Recovery Phase 0: repository stabilization and rename alig
 - telephony preparation and voice safety gates;
 - telemetry and observability foundation;
 - governed improvement-engine proposal workflow;
+- rebuilt data-trust and policy-enforcement foundations;
 - design tokens, UI primitives, and Storybook design-system assets.
 
-The repository does not currently implement the later enterprise trust, bank, IP, commercialization, certification, or policy-enforcement packages. Those phases remain out of scope until the recovery phases restore a clean build and package graph.
+The repository does not currently implement the later enterprise bank, IP, commercialization, certification, or full continuous-reverification systems. Those phases remain out of scope until the recovery phases restore the missing trust foundations deliberately and keep the build graph clean.
 
 ## Applications
 
@@ -44,6 +45,7 @@ The repository does not currently implement the later enterprise trust, bank, IP
 - `services/telephony`
 - `services/telemetry`
 - `services/improvement-engine`
+- `services/policy-enforcement`
 
 Placeholder or blocked service directories are documented in `docs/PHASE_STATUS.md`.
 
@@ -79,6 +81,7 @@ Database-backed scripts require `DATABASE_URL`.
 - Human approval remains required for outbound/production voice paths.
 - Telemetry helpers redact secret-like keys and mask phone numbers.
 - Missing Phase 14-24 enterprise layers must not be treated as implemented.
+- Recovery Phase 1 policy-enforcement code is deterministic foundation code, not a completed enterprise trust fabric.
 
 ## Phase Status
 
@@ -89,4 +92,4 @@ See `docs/PHASE_STATUS.md` for the current implemented, partial, missing, and bl
 - Do not commit `node_modules`, `.next`, `.pnpm-store`, `pnpm-store`, `dist`, `storybook-static`, or local environment files.
 - Keep public naming aligned to The Executive Card.
 - Keep BidayaX LLC as owner/company attribution where appropriate.
-- Do not add new architecture during Recovery Phase 0.
+- Keep recovery work scoped; do not resume the enterprise roadmap until the recovery phases are complete.

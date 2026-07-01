@@ -7,6 +7,8 @@ export * from "./telephony";
 export * from "./live-provider";
 export * from "./telemetry";
 export * from "./dashboard";
+export * from "./data-trust";
+export * from "./policy-enforcement";
 
 export type Phase =
   | "phase-1"

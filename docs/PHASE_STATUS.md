@@ -1,6 +1,6 @@
 # Phase Status
 
-Recovery Phase 0 status for The Executive Card.
+Recovery Phase 1 status for The Executive Card.
 
 ## Implemented
 
@@ -29,17 +29,19 @@ Recovery Phase 0 status for The Executive Card.
 | `services/event-ledger` | Placeholder only | Current ledger lives in the card API route. |
 | `services/notification-worker` | Placeholder only | Build only after core queue/worker scope is approved. |
 | `packages/sdk` | Placeholder only | Build only after stable public API contracts exist. |
+| Data Trust Fabric foundation | `packages/types/src/data-trust.ts`, `services/policy-enforcement/src/data-trust-assessment.ts` | Add database-backed evidence, lineage, and audit persistence in a later scoped recovery phase. |
+| Policy Enforcement foundation | `packages/types/src/policy-enforcement.ts`, `services/policy-enforcement` | Wire into API boundaries only after trust persistence and tenant/auth contracts are rebuilt. |
 
 ## Missing Or Not Implemented
 
 | Phase | Area | Status | Next repair action |
 | --- | --- | --- | --- |
 | 14 | Specialist Agent Collective | Not implemented | Recovery Phase 1+ must rebuild only if required. |
-| 15 | Data Trust Fabric | Not implemented | Rebuild missing trust package after Recovery Phase 0. |
+| 15 | Data Trust Fabric | Partial foundation only | Types and deterministic assessment restored; persistence, lineage graph, and audit ledger are not complete. |
 | 16 | Verification Layer | Not implemented | Rebuild missing trust package after Recovery Phase 0. |
 | 17 | IP Trust Fabric | Not implemented | Rebuild missing trust package after Recovery Phase 0. |
 | 18 | Bank Trust Layer | Not implemented | Rebuild missing trust package after Recovery Phase 0. |
-| 19 | Policy Enforcement + Continuous Reverification | Not implemented | Repair blocked directory or rebuild package in Recovery Phase 1. |
+| 19 | Policy Enforcement + Continuous Reverification | Partial foundation only | Policy evaluator restored; continuous reverification and runtime API enforcement are not complete. |
 | 20 | Enterprise Platform Readiness | Not implemented | Do not advertise until source exists. |
 | 21 | Operational Excellence + Scale Validation | Not implemented | Recreate scripts/docs only when implemented. |
 | 22 | Technical Data Room + Commercialization | Not implemented | Recreate artifacts only when implemented. |
@@ -50,7 +52,4 @@ Recovery Phase 0 status for The Executive Card.
 
 | Item | Current blocker | Next repair action |
 | --- | --- | --- |
-| `.git/index` | OS denies access to the Git index for the current user. | Repair repository ACLs outside this process, then rerun Git status/stage/commit. |
-| `services/policy-enforcement` | OS denies directory access. | Repair ACLs or replace with a scoped package in Recovery Phase 1. |
-| `packages/types/src/data-trust.ts` | OS denies file access. | Excluded from current compiled scope; rebuild in Recovery Phase 1. |
-| `packages/types/src/policy-enforcement.ts` | OS denies file access. | Excluded from current compiled scope; rebuild in Recovery Phase 1. |
+| Original recovered workspace Git metadata | `D:\bidayax-executive-system` still has ACL-damaged `.git/index`. | Continue recovery work from the clean clone unless the original workspace ACLs are repaired. |
