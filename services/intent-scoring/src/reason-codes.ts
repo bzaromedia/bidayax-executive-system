@@ -4,6 +4,7 @@ export const reasonCodeDescriptions = {
   NO_EVENTS: "No interaction events were available for scoring.",
   QR_SCANNED: "The executive card was opened from a QR-marked route.",
   CARD_VIEWED: "The executive card was viewed.",
+  CARD_SHARED: "The executive card was shared.",
   WEBSITE_VISITED: "The website action was clicked.",
   VCARD_DOWNLOADED: "The vCard action was downloaded.",
   EMAIL_CLICKED: "The email action was clicked.",

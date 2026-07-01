@@ -25,7 +25,7 @@ export function ContactDetails({ executive }: ContactDetailsProps) {
     },
     {
       label: "Address",
-      value: `${executive.address.street}, ${executive.address.city}, ${executive.address.region} ${executive.address.postalCode}`,
+      value: executive.address,
       icon: MapPin
     }
   ] as const;

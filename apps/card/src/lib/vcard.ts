@@ -1,4 +1,4 @@
-import type { ExecutiveProfile } from "../data/executives";
+import type { ExecutiveProfile } from "@bidayax/config/executives";
 
 function escapeVCardValue(value: string) {
   return value
@@ -20,24 +20,20 @@ function splitName(name: string) {
 }
 
 export function createVCard(executive: ExecutiveProfile) {
-  const { family, given } = splitName(executive.name);
-  const address = executive.address;
+  const { family, given } = splitName(executive.displayName);
 
   return [
     "BEGIN:VCARD",
     "VERSION:3.0",
     `N:${family};${given};;;`,
-    `FN:${escapeVCardValue(executive.name)}`,
-    `TITLE:${escapeVCardValue(executive.title)}`,
-    `ORG:${escapeVCardValue(executive.organization)}`,
+    `FN:${escapeVCardValue(executive.displayName)}`,
+    `TITLE:${escapeVCardValue(executive.role)}`,
+    `ORG:${escapeVCardValue(executive.company)}`,
     `TEL;TYPE=WORK,VOICE:${escapeVCardValue(executive.phone)}`,
     `EMAIL;TYPE=WORK:${escapeVCardValue(executive.email)}`,
     `URL:${escapeVCardValue(executive.website)}`,
-    `ADR;TYPE=WORK:;;${escapeVCardValue(address.street)};${escapeVCardValue(
-      address.city
-    )};${escapeVCardValue(address.region)};${escapeVCardValue(
-      address.postalCode
-    )};${escapeVCardValue(address.country)}`,
+    `ADR;TYPE=WORK:;;${escapeVCardValue(executive.address)};;;;`,
+    `NOTE:${escapeVCardValue(executive.tagline)}`,
     "END:VCARD"
   ].join("\r\n");
 }
@@ -47,5 +43,5 @@ export function createVCardDataUri(executive: ExecutiveProfile) {
 }
 
 export function getVCardFilename(executive: ExecutiveProfile) {
-  return `${executive.slug}.vcf`;
+  return executive.vcardFileName;
 }

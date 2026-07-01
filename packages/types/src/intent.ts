@@ -18,6 +18,7 @@ export const intentReasonCodes = [
   "NO_EVENTS",
   "QR_SCANNED",
   "CARD_VIEWED",
+  "CARD_SHARED",
   "WEBSITE_VISITED",
   "VCARD_DOWNLOADED",
   "EMAIL_CLICKED",

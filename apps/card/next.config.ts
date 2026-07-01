@@ -12,7 +12,7 @@ const nextConfig: NextConfig = {
     ];
   },
   reactStrictMode: true,
-  transpilePackages: ["@bidayax/config"]
+  transpilePackages: ["@bidayax/config", "@bidayax/types"]
 };
 
 export default nextConfig;

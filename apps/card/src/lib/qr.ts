@@ -1,6 +1,5 @@
-import type { ExecutiveProfile } from "../data/executives";
-import { getCardQrUrl } from "./routes";
+import type { ExecutiveProfile } from "@bidayax/config/executives";
 
-export function getExecutiveQrValue(executive: Pick<ExecutiveProfile, "slug">) {
-  return getCardQrUrl(executive);
+export function getExecutiveQrValue(executive: Pick<ExecutiveProfile, "qrUrl">) {
+  return executive.qrUrl;
 }

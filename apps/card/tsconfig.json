@@ -25,6 +25,12 @@
       ],
       "@bidayax/config/tailwind": [
         "../../packages/config/tailwind/preset.ts"
+      ],
+      "@bidayax/config/executives": [
+        "../../packages/config/executives/index.ts"
+      ],
+      "@bidayax/config": [
+        "../../packages/config/src/index.ts"
       ]
     },
     "esModuleInterop": true,

@@ -4,6 +4,7 @@ export const eventTypeBaseScores = {
   qr_scan: 4,
   card_view: 5,
   website_click: 15,
+  share_click: 18,
   vcard_download: 25,
   email_click: 35,
   call_click: 45
@@ -13,6 +14,7 @@ export const eventTypeReasonCodes = {
   qr_scan: "QR_SCANNED",
   card_view: "CARD_VIEWED",
   website_click: "WEBSITE_VISITED",
+  share_click: "CARD_SHARED",
   vcard_download: "VCARD_DOWNLOADED",
   email_click: "EMAIL_CLICKED",
   call_click: "CALL_CLICKED"
@@ -22,6 +24,7 @@ export const actionDepthScores = {
   qr_scan: 0,
   card_view: 0,
   website_click: 8,
+  share_click: 10,
   vcard_download: 12,
   email_click: 16,
   call_click: 20

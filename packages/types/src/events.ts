@@ -4,7 +4,8 @@ export const interactionEventTypes = [
   "vcard_download",
   "call_click",
   "email_click",
-  "website_click"
+  "website_click",
+  "share_click"
 ] as const;
 
 export type InteractionEventType = (typeof interactionEventTypes)[number];

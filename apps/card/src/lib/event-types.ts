@@ -20,5 +20,6 @@ export const cardActionEventTypes = [
   "vcard_download",
   "call_click",
   "email_click",
-  "website_click"
+  "website_click",
+  "share_click"
 ] as const;

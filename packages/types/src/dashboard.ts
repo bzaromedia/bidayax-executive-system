@@ -47,6 +47,7 @@ export type DashboardMetricKey =
   | "call_clicks"
   | "email_clicks"
   | "website_clicks"
+  | "share_clicks"
   | "most_active_executive"
   | "highest_intent_action";
 
@@ -76,7 +77,8 @@ export type DashboardConversionSummary = {
     | "vcard_conversion"
     | "call_conversion"
     | "email_conversion"
-    | "website_conversion";
+    | "website_conversion"
+    | "share_conversion";
   readonly label: string;
   readonly numeratorEventType: InteractionEventType;
   readonly numerator: number;

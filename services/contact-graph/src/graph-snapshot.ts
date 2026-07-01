@@ -16,7 +16,8 @@ const eventSummaryPhrases = {
   vcard_download: "downloaded the vCard",
   call_click: "clicked call",
   email_click: "clicked email",
-  website_click: "visited the website"
+  website_click: "visited the website",
+  share_click: "shared the card"
 } as const;
 
 function toTimestamp(value: string) {

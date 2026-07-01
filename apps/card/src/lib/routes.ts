@@ -1,13 +1,17 @@
-import type { ExecutiveProfile } from "../data/executives";
+import {
+  executiveCardBaseUrl,
+  getExecutiveCardUrl,
+  type ExecutiveProfile
+} from "@bidayax/config/executives";
 
-export const publicBaseUrl = "https://bidayax.com";
+export const publicBaseUrl = executiveCardBaseUrl;
 
 export function getCardPath(executive: Pick<ExecutiveProfile, "slug">) {
   return `/card/${executive.slug}`;
 }
 
 export function getCardUrl(executive: Pick<ExecutiveProfile, "slug">) {
-  return `${publicBaseUrl}${getCardPath(executive)}`;
+  return getExecutiveCardUrl(executive);
 }
 
 export function getCardQrUrl(executive: Pick<ExecutiveProfile, "slug">) {

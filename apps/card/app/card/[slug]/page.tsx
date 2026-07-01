@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { executives, getExecutiveBySlug } from "@/data/executives";
-import { getCardUrl } from "@/lib/routes";
 import { CardShell } from "@/components/CardShell";
-import { ExecutiveCard } from "@/components/ExecutiveCard";
+import { ExecutiveCardProfile } from "@/components/ExecutiveCardProfile";
+import {
+  getExecutiveCardMetadata,
+  getExecutiveCardStructuredData
+} from "@/lib/seo";
 
 type CardPageProps = {
   readonly params: Promise<{
@@ -27,13 +30,7 @@ export async function generateMetadata({ params }: CardPageProps): Promise<Metad
     };
   }
 
-  return {
-    title: `${executive.name} | BidayaX LLC`,
-    description: `${executive.name}, ${executive.title} at BidayaX LLC.`,
-    alternates: {
-      canonical: getCardUrl(executive)
-    }
-  };
+  return getExecutiveCardMetadata(executive);
 }
 
 export default async function ExecutiveCardPage({ params }: CardPageProps) {
@@ -46,8 +43,15 @@ export default async function ExecutiveCardPage({ params }: CardPageProps) {
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(getExecutiveCardStructuredData(executive))
+        }}
+      />
       <CardShell>
-        <ExecutiveCard executive={executive} />
+        <ExecutiveCardProfile executive={executive} />
       </CardShell>
     </main>
   );

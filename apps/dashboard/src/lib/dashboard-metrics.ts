@@ -32,7 +32,8 @@ const actionEventTypes = [
   "call_click",
   "email_click",
   "vcard_download",
-  "website_click"
+  "website_click",
+  "share_click"
 ] as const satisfies readonly InteractionEventType[];
 
 function getEventCount(
@@ -174,6 +175,12 @@ function buildConversions(
       "Website conversion",
       "website_click",
       eventCounts
+    ),
+    buildConversion(
+      "share_conversion",
+      "Share conversion",
+      "share_click",
+      eventCounts
     )
   ];
 }
@@ -192,6 +199,7 @@ export function buildDashboardData(
   const callClicks = getEventCount(source.eventCounts, "call_click");
   const emailClicks = getEventCount(source.eventCounts, "email_click");
   const websiteClicks = getEventCount(source.eventCounts, "website_click");
+  const shareClicks = getEventCount(source.eventCounts, "share_click");
   const metrics: readonly DashboardMetric[] = [
     buildMetric(
       "total_interactions",
@@ -228,6 +236,12 @@ export function buildDashboardData(
       "Website clicks",
       formatInteger(websiteClicks),
       "Website visits from card actions"
+    ),
+    buildMetric(
+      "share_clicks",
+      "Share clicks",
+      formatInteger(shareClicks),
+      "Card share actions"
     ),
     buildMetric(
       "most_active_executive",

@@ -187,6 +187,9 @@ importers:
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../tokens
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../types
 
   packages/design-system:
     dependencies:

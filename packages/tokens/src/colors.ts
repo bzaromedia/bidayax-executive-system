@@ -2,11 +2,13 @@ type ColorScale = Record<string, string>;
 
 export const primitiveColors = {
   black: {
+    brand: "#111111",
     950: "#030405",
     900: "#07090B",
     850: "#0B0E11"
   },
   charcoal: {
+    brand: "#1A1A1A",
     900: "#111418",
     800: "#181D22",
     700: "#222931",
@@ -25,10 +27,16 @@ export const primitiveColors = {
     300: "#D7DBDF"
   },
   gold: {
+    brand: "#D4AF37",
     700: "#8C6A2F",
     600: "#B78A3B",
     500: "#D6B25E",
     300: "#F1DA96"
+  },
+  neutral: {
+    softWhite: "#F5F5F5",
+    pureWhite: "#FFFFFF",
+    mutedGray: "#8A8A8A"
   },
   bronze: {
     700: "#775334",
@@ -56,36 +64,36 @@ export const primitiveColors = {
 
 export const semanticColors = {
   surface: {
-    canvas: primitiveColors.black[950],
+    canvas: primitiveColors.black.brand,
     base: primitiveColors.black[900],
-    raised: primitiveColors.charcoal[900],
+    raised: primitiveColors.charcoal.brand,
     panel: primitiveColors.gunmetal[900],
     inset: primitiveColors.blueBlack[950],
-    inverse: primitiveColors.pearl[50]
+    inverse: primitiveColors.neutral.pureWhite
   },
   material: {
     brushedTitanium: primitiveColors.titanium[700],
     titaniumHighlight: primitiveColors.titanium[300],
     gunmetal: primitiveColors.gunmetal[800],
     champagneGold: primitiveColors.gold[300],
-    softGold: primitiveColors.gold[500],
+    softGold: primitiveColors.gold.brand,
     mutedBronze: primitiveColors.bronze[500]
   },
   content: {
-    primary: primitiveColors.pearl[50],
-    secondary: primitiveColors.titanium[300],
-    muted: primitiveColors.titanium[500],
-    inverse: primitiveColors.black[950],
-    accent: primitiveColors.gold[300]
+    primary: primitiveColors.neutral.softWhite,
+    secondary: primitiveColors.neutral.pureWhite,
+    muted: primitiveColors.neutral.mutedGray,
+    inverse: primitiveColors.black.brand,
+    accent: primitiveColors.gold.brand
   },
   border: {
     subtle: "rgba(250, 248, 242, 0.08)",
     muted: "rgba(250, 248, 242, 0.14)",
     strong: "rgba(241, 218, 150, 0.42)",
-    focus: primitiveColors.gold[300]
+    focus: primitiveColors.gold.brand
   },
   action: {
-    primary: primitiveColors.gold[500],
+    primary: primitiveColors.gold.brand,
     primaryHover: primitiveColors.gold[300],
     secondary: primitiveColors.gunmetal[700],
     secondaryHover: primitiveColors.gunmetal[600],

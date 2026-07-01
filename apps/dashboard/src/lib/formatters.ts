@@ -12,7 +12,8 @@ export const eventTypeLabels = {
   vcard_download: "vCard downloads",
   call_click: "Call clicks",
   email_click: "Email clicks",
-  website_click: "Website clicks"
+  website_click: "Website clicks",
+  share_click: "Share clicks"
 } as const satisfies Record<InteractionEventType, string>;
 
 export function formatInteger(value: number) {

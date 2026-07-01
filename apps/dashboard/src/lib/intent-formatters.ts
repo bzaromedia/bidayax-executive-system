@@ -12,6 +12,7 @@ export const intentReasonLabels = {
   NO_EVENTS: "No events",
   QR_SCANNED: "QR scanned",
   CARD_VIEWED: "Card viewed",
+  CARD_SHARED: "Card shared",
   WEBSITE_VISITED: "Website visited",
   VCARD_DOWNLOADED: "vCard downloaded",
   EMAIL_CLICKED: "Email clicked",
