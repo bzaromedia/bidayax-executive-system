@@ -1,8 +1,8 @@
-# BidayaX Card App
+# The Executive Card App
 
-Phase 3 creates the first visible product surface: the executive digital business card vertical slice.
+The card app is the public executive identity surface for The Executive Card. It presents production executive profiles, QR engagement, vCard export, contact actions, share actions, SEO/OpenGraph metadata, and non-blocking interaction capture.
 
-Phase 4 adds fail-open interaction event capture behind the card.
+The app is one part of the Executive Identity Intelligence Platform. It is not the whole platform and should not be positioned as merely a digital business card.
 
 ## Routes
 
@@ -43,11 +43,12 @@ Emitted events:
 - `call_click` when Call is clicked.
 - `email_click` when Email is clicked.
 - `website_click` when Website is clicked.
+- `share_click` when Share is clicked.
 
 If the event API or database is unavailable, the card still works.
 
 ## Phase Boundaries
 
-This app contains static executive card data, QR code display, vCard export, contact actions, and the Phase 4 event ingestion route only.
+This app contains structured executive profile data, QR display, QR image route, vCard export, contact actions, share actions, SEO/OpenGraph metadata, and the Phase 4 event ingestion route.
 
 It intentionally does not include dashboard analytics, receptionist automation, authentication, admin workflows, payment systems, CRM functionality, intent scoring, contact records, lead records, or recursive improvement automation.

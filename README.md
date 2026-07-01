@@ -1,6 +1,6 @@
 # The Executive Card
 
-The Executive Card is a digital executive identity and interaction platform owned by BidayaX LLC.
+The Executive Card is an Executive Identity Intelligence Platform owned by BidayaX LLC.
 
 Production URL: https://theexecutivecard.online
 
@@ -8,7 +8,7 @@ Production URL: https://theexecutivecard.online
 
 This repository has passed Recovery Phase A and Recovery Phase B. The v1.0 release scope contains the implemented, tested, and buildable foundation for:
 
-- digital executive card app;
+- executive identity card app;
 - interaction event ledger;
 - internal interaction dashboard;
 - intent scoring;

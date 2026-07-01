@@ -5,7 +5,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "The Executive Card",
-  description: "Luxury executive digital business cards by BidayaX LLC."
+  description:
+    "Executive identity intelligence for digital profiles, QR engagement, and structured interaction capture by BidayaX LLC."
 };
 
 export default function RootLayout({ children }: { readonly children: ReactNode }) {
