@@ -6,6 +6,7 @@ FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY apps/card/package.json apps/card/package.json
 COPY packages packages
+COPY services/telemetry services/telemetry
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
@@ -15,6 +16,6 @@ RUN pnpm --filter @bidayax/card build
 FROM base AS runner
 ENV NODE_ENV=production
 COPY --from=build /app /app
+COPY downloads downloads
 EXPOSE 3000
 CMD ["pnpm", "--filter", "@bidayax/card", "start"]
-

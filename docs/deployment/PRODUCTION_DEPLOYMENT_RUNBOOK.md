@@ -120,34 +120,25 @@ ALLOW_PRODUCTION_CALLS=false
 
 The owner supplied the real `POSTGRES_PASSWORD` and `BIDAYAX_IP_HASH_SECRET` out-of-band. Do not commit them.
 
-## Docker Compose Override
+## Hostinger Docker Compose File
 
-Create this file on the VPS:
+Use the repository Hostinger Compose file:
 
 ```text
-/opt/the-executive-card/repo/docker-compose.hostinger.override.yml
+/opt/the-executive-card/repo/infrastructure/docker/docker-compose.hostinger.yml
 ```
 
-Content:
+This file is intentionally standalone. Do not combine it with `docker-compose.production.yml`, because the base production file publishes `3000:3000` and `3001:3001`. The Hostinger file binds only project-specific loopback ports:
 
-```yaml
-services:
-  card:
-    ports:
-      - "127.0.0.1:3100:3000"
+- `127.0.0.1:3100:3000` for the card app.
+- `127.0.0.1:3101:3001` for the dashboard.
 
-  dashboard:
-    ports:
-      - "127.0.0.1:3101:3001"
-```
-
-Use it with the repository compose file:
+Validate it with:
 
 ```bash
 docker compose \
   -p the-executive-card \
-  -f infrastructure/docker/docker-compose.production.yml \
-  -f docker-compose.hostinger.override.yml \
+  -f infrastructure/docker/docker-compose.hostinger.yml \
   config
 ```
 
@@ -228,20 +219,17 @@ pnpm verify:production
 
 docker compose \
   -p the-executive-card \
-  -f infrastructure/docker/docker-compose.production.yml \
-  -f docker-compose.hostinger.override.yml \
+  -f infrastructure/docker/docker-compose.hostinger.yml \
   build
 
 docker compose \
   -p the-executive-card \
-  -f infrastructure/docker/docker-compose.production.yml \
-  -f docker-compose.hostinger.override.yml \
+  -f infrastructure/docker/docker-compose.hostinger.yml \
   up -d
 
 docker compose \
   -p the-executive-card \
-  -f infrastructure/docker/docker-compose.production.yml \
-  -f docker-compose.hostinger.override.yml \
+  -f infrastructure/docker/docker-compose.hostinger.yml \
   ps
 ```
 

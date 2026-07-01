@@ -80,10 +80,10 @@ DNS and email provider: Namecheap
 - [ ] Use Docker Compose project name `the-executive-card`.
 - [ ] Use project-specific loopback ports `127.0.0.1:3100:3000` and `127.0.0.1:3101:3001`.
 - [ ] Confirm no other process uses ports `3100` or `3101`.
-- [ ] Confirm `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.production.yml -f docker-compose.hostinger.override.yml config` succeeds.
-- [ ] Build containers with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.production.yml -f docker-compose.hostinger.override.yml build`.
-- [ ] Start Postgres, card, and dashboard with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.production.yml -f docker-compose.hostinger.override.yml up -d`.
-- [ ] Confirm containers are healthy/running with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.production.yml -f docker-compose.hostinger.override.yml ps`.
+- [ ] Confirm `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml config` succeeds.
+- [ ] Build containers with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml build`.
+- [ ] Start Postgres, card, and dashboard with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml up -d`.
+- [ ] Confirm containers are healthy/running with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml ps`.
 - [ ] Run migration verification with `pnpm db:migrations:verify`.
 - [ ] Run database connection check with production `DATABASE_URL`.
 - [ ] Run service smoke checks that require `DATABASE_URL` after migrations are applied.
