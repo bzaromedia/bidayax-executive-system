@@ -6,15 +6,15 @@ Production URL: https://theexecutivecard.online
 
 ## Current Scope
 
-This repository has passed Recovery Phase A and is in Recovery Phase B: Enterprise Completion Gate. The v1.0 release scope contains the implemented, tested, and buildable foundation for:
+This repository has passed Recovery Phase A and Recovery Phase B. The v1.0 release scope contains the implemented, tested, and buildable foundation for:
 
 - digital executive card app;
 - interaction event ledger;
 - internal interaction dashboard;
 - intent scoring;
 - executive contact graph;
-- receptionist simulation foundation;
-- telephony preparation and voice safety gates;
+- receptionist workflow foundation;
+- safety-gated future telephony integration and voice safety gates;
 - telemetry and observability foundation;
 - governed improvement-engine proposal workflow;
 - data-trust and policy-enforcement foundations;
@@ -22,11 +22,12 @@ This repository has passed Recovery Phase A and is in Recovery Phase B: Enterpri
 
 The repository does not currently implement the later enterprise bank, IP, verification-layer, commercialization, certification, or full continuous-reverification systems. Those phases are deferred to v1.1+ unless future source, tests, migrations, API wiring, docs, and release verification are added.
 
+The Executive Card v1.0 includes only implemented, tested, production-buildable capabilities. Deferred enterprise trust layers are not active product capabilities in v1.0.
+
 ## Applications
 
 - `apps/card`: public The Executive Card experience.
-- `apps/dashboard`: internal dashboard for implemented ledger, graph, telephony, telemetry, and improvement-engine views.
-- `apps/receptionist-console`: placeholder only.
+- `apps/dashboard`: internal dashboard for implemented ledger, graph, safety-gated telephony readiness, telemetry, and human-approved recommendation views.
 
 ## Packages
 
@@ -35,7 +36,6 @@ The repository does not currently implement the later enterprise bank, IP, verif
 - `packages/design-system`: Storybook and design-system documentation.
 - `packages/types`: shared types for implemented phases.
 - `packages/config`: shared runtime configuration helpers.
-- `packages/sdk`: placeholder only.
 
 ## Services
 
@@ -47,7 +47,7 @@ The repository does not currently implement the later enterprise bank, IP, verif
 - `services/improvement-engine`
 - `services/policy-enforcement`
 
-Placeholder or blocked service directories are documented in `docs/PHASE_STATUS.md`.
+Deferred service ideas are documented privately in `docs/roadmap/DEFERRED_RELEASE_SCOPE.md`.
 
 ## Setup
 
@@ -72,6 +72,7 @@ pnpm verify:no-missing-workspaces
 pnpm verify:public-claims
 pnpm verify:design-governance
 pnpm verify:release-scope
+pnpm verify:no-placeholders
 pnpm telemetry:verify
 pnpm improvement:verify
 ```
@@ -81,7 +82,7 @@ Database-backed scripts require `DATABASE_URL`.
 ## Safety Notes
 
 - Production voice calls are disabled by default.
-- Mock telephony remains the default provider unless explicitly configured.
+- Telephony is a safety-gated future integration unless separately configured and approved for production.
 - Human approval remains required for outbound/production voice paths.
 - Telemetry helpers redact secret-like keys and mask phone numbers.
 - Deferred Phase 14-24 enterprise layers must not be treated as implemented.

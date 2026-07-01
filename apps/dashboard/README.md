@@ -1,4 +1,4 @@
-# BidayaX Dashboard App
+# The Executive Card Dashboard App
 
 The dashboard is the internal intelligence surface for card interaction events, intent signals, and anonymous contact graph summaries.
 
@@ -84,12 +84,12 @@ The dashboard must present these rows as anonymous relationship signals, not con
 When the receptionist foundation tables exist, the dashboard also displays:
 
 - receptionist foundation summary.
-- simulated interaction feed.
+- workflow interaction feed.
 - receptionist task list.
 - language breakdown.
 - intent classification preview.
 
-The dashboard must present these rows as simulated foundation records, not live calls, sent emails, booked meetings, or production receptionist actions.
+The dashboard must present these rows as workflow foundation records, not live calls, sent emails, booked meetings, or production receptionist actions.
 
 ## Phase 9 Telephony Readiness
 
@@ -99,7 +99,7 @@ When the telephony preparation tables exist, the dashboard also displays:
 - call lifecycle feed.
 - voice session status.
 - outbound call approval list.
-- mock provider status.
+- safety-gated future integration status.
 - safety gate status.
 
 The dashboard must present these rows as preparation data, not production calling activity. Phone numbers should be masked.
@@ -145,7 +145,7 @@ Telemetry API routes:
 - `POST /api/telemetry/metrics`
 - `GET /api/telemetry/summary`
 
-The dashboard must show real telemetry only. If no telemetry exists, it shows an empty state instead of fake uptime, fake metrics, or invented coverage.
+The dashboard must show real telemetry only. If no telemetry exists, it shows an empty state instead of invented uptime, invented metrics, or invented coverage.
 
 ## Phase 13 Improvement Engine
 
@@ -176,4 +176,4 @@ The dashboard must present candidates as proposals only. It must not claim autom
 
 ## Phase Boundaries
 
-This app must not include CRM functionality, autonomous receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, fake analytics, unrestricted live calling, or recursive improvement automation.
+This app must not include CRM functionality, autonomous receptionist workflows, lead records, contact enrichment, scheduling, user accounts, complex permissions, invented analytics, unrestricted live calling, or recursive improvement automation.

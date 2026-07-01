@@ -9,6 +9,8 @@ Release target: v1.0 enterprise readiness gate
 
 The v1.0 release scope includes only systems that are present in the source tree, covered by repository checks, and buildable through the root commands.
 
+The Executive Card v1.0 includes only implemented, tested, production-buildable capabilities. Deferred enterprise trust layers are not active product capabilities in v1.0.
+
 - Monorepo foundation: `package.json`, `pnpm-workspace.yaml`, `turbo.json`, shared TypeScript config, workspace package graph.
 - Design system: `packages/tokens`, `packages/ui`, `packages/design-system`, Storybook configuration, accessibility and governance documentation.
 - Digital executive card: `apps/card`.
@@ -16,8 +18,8 @@ The v1.0 release scope includes only systems that are present in the source tree
 - Executive interaction dashboard: `apps/dashboard`.
 - Executive intent scoring: `services/intent-scoring` and migration `0002`.
 - Executive contact graph: `services/contact-graph` and migration `0003`.
-- Polyglot receptionist foundation: `services/receptionist-agent` and migration `0004`, limited to deterministic simulation, intent classification, task generation, and escalation recommendations.
-- Live voice preparation: `services/telephony` and migration `0005`, limited to provider abstraction, mock provider behavior, inbound normalization, outbound request preparation, and approval gating.
+- Polyglot receptionist workflow foundation: `services/receptionist-agent` and migration `0004`, limited to deterministic workflow classification, task generation, and escalation recommendations.
+- Safety-gated future telephony integration: `services/telephony` and migration `0005`, limited to provider-boundary readiness, inbound normalization, outbound request preparation, and approval gating.
 - Voice runtime safety: `services/telephony` and migration `0006`, limited to readiness checks, safety gates, blocked-by-default production voice, and test-mode defaults.
 - Observability and telemetry foundation: `services/telemetry`, telemetry API routes, observability dashboard surfaces, and migration `0007`.
 - Evolutionary improvement engine foundation: `services/improvement-engine`, dashboard routes, and migration `0008`, limited to evidence-based opportunity/candidate workflows with human approval.
@@ -40,14 +42,15 @@ The following systems are not active production capabilities in v1.0 unless a la
 - Technical Data Room + Commercialization artifacts.
 - Certification Readiness control mappings and formal evidence packages.
 - Public marketing website under `apps/marketing`.
+- Future workspace directories listed in `docs/roadmap/DEFERRED_RELEASE_SCOPE.md`.
 
 ## Public Claim Rules
 
 Public docs, dashboard copy, README content, and future marketing pages must follow these rules:
 
-- Receptionist capability in v1.0 must be described as simulation, foundation, or preparation.
-- Live voice and telephony must be described as safety-gated preparation with mock defaults, not active production calling.
-- The improvement engine must be described as human-approved and evidence-based, not autonomous production modification.
+- Receptionist capability in v1.0 must be described as workflow foundation unless live production receptionist capability is fully implemented.
+- Live voice and telephony must be described as a safety-gated future integration unless real provider production setup exists.
+- The improvement engine must be described as a human-approved recommendation foundation unless implementation/deployment automation exists.
 - Data trust and policy enforcement must be described as foundations unless persistence, auditability, and API enforcement are implemented in a future release.
 - Verification Layer, IP Trust Fabric, Bank Trust Layer, Specialist Agent Collective, certification readiness, and commercialization assets must be described as deferred or future roadmap items.
 - The repository must not claim compliance certification.

@@ -24,7 +24,7 @@ The v1.0 scope has security foundations suitable for a controlled release candid
 | Health/readiness routes | `apps/dashboard/app/api/system` | Present |
 | Production voice disabled by default | `.env.example`, `.env.production.example`, `services/telephony/src/live-voice-safety-gates.ts` | Present |
 | Outbound calls disabled by default | `.env.example`, `.env.production.example`, `services/telephony/src/outbound-call-request.ts` | Present |
-| Mock provider labeling | `services/telephony/README.md`, dashboard telephony components | Present |
+| Safety-gated future telephony labeling | `services/telephony/README.md`, dashboard telephony components | Present |
 | Public claim guard | `scripts/verify-public-claims.ts` | Present |
 | Tracked generated artifact guard | `scripts/verify-release-scope.ts` | Present |
 
@@ -43,6 +43,7 @@ Before deployment, set production-specific values outside Git:
 - The v1.0 release does not include full RBAC, ABAC, tenant administration, or enterprise SSO.
 - The v1.0 release does not enable autonomous production agents.
 - The v1.0 release does not enable unrestricted live voice, outbound calls, email automation, or calendar booking.
+- Telephony is described as a safety-gated future integration unless real provider production setup exists.
 
 ## Warnings
 

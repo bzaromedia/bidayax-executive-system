@@ -253,7 +253,7 @@ export async function getTelephonyDashboardData(): Promise<TelephonyDashboardDat
   if (!database) {
     return emptyTelephonyData(
       "not_configured",
-      "DATABASE_URL is not configured. Telephony readiness still defaults to mock, outbound disabled, voice agent disabled, and human approval required."
+      "DATABASE_URL is not configured. Telephony remains safety-gated with outbound calls disabled, voice agent disabled, and human approval required."
     );
   }
 

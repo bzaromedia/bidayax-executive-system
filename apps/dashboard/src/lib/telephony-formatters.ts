@@ -8,8 +8,8 @@ import type {
 } from "@bidayax/types";
 
 export const telephonyProviderLabels = {
-  mock: "Mock telephony provider",
-  twilio: "Twilio placeholder"
+  mock: "Safety-gated future integration",
+  twilio: "Twilio integration"
 } as const satisfies Record<TelephonyProviderName, string>;
 
 export const telephonyCallStatusLabels = {
@@ -52,7 +52,7 @@ export const voiceSessionStatusLabels = {
 export const outboundApprovalLabels = {
   approved: "Approved",
   denied: "Denied",
-  not_required_for_mock: "Not required for mock",
+  not_required_for_mock: "Provider approval not required",
   pending: "Pending"
 } as const satisfies Record<OutboundCallApprovalStatus, string>;
 

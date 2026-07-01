@@ -13,7 +13,7 @@ export function ProductionHardeningWarnings({
 }: ProductionHardeningWarningsProps) {
   const warnings = [
     liveProviderData.summary.providerMode === "mock"
-      ? "Mock telephony provider is active."
+      ? "Telephony is in safety-gated future integration mode."
       : null,
     databaseStatus !== "ready"
       ? "Database readiness is degraded or not configured."
@@ -64,4 +64,3 @@ export function ProductionHardeningWarnings({
     </Card>
   );
 }
-

@@ -13,7 +13,7 @@ export function LineageArchivePanel({ lineage }: LineageArchivePanelProps) {
       <CardHeader>
         <CardTitle>Lineage archive</CardTitle>
         <CardDescription>
-          Candidate lineage with rollback requirements and no fake outcome metrics.
+          Candidate lineage with rollback requirements and recorded outcome state.
         </CardDescription>
       </CardHeader>
       <CardContent>

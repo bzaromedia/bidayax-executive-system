@@ -14,6 +14,8 @@ The source-of-truth repository is Git-operable, installable, lintable, typecheck
 
 The v1.0 release scope is not the full 24-phase enterprise roadmap. It is a production-ready foundation for The Executive Card as an Executive Identity Intelligence System covering the digital executive card, QR interaction ledger, dashboarding, intent scoring, contact graph, receptionist simulation foundation, telephony preparation and safety gates, telemetry, improvement-engine foundation, design-system supply chain, deployment artifacts, and recovery stabilization.
 
+The Executive Card v1.0 includes only implemented, tested, production-buildable capabilities. Deferred enterprise trust layers are not active product capabilities in v1.0.
+
 Phases 14, 16, 17, 18, 20, 21, 22, and 23 are deferred. Phases 15 and 19 are partial foundations only. Public materials must not claim these deferred systems as active v1.0 production capabilities.
 
 ## Release Decision
@@ -69,7 +71,8 @@ This decision has no blocking defects for the implemented v1.0 source release. T
 | `pnpm verify:public-claims` | Passed | 250 public-facing docs/UI/source files checked for disallowed claims. |
 | `pnpm verify:design-governance` | Passed | 276 source/design files checked; required token/governance/accessibility artifacts present. |
 | `pnpm verify:release-scope` | Passed | Phase matrix, docs, tracked generated artifacts, hardcoded secret patterns, and migration order checked. |
-| `pnpm verify:production` | Passed with warnings | Production readiness status `ready`; warnings are missing local `DATABASE_URL`, mock telephony, and production calls disabled. |
+| `pnpm verify:production` | Passed with warnings | Production readiness status `ready`; warnings are missing local `DATABASE_URL`, safety-gated future telephony, and production calls disabled. |
+| `pnpm verify:no-placeholders` | Passed | 115 active release docs/runtime UI files checked; prohibited hold-file, mock-data, invented-claim, and deferred-active claim patterns were not found. |
 
 ## Blockers
 

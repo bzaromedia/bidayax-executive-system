@@ -47,6 +47,7 @@ export const liveVoiceReasonLabels = {
 } as const satisfies Record<LiveVoiceSafetyReasonCode, string>;
 
 export function formatProviderMode(providerMode: "mock" | "twilio") {
-  return providerMode === "twilio" ? "Twilio adapter" : "Mock mode";
+  return providerMode === "twilio"
+    ? "Twilio integration"
+    : "Safety-gated future integration";
 }
-

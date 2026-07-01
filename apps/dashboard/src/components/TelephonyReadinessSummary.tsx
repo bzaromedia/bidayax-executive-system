@@ -29,9 +29,9 @@ export function TelephonyReadinessSummary({
     <Card>
       <CardHeader>
         <Badge variant="accent">Telephony</Badge>
-        <CardTitle>Telephony readiness summary</CardTitle>
+        <CardTitle>Telephony safety readiness</CardTitle>
         <CardDescription>
-          Prepared for live integration. Mock provider, disabled outbound calls,
+          Safety-gated future integration status. Disabled outbound calls,
           disabled voice agent, and human approval are the safe defaults.
         </CardDescription>
       </CardHeader>

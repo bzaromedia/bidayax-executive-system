@@ -28,7 +28,9 @@ if (!databaseUrl) {
 }
 
 if (telephonyProvider === "mock") {
-  envWarnings.push("Telephony provider is mock. Live provider integration remains inactive.");
+  envWarnings.push(
+    "Telephony is a safety-gated future integration. Live provider integration remains inactive."
+  );
 }
 
 if (!allowProductionCalls) {

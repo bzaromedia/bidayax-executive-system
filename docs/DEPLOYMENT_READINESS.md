@@ -41,6 +41,7 @@ pnpm verify:no-missing-workspaces
 pnpm verify:public-claims
 pnpm verify:design-governance
 pnpm verify:release-scope
+pnpm verify:no-placeholders
 ```
 
 ## Environment Variables
@@ -55,7 +56,7 @@ Required before production deployment:
 - `CARD_BASE_URL=https://theexecutivecard.online`
 - `DASHBOARD_BASE_URL` set to the approved dashboard host
 
-Telephony defaults must remain safe unless a separate production approval process changes them:
+Telephony is a safety-gated future integration unless real provider production setup exists. Current safety defaults must remain:
 
 - `TELEPHONY_PROVIDER=mock`
 - `VOICE_AGENT_ENABLED=false`

@@ -69,6 +69,10 @@ const secretPatterns = [
 ];
 
 for (const file of trackedFiles) {
+  if (!existsSync(file)) {
+    continue;
+  }
+
   if (file === "pnpm-lock.yaml") {
     continue;
   }

@@ -14,14 +14,14 @@ export function TelephonyEmptyState({
     <Card>
       <CardHeader>
         <Badge variant={status === "ready" ? "neutral" : "accent"}>Telephony</Badge>
-        <CardTitle>Telephony preparation pending</CardTitle>
+        <CardTitle>Safety-gated future telephony integration</CardTitle>
         <CardDescription>{statusMessage}</CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-sm leading-relaxed text-content-muted">
-          Phase 9 prepares live voice integration with mock provider defaults.
-          Outbound calling and voice agents are disabled unless future safety gates
-          explicitly allow them.
+          Telephony remains a safety-gated future integration. Outbound calling
+          and voice agents are disabled unless a future production approval
+          process explicitly enables them.
         </p>
       </CardContent>
     </Card>

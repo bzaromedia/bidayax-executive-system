@@ -18,8 +18,8 @@ export function ImprovementEmptyState({
       </CardHeader>
       <CardContent>
         <p className="text-sm leading-relaxed text-content-secondary">
-          Current state: {status}. Phase 13 will not create fake opportunities,
-          fake benchmarks, automatic implementation, or production deployment.
+          Current state: {status}. Phase 13 is a human-approved recommendation
+          foundation and does not implement or deploy changes automatically.
         </p>
       </CardContent>
     </Card>

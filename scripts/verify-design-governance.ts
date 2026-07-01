@@ -30,6 +30,10 @@ const trackedFiles = execFileSync("git", ["ls-files"], { encoding: "utf8" })
   );
 
 for (const file of trackedFiles) {
+  if (!existsSync(file)) {
+    continue;
+  }
+
   const content = readFileSync(file, "utf8");
   const matches = content.match(/#[0-9A-Fa-f]{3,8}\b/g);
 
