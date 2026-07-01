@@ -1,0 +1,25 @@
+{
+  "profile": {
+    "id": "exec-sean-hall",
+    "slug": "sean-hall",
+    "displayName": "Sean Hall",
+    "role": "Executive Management",
+    "company": "BidayaX LLC",
+    "address": "8 The Green Ste A, Dover, DE 19901",
+    "phone": "+1 (302) 330-5547",
+    "email": "contact@bidayax.com",
+    "website": "https://theexecutivecard.online",
+    "tagline": "Executive management for trusted relationship intelligence.",
+    "bio": "Sean Hall supports executive management for BidayaX LLC and The Executive Card.",
+    "qrUrl": "https://theexecutivecard.online/card/sean-hall?entry=qr",
+    "vcardFileName": "sean-hall.vcf",
+    "theme": "executive-black-gold"
+  },
+  "cardUrl": "https://theexecutivecard.online/card/sean-hall",
+  "packageType": "per-executive-card",
+  "safety": {
+    "containsSecrets": false,
+    "containsDatabaseCredentials": false,
+    "sharedMutableProfile": false
+  }
+}

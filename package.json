@@ -7,6 +7,8 @@
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "build": "pnpm -r --if-present build",
+    "cards:downloads": "node --experimental-strip-types scripts/generate-executive-card-downloads.ts",
+    "cards:downloads:verify": "node --experimental-strip-types scripts/verify-executive-card-downloads.ts",
     "dev": "turbo run dev --parallel",
     "db:check": "node --experimental-strip-types scripts/check-db-connection.ts",
     "db:migrations:verify": "node --experimental-strip-types scripts/verify-migrations.ts",

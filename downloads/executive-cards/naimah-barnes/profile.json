@@ -1,0 +1,25 @@
+{
+  "profile": {
+    "id": "exec-naimah-barnes",
+    "slug": "naimah-barnes",
+    "displayName": "Naimah J. Barnes",
+    "role": "CEO",
+    "company": "BidayaX LLC",
+    "address": "8 The Green Ste A, Dover, DE 19901",
+    "phone": "+1 (302) 330-5547",
+    "email": "contact@bidayax.com",
+    "website": "https://theexecutivecard.online",
+    "tagline": "Executive leadership for identity-driven business relationships.",
+    "bio": "Naimah J. Barnes leads BidayaX LLC and the business direction for The Executive Card.",
+    "qrUrl": "https://theexecutivecard.online/card/naimah-barnes?entry=qr",
+    "vcardFileName": "naimah-barnes.vcf",
+    "theme": "executive-black-gold"
+  },
+  "cardUrl": "https://theexecutivecard.online/card/naimah-barnes",
+  "packageType": "per-executive-card",
+  "safety": {
+    "containsSecrets": false,
+    "containsDatabaseCredentials": false,
+    "sharedMutableProfile": false
+  }
+}

@@ -1,0 +1,12 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Hall;Sean;;;
+FN:Sean Hall
+TITLE:Executive Management
+ORG:BidayaX LLC
+TEL;TYPE=WORK,VOICE:+1 (302) 330-5547
+EMAIL;TYPE=WORK:contact@bidayax.com
+URL:https://theexecutivecard.online
+ADR;TYPE=WORK:;;8 The Green Ste A\, Dover\, DE 19901;;;;
+NOTE:Executive management for trusted relationship intelligence.
+END:VCARD

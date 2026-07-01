@@ -1,0 +1,25 @@
+{
+  "profile": {
+    "id": "exec-ad-garner",
+    "slug": "ad-garner",
+    "displayName": "A.D Garner",
+    "role": "COO / CTO / Founder",
+    "company": "BidayaX LLC",
+    "address": "8 The Green Ste A, Dover, DE 19901",
+    "phone": "+1 (302) 330-5547",
+    "email": "contact@bidayax.com",
+    "website": "https://theexecutivecard.online",
+    "tagline": "Executive identity, operations, and technology leadership.",
+    "bio": "A.D Garner leads operational and technology execution for BidayaX LLC through The Executive Card.",
+    "qrUrl": "https://theexecutivecard.online/card/ad-garner?entry=qr",
+    "vcardFileName": "ad-garner.vcf",
+    "theme": "executive-black-gold"
+  },
+  "cardUrl": "https://theexecutivecard.online/card/ad-garner",
+  "packageType": "per-executive-card",
+  "safety": {
+    "containsSecrets": false,
+    "containsDatabaseCredentials": false,
+    "sharedMutableProfile": false
+  }
+}
