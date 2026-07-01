@@ -6,7 +6,7 @@ Production URL: https://theexecutivecard.online
 
 ## Current Scope
 
-This repository is in Recovery Phase 1: missing trust package rebuild. It currently contains the implemented foundation for:
+This repository has passed Recovery Phase A and is in Recovery Phase B: Enterprise Completion Gate. The v1.0 release scope contains the implemented, tested, and buildable foundation for:
 
 - digital executive card app;
 - interaction event ledger;
@@ -17,10 +17,10 @@ This repository is in Recovery Phase 1: missing trust package rebuild. It curren
 - telephony preparation and voice safety gates;
 - telemetry and observability foundation;
 - governed improvement-engine proposal workflow;
-- rebuilt data-trust and policy-enforcement foundations;
+- data-trust and policy-enforcement foundations;
 - design tokens, UI primitives, and Storybook design-system assets.
 
-The repository does not currently implement the later enterprise bank, IP, commercialization, certification, or full continuous-reverification systems. Those phases remain out of scope until the recovery phases restore the missing trust foundations deliberately and keep the build graph clean.
+The repository does not currently implement the later enterprise bank, IP, verification-layer, commercialization, certification, or full continuous-reverification systems. Those phases are deferred to v1.1+ unless future source, tests, migrations, API wiring, docs, and release verification are added.
 
 ## Applications
 
@@ -68,6 +68,10 @@ Additional implemented checks:
 
 ```powershell
 pnpm verify:production
+pnpm verify:no-missing-workspaces
+pnpm verify:public-claims
+pnpm verify:design-governance
+pnpm verify:release-scope
 pnpm telemetry:verify
 pnpm improvement:verify
 ```
@@ -80,12 +84,14 @@ Database-backed scripts require `DATABASE_URL`.
 - Mock telephony remains the default provider unless explicitly configured.
 - Human approval remains required for outbound/production voice paths.
 - Telemetry helpers redact secret-like keys and mask phone numbers.
-- Missing Phase 14-24 enterprise layers must not be treated as implemented.
-- Recovery Phase 1 policy-enforcement code is deterministic foundation code, not a completed enterprise trust fabric.
+- Deferred Phase 14-24 enterprise layers must not be treated as implemented.
+- Policy-enforcement code is deterministic foundation code, not a completed enterprise trust fabric.
 
 ## Phase Status
 
-See `docs/PHASE_STATUS.md` for the current implemented, partial, missing, and blocked phase matrix.
+See `docs/PHASE_STATUS.md` for the current implemented, partial, deferred, blocked, and removed-from-release-scope phase matrix.
+
+See `docs/RELEASE_SCOPE.md` for the v1.0 production release boundary.
 
 ## Repository Rules
 
