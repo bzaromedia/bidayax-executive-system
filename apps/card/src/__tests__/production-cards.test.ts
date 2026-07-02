@@ -309,6 +309,97 @@ describe("production executive cards", () => {
     expect(calendarBooking).not.toContain("mailto:");
   });
 
+  it("keeps bottom actions fixed, safe-area aware, and focused", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+    const footer = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveFooterActions.tsx"),
+      "utf8"
+    );
+
+    expect(css).toContain(".executive-footer-actions");
+    expect(css).toContain("position: fixed;");
+    expect(css).toContain("env(safe-area-inset-bottom)");
+    expect(css).toContain("min-height: 2.75rem;");
+    expect(footer).toContain("QR");
+    expect(footer).toContain("Download");
+    expect(footer).toContain("Share");
+  });
+
+  it("keeps the receptionist form modal-gated by default", () => {
+    const receptionistCard = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
+      "utf8"
+    );
+    const launcherIndex = receptionistCard.indexOf("Open Receptionist");
+    const conditionalIndex = receptionistCard.indexOf("{isOpen ?");
+    const formIndex = receptionistCard.indexOf("<ReceptionistRequestForm");
+
+    expect(receptionistCard).toContain("setIsOpen(true)");
+    expect(launcherIndex).toBeGreaterThan(-1);
+    expect(conditionalIndex).toBeGreaterThan(launcherIndex);
+    expect(formIndex).toBeGreaterThan(conditionalIndex);
+  });
+
+  it("uses compact receptionist sheet and form layout classes", () => {
+    const receptionistCard = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
+      "utf8"
+    );
+    const receptionistForm = readFileSync(
+      resolve(process.cwd(), "src/components/ReceptionistRequestForm.tsx"),
+      "utf8"
+    );
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(receptionistCard).toContain("executive-receptionist-sheet");
+    expect(receptionistForm).toContain("receptionist-form-compact");
+    expect(css).toContain(".executive-receptionist-sheet");
+    expect(css).toContain(".receptionist-form");
+    expect(css).toContain("max-height: calc(");
+  });
+
+  it("hides visible scrollbars while preserving overflow when needed", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("scrollbar-width: none;");
+    expect(css).toContain("-ms-overflow-style: none;");
+    expect(css).toContain("*::-webkit-scrollbar");
+    expect(css).toContain("overflow: auto;");
+  });
+
+  it("applies horizontal drift guards across card surfaces", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("max-width: 100%;");
+    expect(css).toContain("overflow-x: hidden;");
+    expect(css).toContain("min-width: 0;");
+    expect(css).toContain("overflow-wrap: anywhere;");
+    expect(css).toContain("width: min(40rem, calc(100vw - (var(--bx-space-4) * 2)))");
+  });
+
+  it("keeps fixed navigation padding bounded to the token scale", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("+ var(--bx-space-8)");
+    expect(css).toContain("+ var(--bx-space-6)");
+    expect(css).not.toContain("var(--bx-space-8)\n      + var(--bx-space-8)\n      + var(--bx-space-8)");
+  });
+
   it("creates public card metadata", () => {
     for (const profile of executiveProfiles) {
       const metadata = getExecutiveCardMetadata(profile);

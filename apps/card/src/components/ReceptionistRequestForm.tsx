@@ -176,7 +176,7 @@ export function ReceptionistRequestForm({
 
   return (
     <form
-      className="receptionist-form"
+      className="receptionist-form receptionist-form-compact"
       onFocusCapture={logStarted}
       onSubmit={handleSubmit}
     >
@@ -256,4 +256,3 @@ export function ReceptionistRequestForm({
     </form>
   );
 }
-

@@ -51,6 +51,7 @@ Each card includes:
 - share button;
 - contact-save action;
 - per-executive download card action;
+- fixed bottom action bar for QR, Download, and Share;
 - polyglot receptionist request workflow with consent;
 - splash screen that reserves the logo mark for loading and removes persistent logos from the main card;
 - card view, QR scan, call, email, website, vCard, share, and calendar event logging;
@@ -89,6 +90,14 @@ The database migration `0011_add_calendar_interaction_events.sql` extends the in
 `Schedule now` routes to `/card/[slug]/calendar`. The route uses profile-configured internal availability slots and submits a safe `schedule_meeting` request through the receptionist request API.
 
 No live external calendar provider is claimed in v1.0. If a provider is not configured, successful submissions are treated as internal queued requests for executive follow-up.
+
+## Mobile UX Rules
+
+The production card layout uses a fixed safe-area-aware bottom action bar for QR, Download, and Share. Page content includes enough bottom padding to keep final content visible above the bar without adding excessive empty space.
+
+The Executive Receptionist is intentionally launcher-first on the main card. The full form opens in a compact modal/bottom sheet with the close control and submit button reachable on mobile. Scrollbars are visually hidden while scrolling remains available if the sheet overflows.
+
+All card, modal, calendar, QR, and bottom-action surfaces must preserve `width: 100%`, `max-width: 100%`, border-box sizing, and horizontal overflow guards so long emails, URLs, buttons, and form controls do not drift outside the viewport.
 
 ## Brand Assets
 

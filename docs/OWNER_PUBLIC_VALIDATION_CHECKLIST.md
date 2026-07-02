@@ -19,6 +19,8 @@ Validate each workflow against all three cards:
 | Mobile rendering | Confirm no text clipping, horizontal drift, or broken spacing. | Owner validation required |
 | Desktop rendering | Confirm each card remains centered, readable, and action-ready. | Owner validation required |
 | Splash screen | Confirm the logo appears only during the brief loading transition and not on the main card page. | Owner validation required |
+| Fixed bottom actions | Confirm QR, Download, and Share remain accessible at the bottom of the mobile viewport and do not overlap final content. | Owner validation required |
+| Hidden scrollbars | Confirm no visible scrollbar appears during normal mobile card use while scrolling still works if needed. | Owner validation required |
 
 ## Contact Checks
 
@@ -45,6 +47,8 @@ Validate each workflow against all three cards:
 | Check | Required action | Status |
 | --- | --- | --- |
 | Consent required | Submit without consent and confirm the form blocks submission. | Owner validation required |
+| Modal launcher | Confirm the main card shows only the receptionist launcher until `Open Receptionist` is tapped. | Owner validation required |
+| Compact sheet | Open the receptionist form and confirm the sheet fits the viewport cleanly with reachable close and submit controls. | Owner validation required |
 | Meeting request | Submit a receptionist meeting request and confirm dashboard visibility. | Owner validation required |
 | Callback request | Submit a callback request and confirm dashboard visibility. | Owner validation required |
 | Language routing | Submit at least one non-English request and confirm language appears in the dashboard. | Owner validation required |

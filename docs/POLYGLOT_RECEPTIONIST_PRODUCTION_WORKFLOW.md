@@ -52,6 +52,14 @@ Telephony remains safety-gated:
 - `OUTBOUND_CALLS_ENABLED=false`
 - `ALLOW_PRODUCTION_CALLS=false`
 
+## Card UX Behavior
+
+The main executive card shows only the Executive Receptionist launcher: a short description and an `Open Receptionist` button. The full request form is not rendered inline by default.
+
+When opened, the receptionist form appears in a compact modal/bottom sheet. The sheet is viewport-bounded, safe-area aware, and uses compact field spacing so mobile users can reach the close control and submit button without excessive page length.
+
+Visible scrollbars are hidden across the card experience while scrolling remains available when content truly overflows. The form, modal, and fields also use horizontal overflow guards so long email addresses, URLs, select labels, and messages do not create sideways drift.
+
 ## Source Files
 
 - `packages/types/src/receptionist.ts`

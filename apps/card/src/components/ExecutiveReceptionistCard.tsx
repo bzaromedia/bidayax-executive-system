@@ -38,7 +38,7 @@ export function ExecutiveReceptionistCard({
       {isOpen ? (
         <div className="executive-modal-backdrop" role="presentation">
           <section
-            className="executive-modal-sheet"
+            className="executive-modal-sheet executive-receptionist-sheet"
             aria-label={`Executive Receptionist request for ${executive.displayName}`}
             aria-modal="true"
             role="dialog"
