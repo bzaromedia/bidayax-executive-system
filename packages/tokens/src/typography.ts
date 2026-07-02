@@ -1,5 +1,5 @@
 export const fontFamilies = {
-  display: ["Fraunces", "Canela", "Georgia", "serif"],
+  display: ["Playfair Display", "Cormorant Garamond", "Georgia", "serif"],
   heading: ["Inter Tight", "Aptos Display", "Inter", "system-ui", "sans-serif"],
   body: ["Inter", "Aptos", "system-ui", "sans-serif"],
   mono: ["JetBrains Mono", "SFMono-Regular", "Consolas", "monospace"]
