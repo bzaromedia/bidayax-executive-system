@@ -12,12 +12,18 @@ export type ExecutiveProfile = {
   readonly phone: string;
   readonly email: string;
   readonly website: string;
-  readonly calendarUrl?: string;
+  readonly calendarSlots?: readonly ExecutiveCalendarSlot[];
   readonly tagline: string;
   readonly bio: string;
   readonly qrUrl: string;
   readonly vcardFileName: string;
   readonly theme: "executive-black-gold";
+};
+
+export type ExecutiveCalendarSlot = {
+  readonly label: string;
+  readonly value: string;
+  readonly timezone: string;
 };
 
 export const executiveCardBaseUrl = "https://theexecutivecard.online";
@@ -30,6 +36,29 @@ export const executiveSharedEmail = "contact@theexecutivecard.com";
 export const executiveSharedWebsite = "https://bidayax.com";
 export const executiveSharedTagline =
   "Building Trusted Intelligence For Modern Enterprises";
+
+export const executiveDefaultCalendarSlots = [
+  {
+    label: "Tomorrow morning",
+    value: "tomorrow-morning",
+    timezone: "America/New_York"
+  },
+  {
+    label: "Tomorrow afternoon",
+    value: "tomorrow-afternoon",
+    timezone: "America/New_York"
+  },
+  {
+    label: "This week",
+    value: "this-week",
+    timezone: "America/New_York"
+  },
+  {
+    label: "Next week",
+    value: "next-week",
+    timezone: "America/New_York"
+  }
+] as const satisfies readonly ExecutiveCalendarSlot[];
 
 function cardUrl(slug: ExecutiveSlug) {
   return `${executiveCardBaseUrl}/card/${slug}`;
@@ -50,6 +79,7 @@ export const executiveProfiles = [
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
     bio: "A.D Garner leads operational and technology execution for BidayaX LLC.",
+    calendarSlots: executiveDefaultCalendarSlots,
     qrUrl: `${cardUrl("ad-garner")}?entry=qr`,
     vcardFileName: "ad-garner.vcf",
     theme: "executive-black-gold"
@@ -68,6 +98,7 @@ export const executiveProfiles = [
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
     bio: "Naimah J. Barnes leads BidayaX LLC and the business direction.",
+    calendarSlots: executiveDefaultCalendarSlots,
     qrUrl: `${cardUrl("naimah-barnes")}?entry=qr`,
     vcardFileName: "naimah-barnes.vcf",
     theme: "executive-black-gold"
@@ -86,6 +117,7 @@ export const executiveProfiles = [
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
     bio: "Sean Hall supports executive management for BidayaX LLC.",
+    calendarSlots: executiveDefaultCalendarSlots,
     qrUrl: `${cardUrl("sean-hall")}?entry=qr`,
     vcardFileName: "sean-hall.vcf",
     theme: "executive-black-gold"

@@ -33,7 +33,9 @@ const actionEventTypes = [
   "email_click",
   "vcard_download",
   "website_click",
-  "share_click"
+  "share_click",
+  "calendar_slot_selected",
+  "calendar_request_submitted"
 ] as const satisfies readonly InteractionEventType[];
 
 function getEventCount(
@@ -180,6 +182,12 @@ function buildConversions(
       "share_conversion",
       "Share conversion",
       "share_click",
+      eventCounts
+    ),
+    buildConversion(
+      "meeting_conversion",
+      "Meeting request conversion",
+      "calendar_request_submitted",
       eventCounts
     )
   ];

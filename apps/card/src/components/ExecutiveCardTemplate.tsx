@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import gsap from "gsap";
 import { QRCodeSVG } from "qrcode.react";
-import { UserRound } from "lucide-react";
+import { QrCode, UserRound } from "lucide-react";
 import { motionTokens } from "@bidayax/tokens";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { emitCardInteraction, getCardLoadEventTypes } from "../lib/card-events";
 import { getExecutiveQrValue } from "../lib/qr";
 import { ExecutiveActionGrid } from "./ExecutiveActionGrid";
-import { ExecutiveBrandMark } from "./ExecutiveBrandMark";
+import { ExecutiveCardSplash } from "./ExecutiveCardSplash";
 import { ExecutiveCompanyCard } from "./ExecutiveCompanyCard";
 import { ExecutiveContactCard } from "./ExecutiveContactCard";
 import { ExecutiveFooterActions } from "./ExecutiveFooterActions";
@@ -112,6 +112,7 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
 
   return (
     <>
+      <ExecutiveCardSplash />
       <div
         ref={stageRef}
         className="executive-template"
@@ -157,7 +158,9 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
             role="dialog"
           >
             <div className="executive-qr-sheet-header">
-              <ExecutiveBrandMark className="executive-qr-sheet-mark" />
+              <div className="executive-qr-sheet-icon" aria-hidden="true">
+                <QrCode size={26} strokeWidth={1.75} />
+              </div>
               <div>
                 <h2>Scan to connect</h2>
                 <p>{executive.displayName}</p>

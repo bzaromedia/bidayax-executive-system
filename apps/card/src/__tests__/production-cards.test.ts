@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { executiveProfiles } from "@bidayax/config/executives";
+import {
+  executiveDefaultCalendarSlots,
+  executiveProfiles
+} from "@bidayax/config/executives";
 import {
   interactionEventTypes,
   receptionistLanguages,
   receptionistRequestTypes
 } from "@bidayax/types";
 import { getCardUrl } from "../lib/routes";
+import {
+  getExecutiveCalendarPath,
+  getExecutiveCalendarSlots,
+  getExecutiveCalendarUrl
+} from "../lib/calendar";
 import { getExecutiveQrValue } from "../lib/qr";
 import { createVCard, getVCardFilename } from "../lib/vcard";
 import { getExecutiveCardMetadata } from "../lib/seo";
@@ -96,6 +104,10 @@ describe("production executive cards", () => {
       "email_click",
       "website_click",
       "share_click",
+      "calendar_view",
+      "calendar_slot_selected",
+      "calendar_request_submitted",
+      "calendar_request_failed",
       "receptionist_request_started",
       "receptionist_request_submitted",
       "receptionist_request_failed",
@@ -171,6 +183,130 @@ describe("production executive cards", () => {
     expect(css).not.toContain("executive-brand-card");
     expect(template).not.toContain("executive-phone-shell");
     expect(template).not.toContain("executive-brand-card");
+  });
+
+  it("keeps the production card page executive-focused without a persistent logo", () => {
+    const header = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveHeader.tsx"),
+      "utf8"
+    );
+    const template = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveCardTemplate.tsx"),
+      "utf8"
+    );
+
+    expect(header).not.toContain("ExecutiveBrandMark");
+    expect(header).not.toContain("executive-header-mark");
+    expect(template).not.toContain("ExecutiveBrandMark");
+    expect(template).not.toContain("executive-qr-sheet-mark");
+  });
+
+  it("reserves the logo mark for the splash screen", () => {
+    const splash = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveCardSplash.tsx"),
+      "utf8"
+    );
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(splash).toContain("ExecutiveBrandMark");
+    expect(splash).toContain("prefers-reduced-motion: reduce");
+    expect(css).toContain(".executive-splash");
+    expect(css).toContain(".executive-splash-mark");
+    expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+  });
+
+  it("uses a reduced executive name size", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("font-size: 2rem;");
+    expect(css).toContain("font-size: 2.625rem;");
+    expect(css).not.toContain("font-size: 2.25rem;");
+    expect(css).not.toContain("font-size: 2.875rem;");
+  });
+
+  it("routes meeting requests to the internal calendar page", () => {
+    const meetingCard = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveMeetingCard.tsx"),
+      "utf8"
+    );
+
+    for (const profile of executiveProfiles) {
+      expect(getExecutiveCalendarPath(profile)).toBe(
+        `/card/${profile.slug}/calendar`
+      );
+      expect(getExecutiveCalendarUrl(profile)).toBe(
+        `https://theexecutivecard.online/card/${profile.slug}/calendar`
+      );
+    }
+
+    expect(meetingCard).toContain("getExecutiveCalendarPath");
+    expect(meetingCard).not.toContain("mailto:");
+    expect(meetingCard).not.toContain("meeting_request_email");
+  });
+
+  it("uses configurable calendar slots for every executive", () => {
+    expect(executiveDefaultCalendarSlots).toEqual([
+      {
+        label: "Tomorrow morning",
+        value: "tomorrow-morning",
+        timezone: "America/New_York"
+      },
+      {
+        label: "Tomorrow afternoon",
+        value: "tomorrow-afternoon",
+        timezone: "America/New_York"
+      },
+      {
+        label: "This week",
+        value: "this-week",
+        timezone: "America/New_York"
+      },
+      {
+        label: "Next week",
+        value: "next-week",
+        timezone: "America/New_York"
+      }
+    ]);
+
+    for (const profile of executiveProfiles) {
+      expect(getExecutiveCalendarSlots(profile)).toBe(profile.calendarSlots);
+      expect(getExecutiveCalendarSlots(profile)).toHaveLength(4);
+    }
+  });
+
+  it("builds a calendar page for all production executives", () => {
+    const calendarPage = readFileSync(
+      resolve(process.cwd(), "app/card/[slug]/calendar/page.tsx"),
+      "utf8"
+    );
+
+    expect(calendarPage).toContain("generateStaticParams");
+    expect(calendarPage).toContain("ExecutiveCalendarBooking");
+    expect(calendarPage).toContain("getExecutiveBySlug");
+    expect(executiveProfiles.map((profile) => profile.slug)).toEqual([
+      "ad-garner",
+      "naimah-barnes",
+      "sean-hall"
+    ]);
+  });
+
+  it("submits calendar requests without a mailto fallback", () => {
+    const calendarBooking = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveCalendarBooking.tsx"),
+      "utf8"
+    );
+
+    expect(calendarBooking).toContain("submitReceptionistRequest");
+    expect(calendarBooking).toContain("internal_request_queued");
+    expect(calendarBooking).toContain("calendar_request_submitted");
+    expect(calendarBooking).toContain("calendar_request_failed");
+    expect(calendarBooking).not.toContain("mailto:");
   });
 
   it("creates public card metadata", () => {

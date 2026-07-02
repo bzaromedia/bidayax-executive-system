@@ -78,7 +78,8 @@ export type DashboardConversionSummary = {
     | "call_conversion"
     | "email_conversion"
     | "website_conversion"
-    | "share_conversion";
+    | "share_conversion"
+    | "meeting_conversion";
   readonly label: string;
   readonly numeratorEventType: InteractionEventType;
   readonly numerator: number;

@@ -46,12 +46,14 @@ Each card includes:
 - call button;
 - email button;
 - website button;
+- internal calendar booking route;
 - address display;
 - share button;
 - contact-save action;
 - per-executive download card action;
 - polyglot receptionist request workflow with consent;
-- card view, QR scan, call, email, website, vCard, and share event logging;
+- splash screen that reserves the logo mark for loading and removes persistent logos from the main card;
+- card view, QR scan, call, email, website, vCard, share, and calendar event logging;
 - SEO metadata;
 - OpenGraph metadata;
 - responsive mobile and desktop layout.
@@ -67,6 +69,10 @@ The card app emits these events:
 - `website_click`
 - `vcard_download`
 - `share_click`
+- `calendar_view`
+- `calendar_slot_selected`
+- `calendar_request_submitted`
+- `calendar_request_failed`
 - `receptionist_request_started`
 - `receptionist_request_submitted`
 - `receptionist_request_failed`
@@ -76,6 +82,13 @@ The card app emits these events:
 
 The database migration `0009_add_share_click_interaction_event.sql` extends the interaction event enum for share tracking.
 The database migration `0010_add_receptionist_request_events.sql` extends the interaction event enum for receptionist request workflow tracking.
+The database migration `0011_add_calendar_interaction_events.sql` extends the interaction event enum for internal calendar booking tracking.
+
+## Calendar Booking
+
+`Schedule now` routes to `/card/[slug]/calendar`. The route uses profile-configured internal availability slots and submits a safe `schedule_meeting` request through the receptionist request API.
+
+No live external calendar provider is claimed in v1.0. If a provider is not configured, successful submissions are treated as internal queued requests for executive follow-up.
 
 ## Brand Assets
 
@@ -85,7 +98,7 @@ Production brand mark SVGs are stored in:
 - `apps/dashboard/public/brand/`
 - `packages/design-system/branding/`
 
-The runtime card UI uses design-system tokens and the approved black/gold identity.
+The runtime card UI uses design-system tokens and the approved black/gold identity. The logo mark appears in the splash/loading transition only; the main executive card page intentionally removes persistent logo placement so the executive identity remains the focus.
 
 ## Verification
 

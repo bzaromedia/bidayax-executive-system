@@ -20,8 +20,8 @@ Validate each workflow against all three cards:
 | --- | --- | --- |
 | iPhone QR scan | Scan each card QR with the iPhone camera and confirm the correct card opens over HTTPS. | Owner validation required |
 | Android QR scan | Scan each card QR with an Android camera app and confirm the correct card opens over HTTPS. | Owner validation required |
-| iPhone Safari rendering | Open each card in Safari and inspect layout, buttons, logo, QR, and text fit. | Owner validation required |
-| Android Chrome rendering | Open each card in Chrome and inspect layout, buttons, logo, QR, and text fit. | Owner validation required |
+| iPhone Safari rendering | Open each card in Safari and inspect layout, buttons, QR, and text fit. Confirm the logo appears only in the splash transition. | Owner validation required |
+| Android Chrome rendering | Open each card in Chrome and inspect layout, buttons, QR, and text fit. Confirm the logo appears only in the splash transition. | Owner validation required |
 | Desktop Chrome rendering | Open each card and confirm the desktop layout is usable. | Owner validation required |
 | Desktop Edge rendering | Open each card and confirm the desktop layout is usable. | Owner validation required |
 | Desktop Safari or Firefox rendering | Open each card where available and confirm no layout breakage. | Owner validation required |
@@ -37,6 +37,15 @@ Validate each workflow against all three cards:
 | Gmail email link | Tap the email button and confirm Gmail or the default mail app opens the expected compose window. | Owner validation required |
 | Website link | Tap the website button and confirm it opens `https://bidayax.com`. | Owner validation required |
 | Share action | Use the share button on iPhone and Android and confirm the shared URL is the correct executive card URL. | Owner validation required |
+
+## Calendar Booking Checks
+
+| Check | Required action | Status |
+| --- | --- | --- |
+| Calendar route | Tap `Schedule now` on each card and confirm it opens `/card/[slug]/calendar` instead of an email client. | Owner validation required |
+| Slot selector | Select each availability option and confirm the selection is clear on mobile and desktop. | Owner validation required |
+| Calendar request | Submit the form and confirm the queued confirmation state appears. | Owner validation required |
+| Calendar events | Confirm `calendar_view`, `calendar_slot_selected`, and `calendar_request_submitted` appear where event visibility is implemented. | Owner validation required |
 
 ## Social Preview Checks
 

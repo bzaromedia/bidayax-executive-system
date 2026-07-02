@@ -18,6 +18,7 @@ Validate each workflow against all three cards:
 | Android QR scan | Scan each QR and confirm the correct HTTPS card opens. | Owner validation required |
 | Mobile rendering | Confirm no text clipping, horizontal drift, or broken spacing. | Owner validation required |
 | Desktop rendering | Confirm each card remains centered, readable, and action-ready. | Owner validation required |
+| Splash screen | Confirm the logo appears only during the brief loading transition and not on the main card page. | Owner validation required |
 
 ## Contact Checks
 
@@ -30,12 +31,21 @@ Validate each workflow against all three cards:
 | Share action | Confirm shared URLs use the correct executive card URL. | Owner validation required |
 | Download | Confirm each download route returns only that executive package. | Owner validation required |
 
+## Calendar Checks
+
+| Check | Required action | Status |
+| --- | --- | --- |
+| Calendar route | Tap `Schedule now` and confirm it opens `/card/[slug]/calendar`, not an email client. | Owner validation required |
+| Slot selection | Select each available window and confirm the form remains usable. | Owner validation required |
+| Queued request | Submit a meeting request and confirm the page shows a queued confirmation state. | Owner validation required |
+| Event capture | Confirm calendar view, slot selection, and request submission events appear where implemented. | Owner validation required |
+
 ## Receptionist Checks
 
 | Check | Required action | Status |
 | --- | --- | --- |
 | Consent required | Submit without consent and confirm the form blocks submission. | Owner validation required |
-| Meeting request | Submit a meeting request and confirm dashboard visibility. | Owner validation required |
+| Meeting request | Submit a receptionist meeting request and confirm dashboard visibility. | Owner validation required |
 | Callback request | Submit a callback request and confirm dashboard visibility. | Owner validation required |
 | Language routing | Submit at least one non-English request and confirm language appears in the dashboard. | Owner validation required |
 | Provider status | Confirm missing SMTP does not break the user submission. | Owner validation required |

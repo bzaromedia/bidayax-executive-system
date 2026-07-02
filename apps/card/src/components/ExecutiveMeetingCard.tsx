@@ -1,6 +1,7 @@
 import { CalendarCheck2 } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { emitCardInteraction } from "../lib/card-events";
+import { getExecutiveCalendarPath } from "../lib/calendar";
 import { ExecutiveInfoCard } from "./ExecutiveInfoCard";
 
 type ExecutiveMeetingCardProps = {
@@ -8,12 +9,7 @@ type ExecutiveMeetingCardProps = {
 };
 
 export function ExecutiveMeetingCard({ executive }: ExecutiveMeetingCardProps) {
-  const meetingSubject = encodeURIComponent(
-    `Meeting Request - ${executive.displayName}`
-  );
-  const href =
-    executive.calendarUrl ??
-    `mailto:${executive.email}?subject=${meetingSubject}`;
+  const href = getExecutiveCalendarPath(executive);
 
   return (
     <ExecutiveInfoCard
@@ -23,11 +19,9 @@ export function ExecutiveMeetingCard({ executive }: ExecutiveMeetingCardProps) {
         <a
           className="executive-text-link"
           href={href}
-          rel={executive.calendarUrl ? "noreferrer" : undefined}
-          target={executive.calendarUrl ? "_blank" : undefined}
           onClick={() =>
-            emitCardInteraction("email_click", executive.slug, {
-              action: executive.calendarUrl ? "meeting_calendar_open" : "meeting_request_email",
+            emitCardInteraction("calendar_view", executive.slug, {
+              action: "meeting_calendar_open",
               surface: "executive_card_meeting"
             })
           }

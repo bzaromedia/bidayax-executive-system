@@ -1,6 +1,5 @@
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { ExecutiveAvatar } from "./ExecutiveAvatar";
-import { ExecutiveBrandMark } from "./ExecutiveBrandMark";
 
 type ExecutiveHeaderProps = {
   readonly executive: ExecutiveProfile;
@@ -9,7 +8,6 @@ type ExecutiveHeaderProps = {
 export function ExecutiveHeader({ executive }: ExecutiveHeaderProps) {
   return (
     <header className="executive-header">
-      <ExecutiveBrandMark className="executive-header-mark" />
       <ExecutiveAvatar executive={executive} />
       <div className="executive-heading">
         <h1>{executive.displayName}</h1>
