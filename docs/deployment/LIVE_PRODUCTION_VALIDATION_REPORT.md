@@ -130,7 +130,7 @@ Email status:
 
 - Namecheap DNS was corrected by the owner.
 - Namecheap Private Email inbox validation still requires owner send/receive testing.
-- Current production card profile links still use `contact@bidayax.com`; switching card profile data to product-domain mailboxes is a separate tested change.
+- Current production card profile links now use `contact@theexecutivecard.com`; this mailbox must be configured or aliased before public operational use.
 
 ## Local Release Gate Results
 

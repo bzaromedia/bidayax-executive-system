@@ -84,8 +84,11 @@ export type ReceptionistWorkflowEventType =
 
 export const receptionistIntentCategories = [
   "general_inquiry",
+  "route_message",
   "schedule_meeting",
   "request_callback",
+  "qualify_lead",
+  "partnership_request",
   "partnership_interest",
   "investor_interest",
   "vendor_inquiry",
@@ -200,6 +203,62 @@ export type SimulateReceptionistInteractionResult = {
   readonly workflowEvents: readonly ReceptionistWorkflowEventDraft[];
 };
 
+export const receptionistRequestTypes = [
+  "schedule_meeting",
+  "route_message",
+  "request_callback",
+  "qualify_lead",
+  "general_inquiry",
+  "partnership_request",
+  "support_request"
+] as const;
+
+export type ReceptionistRequestType =
+  (typeof receptionistRequestTypes)[number];
+
+export const receptionistLanguages = [
+  "English",
+  "Spanish",
+  "Arabic",
+  "French",
+  "Mandarin",
+  "Urdu",
+  "Hindi"
+] as const;
+
+export type ReceptionistLanguage = (typeof receptionistLanguages)[number];
+
+export const receptionistRequestStatuses = [
+  "queued",
+  "email_ready",
+  "provider_unconfigured",
+  "event_store_unavailable",
+  "invalid"
+] as const;
+
+export type ReceptionistStatus = (typeof receptionistRequestStatuses)[number];
+
+export type ReceptionistRequest = {
+  readonly executiveSlug: ExecutiveSlug;
+  readonly name: string;
+  readonly email: string;
+  readonly phone?: string;
+  readonly company?: string;
+  readonly preferredLanguage: ReceptionistLanguage;
+  readonly dialect?: string;
+  readonly requestType: ReceptionistRequestType;
+  readonly message: string;
+  readonly preferredTime?: string;
+  readonly consent: true;
+};
+
+export type ReceptionistNotificationPayload = {
+  readonly to: "contact@theexecutivecard.com";
+  readonly subject: string;
+  readonly body: string;
+  readonly request: ReceptionistRequest;
+};
+
 export function isReceptionistInteractionType(
   value: string
 ): value is ReceptionistInteractionType {
@@ -222,4 +281,16 @@ export function isReceptionistPriority(
   value: string
 ): value is ReceptionistPriority {
   return (receptionistPriorities as readonly string[]).includes(value);
+}
+
+export function isReceptionistRequestType(
+  value: string
+): value is ReceptionistRequestType {
+  return (receptionistRequestTypes as readonly string[]).includes(value);
+}
+
+export function isReceptionistLanguage(
+  value: string
+): value is ReceptionistLanguage {
+  return (receptionistLanguages as readonly string[]).includes(value);
 }

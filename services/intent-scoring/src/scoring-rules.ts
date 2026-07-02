@@ -7,7 +7,13 @@ export const eventTypeBaseScores = {
   share_click: 18,
   vcard_download: 25,
   email_click: 35,
-  call_click: 45
+  call_click: 45,
+  receptionist_request_started: 20,
+  receptionist_request_submitted: 38,
+  receptionist_request_failed: 0,
+  receptionist_meeting_requested: 42,
+  receptionist_callback_requested: 44,
+  receptionist_lead_qualified: 50
 } as const satisfies Record<InteractionEventType, number>;
 
 export const eventTypeReasonCodes = {
@@ -17,7 +23,13 @@ export const eventTypeReasonCodes = {
   share_click: "CARD_SHARED",
   vcard_download: "VCARD_DOWNLOADED",
   email_click: "EMAIL_CLICKED",
-  call_click: "CALL_CLICKED"
+  call_click: "CALL_CLICKED",
+  receptionist_request_started: "RECEPTIONIST_REQUEST_STARTED",
+  receptionist_request_submitted: "RECEPTIONIST_REQUEST_SUBMITTED",
+  receptionist_request_failed: "RECEPTIONIST_REQUEST_FAILED",
+  receptionist_meeting_requested: "MEETING_REQUESTED",
+  receptionist_callback_requested: "CALLBACK_REQUESTED",
+  receptionist_lead_qualified: "LEAD_QUALIFIED"
 } as const satisfies Record<InteractionEventType, IntentReasonCode>;
 
 export const actionDepthScores = {
@@ -27,7 +39,13 @@ export const actionDepthScores = {
   share_click: 10,
   vcard_download: 12,
   email_click: 16,
-  call_click: 20
+  call_click: 20,
+  receptionist_request_started: 10,
+  receptionist_request_submitted: 16,
+  receptionist_request_failed: 0,
+  receptionist_meeting_requested: 20,
+  receptionist_callback_requested: 20,
+  receptionist_lead_qualified: 24
 } as const satisfies Record<InteractionEventType, number>;
 
 export const scoringRules = {

@@ -24,8 +24,8 @@ The local production-build validation used the same route paths on `http://local
 | QR route returns image | validated locally | HTTP 200, `Content-Type: image/png` for all three `/card/[slug]/qr` routes |
 | vCard route returns `.vcf` | validated locally | HTTP 200, `Content-Type: text/vcard; charset=utf-8`, `BEGIN:VCARD` present for all three `/card/[slug]/vcard` routes |
 | Call links use +1 (302) 330-5547 | source verified | `packages/config/executives/profiles.ts`, `apps/card/src/components/ExecutiveActionBar.tsx` |
-| Email links use contact@bidayax.com | source verified | `packages/config/executives/profiles.ts`, `apps/card/src/components/ExecutiveActionBar.tsx` |
-| Website links use https://theexecutivecard.online | source verified | `packages/config/executives/profiles.ts`, `apps/card/src/components/ExecutiveActionBar.tsx` |
+| Email links use contact@theexecutivecard.com | source verified | `packages/config/executives/profiles.ts`, `apps/card/src/components/ExecutiveActionGrid.tsx` |
+| Website links use https://bidayax.com | source verified | `packages/config/executives/profiles.ts`, `apps/card/src/components/ExecutiveActionGrid.tsx` |
 | Share actions work safely | source and test verified | `apps/card/src/components/ExecutiveShareButton.tsx`, `apps/card/src/__tests__/production-cards.test.ts` |
 | SEO metadata exists | source and test verified | `apps/card/src/lib/seo.ts`, `apps/card/app/card/[slug]/page.tsx` |
 | OpenGraph metadata exists | source verified | `apps/card/app/card/[slug]/opengraph-image.tsx` |
@@ -48,16 +48,16 @@ The local production-build validation used the same route paths on `http://local
 All three cards use:
 
 - Phone: +1 (302) 330-5547
-- Email: contact@bidayax.com
-- Website: https://theexecutivecard.online
+- Email: contact@theexecutivecard.com
+- Website action: https://bidayax.com
 - Address: 8 The Green Ste A, Dover, DE 19901
 
-`contact@bidayax.com` must be configured in DNS/mail before public operational use.
+`contact@theexecutivecard.com` must be configured in DNS/mail before public operational use.
 
 ## External Validation Still Required
 
 - Confirm live production deployment responds at https://theexecutivecard.online.
 - Confirm DNS points to the Hostinger VPS.
 - Confirm HTTPS certificate issuance.
-- Confirm `contact@bidayax.com` mailbox delivery.
+- Confirm `contact@theexecutivecard.com` mailbox delivery.
 - Confirm Apple Contacts, Google Contacts, Android Contacts, Outlook, Gmail, SMS sharing, and mobile browser behavior with deployed URLs.

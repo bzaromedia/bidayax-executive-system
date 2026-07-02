@@ -9,8 +9,11 @@ type ExecutiveMeetingCardProps = {
 
 export function ExecutiveMeetingCard({ executive }: ExecutiveMeetingCardProps) {
   const meetingSubject = encodeURIComponent(
-    `Meeting request for ${executive.displayName}`
+    `Meeting Request - ${executive.displayName}`
   );
+  const href =
+    executive.calendarUrl ??
+    `mailto:${executive.email}?subject=${meetingSubject}`;
 
   return (
     <ExecutiveInfoCard
@@ -19,19 +22,21 @@ export function ExecutiveMeetingCard({ executive }: ExecutiveMeetingCardProps) {
       action={
         <a
           className="executive-text-link"
-          href={`mailto:${executive.email}?subject=${meetingSubject}`}
+          href={href}
+          rel={executive.calendarUrl ? "noreferrer" : undefined}
+          target={executive.calendarUrl ? "_blank" : undefined}
           onClick={() =>
             emitCardInteraction("email_click", executive.slug, {
-              action: "meeting_request_email",
+              action: executive.calendarUrl ? "meeting_calendar_open" : "meeting_request_email",
               surface: "executive_card_meeting"
             })
           }
         >
-          Request meeting
+          Schedule now
         </a>
       }
     >
-      <p>Send a meeting request directly to the executive contact mailbox.</p>
+      <p>Request time with the executive team for direct follow-up.</p>
     </ExecutiveInfoCard>
   );
 }

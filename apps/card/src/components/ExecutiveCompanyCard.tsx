@@ -30,7 +30,11 @@ export function ExecutiveCompanyCard({ executive }: ExecutiveCompanyCardProps) {
       }
     >
       <p>{executive.company}</p>
-      <p>{executive.address}</p>
+      <p>
+        {executive.addressLine1}
+        <br />
+        {executive.addressLine2}
+      </p>
     </ExecutiveInfoCard>
   );
 }

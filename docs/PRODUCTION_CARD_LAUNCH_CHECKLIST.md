@@ -13,10 +13,15 @@ Public URL: https://theexecutivecard.online
 | Sean Hall production card exists | ready | `packages/config/executives/profiles.ts`, `/card/sean-hall` |
 | QR route exists for each card | ready | `/card/[slug]/qr` |
 | vCard route exists for each card | ready | `/card/[slug]/vcard` |
-| Call, email, website, save, and share actions exist | ready | `apps/card/src/components/ExecutiveActionBar.tsx` |
+| Call, email, website, save, QR, and share actions exist | ready | `apps/card/src/components/ExecutiveActionGrid.tsx`, `apps/card/src/components/ExecutiveFooterActions.tsx` |
+| Download action says Download Card | ready | `apps/card/src/components/ExecutiveFooterActions.tsx` |
+| Receptionist workflow is card-side and consent-gated | ready | `apps/card/src/components/ExecutiveReceptionistCard.tsx`, `apps/card/app/api/receptionist/request/route.ts` |
+| Website action routes to BidayaX LLC | ready | `https://bidayax.com` |
+| Email action routes to The Executive Card inbox | ready | `contact@theexecutivecard.com` |
 | SEO and OpenGraph metadata exist | ready | `apps/card/src/lib/seo.ts`, `apps/card/app/card/[slug]/opengraph-image.tsx` |
 | Event logging route exists | ready with database dependency | `apps/card/app/api/events/route.ts` |
 | Interaction event schema includes share | ready | `database/migrations/0009_add_share_click_interaction_event.sql` |
+| Interaction event schema includes receptionist workflow | ready | `database/migrations/0010_add_receptionist_request_events.sql` |
 | Public claims guard passes | ready | `pnpm verify:public-claims` passed |
 | No runtime filler content guard passes | ready | `pnpm verify:no-placeholders` passed |
 | Local production card routes render | ready | HTTP 200 for all three local `/card/[slug]` routes |
@@ -40,7 +45,7 @@ Public URL: https://theexecutivecard.online
 
 - Deploy the production card app to https://theexecutivecard.online.
 - Configure `DATABASE_URL` and run migrations in the production environment.
-- Configure `contact@bidayax.com` DNS/mail delivery.
+- Configure `contact@theexecutivecard.com` DNS/mail delivery.
 - Verify the three public card URLs on the deployed domain.
 - Validate QR scans and vCard import on iOS, Android, Google Contacts, Apple Contacts, Outlook, and Gmail.
 - Confirm the dashboard health/readiness endpoints on the deployed environment.
@@ -51,4 +56,4 @@ Production card system status: ready for deployment validation.
 
 Marketing website may begin: no.
 
-Reason: the source, build, and local production card system are ready for validation, but public marketing should wait until the production deployment, public URLs, `DATABASE_URL`, and `contact@bidayax.com` DNS/mail setup are verified on the live environment.
+Reason: the source, build, and local production card system are ready for validation, but public marketing should wait until the production deployment, public URLs, `DATABASE_URL`, and `contact@theexecutivecard.com` DNS/mail setup are verified on the live environment.

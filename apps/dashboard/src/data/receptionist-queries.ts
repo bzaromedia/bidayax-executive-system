@@ -33,6 +33,9 @@ type InteractionRow = {
   readonly language: string;
   readonly dialect: string | null;
   readonly executive_slug: string;
+  readonly requester_name: string | null;
+  readonly requester_company: string | null;
+  readonly request_type: string | null;
   readonly summary: string;
   readonly priority: string;
   readonly created_at: Date;
@@ -194,10 +197,14 @@ function normalizeInteractions(
         dialect: row.dialect,
         executiveName: executiveLabels[row.executive_slug],
         executiveSlug: row.executive_slug,
+        followUpState: row.status,
         id: row.id,
         interactionType: row.interaction_type,
         language: row.language,
         priority: row.priority,
+        requesterCompany: row.requester_company,
+        requesterName: row.requester_name,
+        requestType: row.request_type,
         status: row.status,
         summary: row.summary
       }
@@ -271,7 +278,7 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
   if (!database) {
     return emptyReceptionistData(
       "not_configured",
-      "DATABASE_URL is not configured. Receptionist foundation data will appear after PostgreSQL is connected and Phase 8 simulation rows exist."
+      "DATABASE_URL is not configured. Receptionist workflow data will appear after PostgreSQL is connected."
     );
   }
 
@@ -302,11 +309,23 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
               language,
               dialect,
               executive_slug,
+              caller_or_sender as requester_name,
+              intent_payload.payload->>'company' as requester_company,
+              intent_payload.payload->>'intent' as request_type,
               summary,
               priority,
               created_at
             from receptionist_interactions
-            order by created_at desc
+            left join lateral (
+              select payload
+              from receptionist_workflow_events
+              where
+                receptionist_workflow_events.interaction_id = receptionist_interactions.id
+                and receptionist_workflow_events.event_type = 'intent_classified'
+              order by created_at desc
+              limit 1
+            ) intent_payload on true
+            order by receptionist_interactions.created_at desc
             limit 8
           `
         ),
@@ -349,7 +368,7 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
       intentBreakdown: normalizeIntentBreakdown(intentResult.rows),
       languageBreakdown: normalizeLanguageBreakdown(languageResult.rows),
       status: "ready",
-      statusMessage: "Showing Phase 8 simulated receptionist foundation data.",
+      statusMessage: "Showing receptionist workflow foundation and card intake requests.",
       summary: normalizeSummary(summaryResult.rows[0]),
       tasks: normalizeTasks(taskResult.rows)
     } satisfies ReceptionistDashboardData;

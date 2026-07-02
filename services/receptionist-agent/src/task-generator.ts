@@ -8,8 +8,11 @@ import type {
 const taskTypeByIntent = {
   general_inquiry: "create_follow_up",
   investor_interest: "escalate_to_executive",
+  partnership_request: "escalate_to_executive",
   partnership_interest: "qualify_lead",
+  qualify_lead: "qualify_lead",
   request_callback: "return_call",
+  route_message: "send_email",
   schedule_meeting: "schedule_meeting",
   spam_or_low_value: "review_transcript",
   support_request: "review_transcript",

@@ -19,8 +19,10 @@ export function ReceptionistEmptyState({
       </CardHeader>
       <CardContent>
         <p className="text-sm leading-relaxed text-content-muted">
-          Phase 8 shows simulated receptionist records only. No live calls,
-          emails, calendar bookings, or external workflow automations are active.
+          Receptionist workflow records appear after card visitors submit routed
+          requests or after internal foundation records are loaded. Live calls,
+          direct email sending, calendar booking, and external workflow
+          automations remain disabled unless explicitly configured.
         </p>
       </CardContent>
     </Card>

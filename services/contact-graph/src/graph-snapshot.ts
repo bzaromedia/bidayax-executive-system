@@ -17,7 +17,13 @@ const eventSummaryPhrases = {
   call_click: "clicked call",
   email_click: "clicked email",
   website_click: "visited the website",
-  share_click: "shared the card"
+  share_click: "shared the card",
+  receptionist_request_started: "started a receptionist request",
+  receptionist_request_submitted: "submitted a receptionist request",
+  receptionist_request_failed: "encountered a receptionist request issue",
+  receptionist_meeting_requested: "requested a meeting",
+  receptionist_callback_requested: "requested a callback",
+  receptionist_lead_qualified: "submitted a qualified lead request"
 } as const;
 
 function toTimestamp(value: string) {

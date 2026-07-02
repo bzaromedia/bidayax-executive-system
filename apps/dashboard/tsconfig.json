@@ -25,6 +25,9 @@
       ],
       "@bidayax/config/tailwind": [
         "../../packages/config/tailwind/preset.ts"
+      ],
+      "@bidayax/config/receptionist": [
+        "../../packages/config/receptionist/index.ts"
       ]
     },
     "esModuleInterop": true,

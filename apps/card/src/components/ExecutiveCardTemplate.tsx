@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent } from "react";
 import gsap from "gsap";
 import { QRCodeSVG } from "qrcode.react";
@@ -17,6 +17,7 @@ import { ExecutiveFooterActions } from "./ExecutiveFooterActions";
 import { ExecutiveHeader } from "./ExecutiveHeader";
 import { ExecutiveInfoCard } from "./ExecutiveInfoCard";
 import { ExecutiveMeetingCard } from "./ExecutiveMeetingCard";
+import { ExecutiveReceptionistCard } from "./ExecutiveReceptionistCard";
 
 type ExecutiveCardTemplateProps = {
   readonly executive: ExecutiveProfile;
@@ -37,6 +38,7 @@ function getReducedMotionPreference() {
 export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps) {
   const stageRef = useRef<HTMLDivElement>(null);
   const cardViewLoggedRef = useRef(false);
+  const [isQrOpen, setIsQrOpen] = useState(false);
   const qrValue = getExecutiveQrValue(executive);
 
   useEffect(() => {
@@ -109,46 +111,28 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
   }
 
   return (
-    <div
-      ref={stageRef}
-      className="executive-template"
-      onPointerLeave={handlePointerLeave}
-      onPointerMove={handlePointerMove}
-      style={
-        {
-          "--reflection-x": "50%",
-          "--spotlight-x": "50%",
-          "--spotlight-y": "45%",
-          "--tilt-x": "0deg",
-          "--tilt-y": "0deg"
-        } as CSSProperties
-      }
-    >
-      <aside className="executive-brand-card" aria-label="The Executive Card QR preview">
-        <div className="executive-brand-card-metal" aria-hidden="true" />
-        <div className="executive-brand-card-content">
-          <ExecutiveBrandMark className="executive-brand-card-mark" />
-          <p>The Executive Card</p>
-          <div className="executive-brand-card-qr" aria-label={`QR code for ${executive.displayName}`}>
-            <QRCodeSVG
-              bgColor="var(--bx-color-content-primary)"
-              fgColor="var(--bx-color-surface-canvas)"
-              level="H"
-              marginSize={2}
-              size={128}
-              title={`QR link for ${executive.displayName}`}
-              value={qrValue}
-            />
-          </div>
-          <span>Scan to connect</span>
-        </div>
-      </aside>
-
-      <section className="executive-phone-shell" aria-label={`${executive.displayName} executive card`}>
-        <div className="executive-phone-glass" aria-hidden="true" />
+    <>
+      <div
+        ref={stageRef}
+        className="executive-template"
+        onPointerLeave={handlePointerLeave}
+        onPointerMove={handlePointerMove}
+        style={
+          {
+            "--reflection-x": "50%",
+            "--spotlight-x": "50%",
+            "--spotlight-y": "45%",
+            "--tilt-x": "0deg",
+            "--tilt-y": "0deg"
+          } as CSSProperties
+        }
+      >
         <div className="executive-card-surface">
           <ExecutiveHeader executive={executive} />
-          <ExecutiveActionGrid executive={executive} />
+          <ExecutiveActionGrid
+            executive={executive}
+            onConnect={() => setIsQrOpen(true)}
+          />
           <div className="executive-info-stack">
             <ExecutiveInfoCard icon={UserRound} title="About Me">
               <p>{executive.bio}</p>
@@ -156,10 +140,51 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
             <ExecutiveMeetingCard executive={executive} />
             <ExecutiveContactCard executive={executive} />
             <ExecutiveCompanyCard executive={executive} />
+            <ExecutiveReceptionistCard executive={executive} />
           </div>
-          <ExecutiveFooterActions executive={executive} />
+          <ExecutiveFooterActions
+            executive={executive}
+            onQrOpen={() => setIsQrOpen(true)}
+          />
         </div>
-      </section>
-    </div>
+      </div>
+      {isQrOpen ? (
+        <div className="executive-qr-sheet-backdrop" role="presentation">
+          <section
+            className="executive-qr-sheet"
+            aria-label={`QR code for ${executive.displayName}`}
+            aria-modal="true"
+            role="dialog"
+          >
+            <div className="executive-qr-sheet-header">
+              <ExecutiveBrandMark className="executive-qr-sheet-mark" />
+              <div>
+                <h2>Scan to connect</h2>
+                <p>{executive.displayName}</p>
+              </div>
+              <button
+                className="executive-qr-close"
+                type="button"
+                onClick={() => setIsQrOpen(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="executive-qr-frame">
+              <QRCodeSVG
+                bgColor="var(--bx-color-content-primary)"
+                fgColor="var(--bx-color-surface-canvas)"
+                level="H"
+                marginSize={2}
+                size={220}
+                title={`QR link for ${executive.displayName}`}
+                value={qrValue}
+              />
+            </div>
+            <p className="executive-qr-value">{qrValue}</p>
+          </section>
+        </div>
+      ) : null}
+    </>
   );
 }

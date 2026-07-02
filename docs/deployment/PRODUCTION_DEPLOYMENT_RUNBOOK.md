@@ -57,7 +57,7 @@ Create these inboxes or aliases in Namecheap Private Email:
 - `notifications@theexecutivecard.online`
 - `noreply@theexecutivecard.online`
 
-The current app still uses `contact@bidayax.com` in card profile data. Switching production cards to `contact@theexecutivecard.online` is a separate code/data change and test update.
+The current app uses `contact@theexecutivecard.com` in card profile data. Configure or alias this mailbox before public operational use.
 
 ## VPS Directory Layout
 

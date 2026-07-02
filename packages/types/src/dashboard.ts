@@ -181,6 +181,10 @@ export type DashboardReceptionistInteraction = {
   readonly dialect: string | null;
   readonly executiveSlug: ExecutiveSlug;
   readonly executiveName: string;
+  readonly requesterName: string | null;
+  readonly requesterCompany: string | null;
+  readonly requestType: string | null;
+  readonly followUpState: string;
   readonly summary: string;
   readonly priority: ReceptionistPriority;
   readonly createdAt: string;

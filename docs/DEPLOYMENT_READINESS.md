@@ -56,7 +56,7 @@ Required before production deployment:
 - `CARD_BASE_URL=https://theexecutivecard.online`
 - `DASHBOARD_BASE_URL` set to the approved dashboard host
 - production DNS for `theexecutivecard.online`
-- working mail delivery for `contact@bidayax.com`
+- working mail delivery for `contact@theexecutivecard.com`
 
 Telephony is a safety-gated future integration unless real provider production setup exists. Current safety defaults must remain:
 
@@ -73,6 +73,6 @@ Telephony is a safety-gated future integration unless real provider production s
 - No staging deployment was executed during Recovery Phase B.
 - Database-backed smoke checks require a configured `DATABASE_URL`.
 - The production card app cannot be treated as live until https://theexecutivecard.online routes are validated after deployment.
-- `contact@bidayax.com` must be configured and tested before public operational use.
+- `contact@theexecutivecard.com` must be configured and tested before public operational use.
 - Production voice remains disabled by default and is not a v1.0 live calling feature.
 - Marketing website deployment is out of scope until the enterprise readiness gate is accepted.

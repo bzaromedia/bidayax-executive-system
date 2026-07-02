@@ -35,7 +35,7 @@ Validate each workflow against all three cards:
 | Outlook contact import | Import one vCard into Outlook if Outlook is part of the launch workflow. | Owner validation required |
 | Phone call link | Tap the call button and confirm it opens a call prompt for `+1 (302) 330-5547`. | Owner validation required |
 | Gmail email link | Tap the email button and confirm Gmail or the default mail app opens the expected compose window. | Owner validation required |
-| Website link | Tap the website button and confirm it opens `https://theexecutivecard.online`. | Owner validation required |
+| Website link | Tap the website button and confirm it opens `https://bidayax.com`. | Owner validation required |
 | Share action | Use the share button on iPhone and Android and confirm the shared URL is the correct executive card URL. | Owner validation required |
 
 ## Social Preview Checks
@@ -55,7 +55,7 @@ Validate each workflow against all three cards:
 | Dashboard health | After sign-in, open `https://dashboard.theexecutivecard.online/api/system/health`. | Owner validation required |
 | Card view events | Open each card and confirm interaction activity appears in the dashboard where implemented. | Owner validation required |
 | QR scan events | Scan each QR and confirm the scan interaction is captured where implemented. | Owner validation required |
-| Button click events | Click call, email, website, share, vCard, and package download actions and confirm event capture where implemented. | Owner validation required |
+| Button click events | Click call, email, website, share, vCard, and Download Card actions and confirm event capture where implemented. | Owner validation required |
 
 ## Email Checks
 

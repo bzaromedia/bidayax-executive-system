@@ -9,7 +9,7 @@ type ReceptionistSummaryProps = {
 export function ReceptionistSummary({ summary }: ReceptionistSummaryProps) {
   const rows = [
     ["Interactions", summary.interactionCount],
-    ["Simulated", summary.simulatedCount],
+    ["Foundation", summary.simulatedCount],
     ["Tasks", summary.taskCount],
     ["Escalations", summary.escalationCount],
     ["Languages", summary.languageCount]
@@ -21,7 +21,7 @@ export function ReceptionistSummary({ summary }: ReceptionistSummaryProps) {
         <Badge variant="accent">Receptionist</Badge>
         <CardTitle>Receptionist foundation summary</CardTitle>
         <CardDescription>
-          Simulated operating data for future voice, email, scheduling, and escalation workflows.
+          Workflow foundation data for web requests, language routing, scheduling preparation, and follow-up review.
         </CardDescription>
       </CardHeader>
       <CardContent>

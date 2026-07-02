@@ -95,7 +95,7 @@ Pass with non-blocking deployment warnings.
 ## Remaining Warnings
 
 - `DATABASE_URL` must be configured before database-backed production persistence and readiness checks can be complete.
-- `contact@bidayax.com` DNS/mail delivery must be configured before public operational use.
+- `contact@theexecutivecard.com` DNS/mail delivery must be configured before public operational use.
 - Telephony remains safety-gated and disabled by default.
 - Public URL validation must be performed after deployment to https://theexecutivecard.online.
 

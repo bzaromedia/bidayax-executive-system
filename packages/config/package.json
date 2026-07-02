@@ -6,13 +6,14 @@
   "exports": {
     ".": "./src/index.ts",
     "./executives": "./executives/index.ts",
+    "./receptionist": "./receptionist/index.ts",
     "./tailwind": "./tailwind/preset.ts",
     "./typescript/base": "./typescript/base.json",
     "./eslint": "./eslint/index.js"
   },
   "scripts": {
     "build": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
-    "lint": "node ../../node_modules/eslint/bin/eslint.js src executives --ext .ts",
+    "lint": "node ../../node_modules/eslint/bin/eslint.js src executives receptionist --ext .ts",
     "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {

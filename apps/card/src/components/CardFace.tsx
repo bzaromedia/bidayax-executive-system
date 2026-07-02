@@ -32,7 +32,7 @@ export function CardFace({ executive }: CardFaceProps) {
             <img
               alt=""
               className="h-8 w-8"
-              src="/brand/the-executive-card-mark.svg"
+              src="/brand/the-executive-card-logo-mark.png"
             />
           </div>
         </div>

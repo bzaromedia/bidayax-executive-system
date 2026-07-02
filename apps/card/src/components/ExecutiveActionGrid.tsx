@@ -1,18 +1,22 @@
 "use client";
 
-import { Globe2, Mail, Phone, UserRoundPlus } from "lucide-react";
+import { Globe2, Mail, Phone, QrCode } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { emitCardInteraction } from "../lib/card-events";
 
 type ExecutiveActionGridProps = {
   readonly executive: ExecutiveProfile;
+  readonly onConnect: () => void;
 };
 
 function telephoneHref(phone: string) {
   return `tel:${phone.replace(/[^\d+]/g, "")}`;
 }
 
-export function ExecutiveActionGrid({ executive }: ExecutiveActionGridProps) {
+export function ExecutiveActionGrid({
+  executive,
+  onConnect
+}: ExecutiveActionGridProps) {
   const actions = [
     {
       href: telephoneHref(executive.phone),
@@ -35,15 +39,15 @@ export function ExecutiveActionGrid({ executive }: ExecutiveActionGridProps) {
         })
     },
     {
-      download: executive.vcardFileName,
-      href: `/card/${executive.slug}/vcard`,
-      icon: UserRoundPlus,
+      icon: QrCode,
       label: "Connect",
-      onClick: () =>
-        emitCardInteraction("vcard_download", executive.slug, {
-          action: "vcard_download",
+      onClick: () => {
+        emitCardInteraction("qr_scan", executive.slug, {
+          action: "connect_qr_open",
           surface: "executive_card_action_grid"
-        })
+        });
+        onConnect();
+      }
     },
     {
       href: executive.website,
@@ -63,21 +67,38 @@ export function ExecutiveActionGrid({ executive }: ExecutiveActionGridProps) {
     <nav className="executive-action-grid" aria-label="Executive contact actions">
       {actions.map((action) => {
         const Icon = action.icon;
+        const content = (
+          <>
+            <span className="executive-action-icon" aria-hidden="true">
+              <Icon size={26} strokeWidth={1.8} />
+            </span>
+            <span>{action.label}</span>
+          </>
+        );
+
+        if (!("href" in action)) {
+          return (
+            <button
+              key={action.label}
+              className="executive-action"
+              type="button"
+              onClick={action.onClick}
+            >
+              {content}
+            </button>
+          );
+        }
 
         return (
           <a
             key={action.label}
             className="executive-action"
-            download={"download" in action ? action.download : undefined}
             href={action.href}
             onClick={action.onClick}
             rel={"rel" in action ? action.rel : undefined}
             target={"target" in action ? action.target : undefined}
           >
-            <span className="executive-action-icon" aria-hidden="true">
-              <Icon size={22} strokeWidth={1.8} />
-            </span>
-            <span>{action.label}</span>
+            {content}
           </a>
         );
       })}

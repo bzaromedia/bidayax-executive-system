@@ -130,7 +130,7 @@ The application currently uses `mailto:` links; it does not send application ema
 
 Current production card profile data uses:
 
-- `contact@bidayax.com`
+- `contact@theexecutivecard.com`
 
 Owner preference is to use Namecheap Private Email for product-domain inboxes. This requires Namecheap mailbox and DNS configuration, but no SMTP variables are required by the current application unless future app-sent email is added.
 

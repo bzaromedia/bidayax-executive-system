@@ -38,8 +38,11 @@ export const receptionistTaskTypeLabels = {
 export const receptionistIntentLabels = {
   general_inquiry: "General inquiry",
   investor_interest: "Investor interest",
+  partnership_request: "Partnership request",
   partnership_interest: "Partnership interest",
+  qualify_lead: "Qualify lead",
   request_callback: "Request callback",
+  route_message: "Route message",
   schedule_meeting: "Schedule meeting",
   spam_or_low_value: "Spam or low value",
   support_request: "Support request",

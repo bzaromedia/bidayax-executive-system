@@ -8,9 +8,13 @@ import { getCardUrl } from "../lib/routes";
 
 type ExecutiveFooterActionsProps = {
   readonly executive: ExecutiveProfile;
+  readonly onQrOpen: () => void;
 };
 
-export function ExecutiveFooterActions({ executive }: ExecutiveFooterActionsProps) {
+export function ExecutiveFooterActions({
+  executive,
+  onQrOpen
+}: ExecutiveFooterActionsProps) {
   const [shareLabel, setShareLabel] = useState("Share");
   const url = getCardUrl(executive);
 
@@ -39,17 +43,27 @@ export function ExecutiveFooterActions({ executive }: ExecutiveFooterActionsProp
 
   return (
     <footer className="executive-footer-actions">
-      <a className="executive-footer-link" href={`/card/${executive.slug}/qr`}>
+      <button
+        className="executive-footer-link"
+        type="button"
+        onClick={() => {
+          emitCardInteraction("qr_scan", executive.slug, {
+            action: "qr_sheet_open",
+            surface: "executive_card_footer"
+          });
+          onQrOpen();
+        }}
+      >
         <QrCode aria-hidden="true" size={18} />
         QR
-      </a>
+      </button>
       <a
         className="executive-footer-link"
         download={`${executive.slug}-executive-card.zip`}
         href={`/card/${executive.slug}/download`}
       >
         <Download aria-hidden="true" size={18} />
-        Package
+        Download Card
       </a>
       <button className="executive-footer-link" type="button" onClick={handleShare}>
         <Share2 aria-hidden="true" size={18} />

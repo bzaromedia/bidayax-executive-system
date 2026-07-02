@@ -13,9 +13,9 @@ Current profile source:
 
 Current card email value:
 
-- `contact@bidayax.com`
+- `contact@theexecutivecard.com`
 
-The owner selected product-domain email addresses for commercial identity. Switching card links from `contact@bidayax.com` to `contact@theexecutivecard.online` requires a separate code/data change and test update. This deployment configuration pass does not change application profile data.
+The card and receptionist workflow use `contact@theexecutivecard.com`. Configure this mailbox or an alias before public operational use.
 
 ## Recommended Product Mailboxes
 

@@ -13,7 +13,13 @@ export const eventTypeLabels = {
   call_click: "Call clicks",
   email_click: "Email clicks",
   website_click: "Website clicks",
-  share_click: "Share clicks"
+  share_click: "Share clicks",
+  receptionist_request_started: "Receptionist starts",
+  receptionist_request_submitted: "Receptionist submissions",
+  receptionist_request_failed: "Receptionist errors",
+  receptionist_meeting_requested: "Meeting requests",
+  receptionist_callback_requested: "Callback requests",
+  receptionist_lead_qualified: "Qualified leads"
 } as const satisfies Record<InteractionEventType, string>;
 
 export function formatInteger(value: number) {

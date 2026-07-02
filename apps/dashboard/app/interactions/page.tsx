@@ -18,8 +18,8 @@ import { ProductionHardeningWarnings } from "@/components/ProductionHardeningWar
 import { ProviderConfigurationChecklist } from "@/components/ProviderConfigurationChecklist";
 import { RecentInteractionFeed } from "@/components/RecentInteractionFeed";
 import { ReceptionistEmptyState } from "@/components/ReceptionistEmptyState";
-import { ReceptionistInteractionFeed } from "@/components/ReceptionistInteractionFeed";
 import { ReceptionistLanguageBreakdown } from "@/components/ReceptionistLanguageBreakdown";
+import { ReceptionistRequestsPanel } from "@/components/ReceptionistRequestsPanel";
 import { ReceptionistSummary } from "@/components/ReceptionistSummary";
 import { ReceptionistTaskList } from "@/components/ReceptionistTaskList";
 import { OutboundCallApprovalList } from "@/components/OutboundCallApprovalList";
@@ -154,7 +154,7 @@ export default async function InteractionsPage() {
             languages={receptionistData.languageBreakdown}
           />
           <div className="grid gap-6 xl:grid-cols-2">
-            <ReceptionistInteractionFeed interactions={receptionistData.interactions} />
+            <ReceptionistRequestsPanel interactions={receptionistData.interactions} />
             <ReceptionistTaskList tasks={receptionistData.tasks} />
           </div>
         </>

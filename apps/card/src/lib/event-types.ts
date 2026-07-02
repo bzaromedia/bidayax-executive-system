@@ -21,5 +21,11 @@ export const cardActionEventTypes = [
   "call_click",
   "email_click",
   "website_click",
-  "share_click"
+  "share_click",
+  "receptionist_request_started",
+  "receptionist_request_submitted",
+  "receptionist_request_failed",
+  "receptionist_meeting_requested",
+  "receptionist_callback_requested",
+  "receptionist_lead_qualified"
 ] as const;

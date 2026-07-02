@@ -12,6 +12,7 @@ import {
 import { createVCard } from "../apps/card/src/lib/vcard.ts";
 
 const outputRoot = resolve(process.cwd(), "downloads", "executive-cards");
+const brandAssetRoot = resolve(process.cwd(), "packages", "design-system", "branding");
 const brand = {
   black: [17, 17, 17, 255],
   charcoal: [26, 26, 26, 255],
@@ -121,50 +122,6 @@ function createAvatarAsset(profile: ExecutiveProfile) {
     }
 
     return brand.gold;
-  });
-}
-
-function createLogoAsset() {
-  return createPng(900, 300, (x, y) => {
-    if (x < 12 || y < 12 || x > 887 || y > 287) {
-      return brand.gold;
-    }
-
-    if (x > 92 && x < 188 && y > 74 && y < 226) {
-      return brand.gold;
-    }
-
-    if (x > 210 && x < 246 && y > 74 && y < 226) {
-      return brand.gold;
-    }
-
-    if (x > 292 && x < 790 && y > 108 && y < 136) {
-      return brand.softWhite;
-    }
-
-    if (x > 292 && x < 704 && y > 166 && y < 188) {
-      return brand.mutedGray;
-    }
-
-    return brand.black;
-  });
-}
-
-function createMarkAsset() {
-  return createPng(512, 512, (x, y) => {
-    if (x < 14 || y < 14 || x > 497 || y > 497) {
-      return brand.gold;
-    }
-
-    const leftStem = x > 138 && x < 194 && y > 112 && y < 400;
-    const rightStem = x > 318 && x < 374 && y > 112 && y < 400;
-    const bridge = x > 194 && x < 318 && y > 228 && y < 284;
-
-    if (leftStem || rightStem || bridge) {
-      return brand.gold;
-    }
-
-    return brand.black;
   });
 }
 
@@ -353,8 +310,14 @@ async function writeExecutivePackage(profile: ExecutiveProfile) {
   await writeFile(join(packageDirectory, profile.vcardFileName), `${createVCard(profile)}\r\n`);
   await writeFile(join(packageDirectory, "qr.png"), await createQrAsset(profile));
   await writeFile(join(assetsDirectory, "avatar-placeholder.png"), createAvatarAsset(profile));
-  await writeFile(join(assetsDirectory, "logo.png"), createLogoAsset());
-  await writeFile(join(assetsDirectory, "mark.png"), createMarkAsset());
+  await writeFile(
+    join(assetsDirectory, "logo.png"),
+    await readFile(join(brandAssetRoot, "the-executive-card-logo.png"))
+  );
+  await writeFile(
+    join(assetsDirectory, "mark.png"),
+    await readFile(join(brandAssetRoot, "the-executive-card-logo-mark.png"))
+  );
   await writeFile(join(packageDirectory, "README.md"), readme(profile));
   await createZip(packageDirectory, join(outputRoot, `${profile.slug}-executive-card.zip`));
 }
