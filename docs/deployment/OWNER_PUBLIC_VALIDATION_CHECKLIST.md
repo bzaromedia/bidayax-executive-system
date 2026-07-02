@@ -55,7 +55,7 @@ Validate each workflow against all three cards:
 | Dashboard health | After sign-in, open `https://dashboard.theexecutivecard.online/api/system/health`. | Owner validation required |
 | Card view events | Open each card and confirm interaction activity appears in the dashboard where implemented. | Owner validation required |
 | QR scan events | Scan each QR and confirm the scan interaction is captured where implemented. | Owner validation required |
-| Button click events | Click call, email, website, share, vCard, and Download Card actions and confirm event capture where implemented. | Owner validation required |
+| Button click events | Click call, email, website, share, vCard, and Download actions and confirm event capture where implemented. | Owner validation required |
 
 ## Email Checks
 

@@ -28,7 +28,7 @@ Validate each workflow against all three cards:
 | Website link | Confirm the website action opens `https://bidayax.com`. | Owner validation required |
 | vCard import | Confirm name, role, company, phone, email, website, and two-line address import correctly. | Owner validation required |
 | Share action | Confirm shared URLs use the correct executive card URL. | Owner validation required |
-| Download Card | Confirm each download route returns only that executive package. | Owner validation required |
+| Download | Confirm each download route returns only that executive package. | Owner validation required |
 
 ## Receptionist Checks
 

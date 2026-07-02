@@ -14,7 +14,7 @@ Public URL: https://theexecutivecard.online
 | QR route exists for each card | ready | `/card/[slug]/qr` |
 | vCard route exists for each card | ready | `/card/[slug]/vcard` |
 | Call, email, website, save, QR, and share actions exist | ready | `apps/card/src/components/ExecutiveActionGrid.tsx`, `apps/card/src/components/ExecutiveFooterActions.tsx` |
-| Download action says Download Card | ready | `apps/card/src/components/ExecutiveFooterActions.tsx` |
+| Download action says Download | ready | `apps/card/src/components/ExecutiveFooterActions.tsx` |
 | Receptionist workflow is card-side and consent-gated | ready | `apps/card/src/components/ExecutiveReceptionistCard.tsx`, `apps/card/app/api/receptionist/request/route.ts` |
 | Website action routes to BidayaX LLC | ready | `https://bidayax.com` |
 | Email action routes to The Executive Card inbox | ready | `contact@theexecutivecard.com` |

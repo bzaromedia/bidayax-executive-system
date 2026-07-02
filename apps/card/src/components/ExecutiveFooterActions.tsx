@@ -63,7 +63,7 @@ export function ExecutiveFooterActions({
         href={`/card/${executive.slug}/download`}
       >
         <Download aria-hidden="true" size={18} />
-        Download Card
+        Download
       </a>
       <button className="executive-footer-link" type="button" onClick={handleShare}>
         <Share2 aria-hidden="true" size={18} />

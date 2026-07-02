@@ -49,7 +49,7 @@ export const executiveProfiles = [
     email: executiveSharedEmail,
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
-    bio: "A.D Garner leads operational and technology execution for BidayaX LLC through The Executive Card.",
+    bio: "A.D Garner leads operational and technology execution for BidayaX LLC.",
     qrUrl: `${cardUrl("ad-garner")}?entry=qr`,
     vcardFileName: "ad-garner.vcf",
     theme: "executive-black-gold"
@@ -67,7 +67,7 @@ export const executiveProfiles = [
     email: executiveSharedEmail,
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
-    bio: "Naimah J. Barnes leads BidayaX LLC and the business direction for The Executive Card.",
+    bio: "Naimah J. Barnes leads BidayaX LLC and the business direction.",
     qrUrl: `${cardUrl("naimah-barnes")}?entry=qr`,
     vcardFileName: "naimah-barnes.vcf",
     theme: "executive-black-gold"
@@ -85,7 +85,7 @@ export const executiveProfiles = [
     email: executiveSharedEmail,
     website: executiveSharedWebsite,
     tagline: executiveSharedTagline,
-    bio: "Sean Hall supports executive management for BidayaX LLC and The Executive Card.",
+    bio: "Sean Hall supports executive management for BidayaX LLC.",
     qrUrl: `${cardUrl("sean-hall")}?entry=qr`,
     vcardFileName: "sean-hall.vcf",
     theme: "executive-black-gold"
