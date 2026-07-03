@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@bidayax/config": "workspace:*",
+    "@bidayax/tokens": "workspace:*",
     "@bidayax/types": "workspace:*",
     "zod": "^4.4.3"
   },

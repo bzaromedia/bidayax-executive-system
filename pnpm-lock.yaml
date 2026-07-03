@@ -292,6 +292,9 @@ importers:
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@bidayax/tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
       '@bidayax/types':
         specifier: workspace:*
         version: link:../../packages/types

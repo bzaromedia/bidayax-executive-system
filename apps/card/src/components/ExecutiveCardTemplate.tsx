@@ -12,7 +12,7 @@ import {
   resolveQrTransferFeedbackSettings,
   resolveReceptionistBehavior
 } from "@bidayax/card-customization";
-import { motionTokens } from "@bidayax/tokens";
+import { motionTokens, primitiveColors, semanticColors } from "@bidayax/tokens";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { emitCardInteraction, getCardLoadEventTypes } from "../lib/card-events";
 import { getExecutiveQrValue } from "../lib/qr";
@@ -62,11 +62,16 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
   );
   const themeStyle = {
     "--bx-color-action-primary": themeResolution.theme.primaryColor,
+    "--bx-color-action-primary-hover": semanticColors.action.primaryHover,
+    "--bx-color-border-focus": themeResolution.theme.accentColor,
     "--bx-color-content-accent": themeResolution.theme.accentColor,
+    "--bx-color-content-inverse": primitiveColors.black.brand,
     "--bx-color-content-muted": themeResolution.theme.mutedTextColor,
     "--bx-color-content-primary": themeResolution.theme.textColor,
     "--bx-color-content-secondary": themeResolution.theme.mutedTextColor,
+    "--bx-color-surface-base": primitiveColors.black.brand,
     "--bx-color-surface-canvas": themeResolution.theme.backgroundColor,
+    "--bx-color-surface-inset": primitiveColors.black[950],
     "--bx-color-surface-panel": themeResolution.theme.secondaryColor,
     "--bx-color-surface-raised": themeResolution.theme.surfaceColor,
     "--reflection-x": "50%",

@@ -1,21 +1,22 @@
+import { primitiveColors } from "@bidayax/tokens";
 import type { BrandThemeConfig } from "@bidayax/types";
 import { validateBrandThemeConfig } from "./theme-validation";
 
 export const defaultExecutiveBrandTheme = {
-  accentColor: "var(--bx-color-content-accent)",
+  accentColor: primitiveColors.gold.brand,
   approved: true,
-  backgroundColor: "var(--bx-color-surface-canvas)",
+  backgroundColor: primitiveColors.black[850],
   brandName: "The Executive Card",
   fontBody: "Inter",
   fontDisplay: "Playfair Display",
   logoMarkUrl: "/brand/Logo-Mark.png",
   logoUrl: "/brand/TEC-Logo.png",
-  mutedTextColor: "var(--bx-color-content-muted)",
+  mutedTextColor: primitiveColors.neutral.mutedGray,
   ownerId: "bidayax-llc",
-  primaryColor: "var(--bx-color-action-primary)",
-  secondaryColor: "var(--bx-color-surface-inverse)",
-  surfaceColor: "var(--bx-color-surface-raised)",
-  textColor: "var(--bx-color-content-primary)",
+  primaryColor: primitiveColors.gold.brand,
+  secondaryColor: primitiveColors.black.brand,
+  surfaceColor: primitiveColors.charcoal.brand,
+  textColor: primitiveColors.neutral.pureWhite,
   themeId: "executive-black-gold"
 } as const satisfies BrandThemeConfig;
 
