@@ -20,6 +20,17 @@ body {
 }
 
 .card-stage {
+  --executive-footer-button-height: 2.75rem;
+  --executive-footer-height: calc(
+    var(--executive-footer-button-height) + (var(--bx-space-1) * 2)
+  );
+  --executive-footer-offset: max(var(--bx-space-2), env(safe-area-inset-bottom));
+  --executive-footer-gap: var(--bx-space-3);
+  --executive-footer-clearance: calc(
+    var(--executive-footer-height)
+    + var(--executive-footer-offset)
+    + var(--executive-footer-gap)
+  );
   width: 100%;
   max-width: 100%;
   min-height: 100vh;
@@ -54,12 +65,7 @@ body {
   padding:
     max(var(--bx-space-4), env(safe-area-inset-top))
     var(--bx-space-4)
-    calc(
-      max(var(--bx-space-4), env(safe-area-inset-bottom))
-      + var(--bx-space-8)
-      + var(--bx-space-8)
-      + var(--bx-space-6)
-    );
+    var(--executive-footer-clearance);
   display: grid;
   align-items: start;
   overflow-x: hidden;
@@ -274,6 +280,12 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+}
+
+.executive-info-stack::after {
+  content: "";
+  display: block;
+  height: var(--bx-space-2);
 }
 
 .executive-info-card,
@@ -514,7 +526,7 @@ body {
   position: fixed;
   z-index: 40;
   left: 50%;
-  bottom: max(var(--bx-space-2), env(safe-area-inset-bottom));
+  bottom: var(--executive-footer-offset);
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--bx-space-2);
@@ -531,7 +543,7 @@ body {
 }
 
 .executive-footer-link {
-  min-height: 2.75rem;
+  min-height: var(--executive-footer-button-height);
   min-width: 0;
   display: inline-flex;
   align-items: center;
@@ -938,12 +950,7 @@ body {
     padding:
       var(--bx-space-8)
       var(--bx-space-8)
-      calc(
-        max(var(--bx-space-4), env(safe-area-inset-bottom))
-        + var(--bx-space-8)
-        + var(--bx-space-8)
-        + var(--bx-space-6)
-      );
+      var(--executive-footer-clearance);
   }
 
   .executive-card-surface {
