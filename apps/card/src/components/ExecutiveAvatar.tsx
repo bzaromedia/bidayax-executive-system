@@ -1,23 +1,23 @@
 import type { ExecutiveProfile } from "@bidayax/config/executives";
+import type { ResolvedExecutiveAvatar } from "@bidayax/card-customization";
 
 type ExecutiveAvatarProps = {
+  readonly avatar: ResolvedExecutiveAvatar;
   readonly executive: ExecutiveProfile;
 };
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
+export function ExecutiveAvatar({ avatar, executive }: ExecutiveAvatarProps) {
+  if (avatar.kind === "image") {
+    return (
+      <div className="executive-avatar" aria-label={`${executive.displayName} profile`}>
+        <img className="executive-avatar-image" src={avatar.src} alt={avatar.altText} />
+      </div>
+    );
+  }
 
-export function ExecutiveAvatar({ executive }: ExecutiveAvatarProps) {
   return (
     <div className="executive-avatar" aria-label={`${executive.displayName} profile`}>
-      <span aria-hidden="true">{getInitials(executive.displayName)}</span>
+      <span aria-hidden="true">{avatar.initials}</span>
     </div>
   );
 }

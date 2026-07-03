@@ -3,16 +3,26 @@
 import { useState } from "react";
 import { Headphones, X } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
+import type { ResolvedReceptionistBehavior } from "@bidayax/card-customization";
+import type { ReceptionistSettingsConfig } from "@bidayax/types";
 import { ReceptionistRequestForm } from "./ReceptionistRequestForm";
 
 type ExecutiveReceptionistCardProps = {
+  readonly behavior?: ResolvedReceptionistBehavior;
   readonly executive: ExecutiveProfile;
+  readonly settings?: ReceptionistSettingsConfig;
 };
 
 export function ExecutiveReceptionistCard({
-  executive
+  behavior,
+  executive,
+  settings
 }: ExecutiveReceptionistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+
+  if (settings && !settings.enabled) {
+    return null;
+  }
 
   return (
     <>
@@ -58,12 +68,19 @@ export function ExecutiveReceptionistCard({
               </button>
             </div>
             <p className="executive-modal-intro">
-              Submit a routed request for human-approved executive follow-up.
+              {behavior?.greetingText ??
+                "Submit a routed request for human-approved executive follow-up."}
             </p>
-            <ReceptionistRequestForm executiveSlug={executive.slug} />
+            <ReceptionistRequestForm
+              executiveSlug={executive.slug}
+              {...(settings ? { settings } : {})}
+            />
           </section>
         </div>
       ) : null}
     </>
   );
 }
+
+
+

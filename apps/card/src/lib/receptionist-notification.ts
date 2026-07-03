@@ -14,7 +14,8 @@ function formatRequestType(value: string) {
 
 export function createReceptionistNotificationPayload(
   request: ReceptionistRequest,
-  executiveName: string
+  executiveName: string,
+  handoffEmail = receptionistInbox
 ): ReceptionistNotificationPayload {
   const subject = `[The Executive Card] Receptionist Request - ${executiveName} - ${formatRequestType(request.requestType)}`;
   const body = [
@@ -36,7 +37,7 @@ export function createReceptionistNotificationPayload(
     body,
     request,
     subject,
-    to: receptionistInbox
+    to: handoffEmail
   };
 }
 
@@ -48,4 +49,3 @@ export function getReceptionistNotificationStatus() {
 
   return hasSmtp ? "email_ready" : "provider_unconfigured";
 }
-

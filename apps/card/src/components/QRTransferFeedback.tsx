@@ -21,6 +21,7 @@ import {
 import { TransferFeedbackSettings as TransferFeedbackSettingsPanel } from "./TransferFeedbackSettings";
 
 type QRTransferFeedbackProps = {
+  readonly defaultSettings?: TransferFeedbackSettings;
   readonly executive: ExecutiveProfile;
   readonly initialState?: TransferFeedbackKind;
 };
@@ -108,6 +109,7 @@ async function playTransferFeedbackTone(
 }
 
 export function QRTransferFeedback({
+  defaultSettings = defaultTransferFeedbackSettings,
   executive,
   initialState = "success"
 }: QRTransferFeedbackProps) {
@@ -115,9 +117,7 @@ export function QRTransferFeedback({
   const dismissTimerRef = useRef<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
   const [status, setStatus] = useState<TransferFeedbackKind>(initialState);
-  const [settings, setSettings] = useState<TransferFeedbackSettings>(
-    defaultTransferFeedbackSettings
-  );
+  const [settings, setSettings] = useState<TransferFeedbackSettings>(defaultSettings);
   const [isReducedMotion, setIsReducedMotion] = useState(true);
 
   useEffect(() => {
@@ -132,7 +132,8 @@ export function QRTransferFeedback({
     initializedRef.current = true;
 
     const nextSettings = readTransferFeedbackSettings(
-      getBrowserTransferFeedbackStorage()
+      getBrowserTransferFeedbackStorage(),
+      defaultSettings
     );
     const shouldShow =
       initialState === "failure" || isQrTransferUrl(window.location.href);
@@ -175,7 +176,7 @@ export function QRTransferFeedback({
         window.clearTimeout(dismissTimerRef.current);
       }
     };
-  }, [executive.slug, initialState]);
+  }, [defaultSettings, executive.slug, initialState]);
 
   function handleSettingsChange(
     nextSettings: TransferFeedbackSettings,
@@ -183,7 +184,8 @@ export function QRTransferFeedback({
   ) {
     const storedSettings = writeTransferFeedbackSettings(
       nextSettings,
-      getBrowserTransferFeedbackStorage()
+      getBrowserTransferFeedbackStorage(),
+      defaultSettings
     );
 
     setSettings(storedSettings);

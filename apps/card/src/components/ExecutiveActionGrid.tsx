@@ -2,11 +2,23 @@
 
 import { Globe2, Mail, Phone, QrCode } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
+import type { CardActionConfig } from "@bidayax/types";
 import { emitCardInteraction } from "../lib/card-events";
 
 type ExecutiveActionGridProps = {
+  readonly actions?: CardActionConfig;
   readonly executive: ExecutiveProfile;
   readonly onConnect: () => void;
+};
+
+type ExecutiveAction = {
+  readonly enabled: boolean;
+  readonly href?: string;
+  readonly icon: typeof Phone;
+  readonly label: string;
+  readonly onClick: () => void;
+  readonly rel?: string;
+  readonly target?: string;
 };
 
 function telephoneHref(phone: string) {
@@ -14,11 +26,19 @@ function telephoneHref(phone: string) {
 }
 
 export function ExecutiveActionGrid({
+  actions,
   executive,
   onConnect
 }: ExecutiveActionGridProps) {
-  const actions = [
+  const actionConfig = actions ?? {
+    callEnabled: true,
+    connectEnabled: true,
+    emailEnabled: true,
+    websiteEnabled: true
+  };
+  const visibleActions: readonly ExecutiveAction[] = [
     {
+      enabled: actionConfig.callEnabled,
       href: telephoneHref(executive.phone),
       icon: Phone,
       label: "Call",
@@ -29,6 +49,7 @@ export function ExecutiveActionGrid({
         })
     },
     {
+      enabled: actionConfig.emailEnabled,
       href: `mailto:${executive.email}`,
       icon: Mail,
       label: "Email",
@@ -39,6 +60,7 @@ export function ExecutiveActionGrid({
         })
     },
     {
+      enabled: actionConfig.connectEnabled,
       icon: QrCode,
       label: "Connect",
       onClick: () => {
@@ -50,6 +72,7 @@ export function ExecutiveActionGrid({
       }
     },
     {
+      enabled: actionConfig.websiteEnabled,
       href: executive.website,
       icon: Globe2,
       label: "Website",
@@ -61,11 +84,11 @@ export function ExecutiveActionGrid({
       rel: "noreferrer",
       target: "_blank"
     }
-  ] as const;
+  ].filter((action) => action.enabled);
 
   return (
     <nav className="executive-action-grid" aria-label="Executive contact actions">
-      {actions.map((action) => {
+      {visibleActions.map((action) => {
         const Icon = action.icon;
         const content = (
           <>
@@ -76,7 +99,7 @@ export function ExecutiveActionGrid({
           </>
         );
 
-        if (!("href" in action)) {
+        if (!action.href) {
           return (
             <button
               key={action.label}
@@ -95,8 +118,8 @@ export function ExecutiveActionGrid({
             className="executive-action"
             href={action.href}
             onClick={action.onClick}
-            rel={"rel" in action ? action.rel : undefined}
-            target={"target" in action ? action.target : undefined}
+            rel={action.rel}
+            target={action.target}
           >
             {content}
           </a>

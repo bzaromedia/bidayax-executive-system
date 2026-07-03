@@ -253,7 +253,7 @@ export type ReceptionistRequest = {
 };
 
 export type ReceptionistNotificationPayload = {
-  readonly to: "contact@theexecutivecard.com";
+  readonly to: string;
   readonly subject: string;
   readonly body: string;
   readonly request: ReceptionistRequest;
@@ -294,3 +294,4 @@ export function isReceptionistLanguage(
 ): value is ReceptionistLanguage {
   return (receptionistLanguages as readonly string[]).includes(value);
 }
+

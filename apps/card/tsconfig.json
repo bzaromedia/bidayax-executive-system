@@ -34,6 +34,9 @@
       ],
       "@bidayax/config": [
         "../../packages/config/src/index.ts"
+      ],
+      "@bidayax/card-customization": [
+        "../../services/card-customization/src/index.ts"
       ]
     },
     "esModuleInterop": true,

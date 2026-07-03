@@ -9,7 +9,8 @@ import {
 import type {
   ExecutiveSlug,
   ReceptionistLanguage,
-  ReceptionistRequestType
+  ReceptionistRequestType,
+  ReceptionistSettingsConfig
 } from "@bidayax/types";
 import { emitCardInteraction } from "../lib/card-events";
 import {
@@ -20,6 +21,7 @@ import {
 
 type ReceptionistRequestFormProps = {
   readonly executiveSlug: ExecutiveSlug;
+  readonly settings?: ReceptionistSettingsConfig;
 };
 
 type FormStatus = "idle" | "submitting" | "success" | "error";
@@ -32,7 +34,8 @@ function getStringValue(formData: FormData, key: string) {
 
 function buildInput(
   formData: FormData,
-  executiveSlug: ExecutiveSlug
+  executiveSlug: ExecutiveSlug,
+  consentRequired: boolean
 ): ReceptionistFormInput {
   const company = getStringValue(formData, "company");
   const dialect = getStringValue(formData, "dialect");
@@ -40,7 +43,7 @@ function buildInput(
   const preferredTime = getStringValue(formData, "preferredTime");
 
   return {
-    consent: formData.get("consent") === "on",
+    consent: consentRequired ? formData.get("consent") === "on" : true,
     email: getStringValue(formData, "email"),
     executiveSlug,
     message: getStringValue(formData, "message"),
@@ -78,11 +81,25 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
 }
 
 export function ReceptionistRequestForm({
-  executiveSlug
+  executiveSlug,
+  settings
 }: ReceptionistRequestFormProps) {
   const [status, setStatus] = useState<FormStatus>("idle");
   const [result, setResult] = useState<ReceptionistSubmitResult | null>(null);
   const startedRef = useRef(false);
+  const languageOptions = settings
+    ? receptionistLanguageOptions.filter((language) =>
+        settings.supportedLanguages.includes(language.value)
+      )
+    : receptionistLanguageOptions;
+  const requestTypeOptions = settings
+    ? receptionistRequestTypeOptions.filter((requestType) =>
+        settings.requestTypes.includes(requestType.value)
+      )
+    : receptionistRequestTypeOptions;
+  const defaultLanguage = settings?.defaultLanguage ?? "English";
+  const defaultRequestType = settings?.requestTypes[0] ?? "schedule_meeting";
+  const consentRequired = settings?.consentRequired ?? true;
 
   function logStarted() {
     if (startedRef.current) {
@@ -101,7 +118,7 @@ export function ReceptionistRequestForm({
     logStarted();
 
     const formData = new FormData(event.currentTarget);
-    const input = buildInput(formData, executiveSlug);
+    const input = buildInput(formData, executiveSlug, consentRequired);
 
     if (!input.consent) {
       setStatus("error");
@@ -199,8 +216,8 @@ export function ReceptionistRequestForm({
         </label>
         <label>
           <span>Language</span>
-          <select name="preferredLanguage" defaultValue="English" required>
-            {receptionistLanguageOptions.map((language) => (
+          <select name="preferredLanguage" defaultValue={defaultLanguage} required>
+            {languageOptions.map((language) => (
               <option key={language.value} value={language.value}>
                 {language.label}
               </option>
@@ -213,8 +230,8 @@ export function ReceptionistRequestForm({
         </label>
         <label>
           <span>Request</span>
-          <select name="requestType" defaultValue="schedule_meeting" required>
-            {receptionistRequestTypeOptions.map((requestType) => (
+          <select name="requestType" defaultValue={defaultRequestType} required>
+            {requestTypeOptions.map((requestType) => (
               <option key={requestType.value} value={requestType.value}>
                 {requestType.label}
               </option>
@@ -230,13 +247,15 @@ export function ReceptionistRequestForm({
         <span>Message</span>
         <textarea name="message" rows={4} required minLength={10} />
       </label>
-      <label className="receptionist-consent">
-        <input name="consent" type="checkbox" required />
-        <span>
-          I consent to BidayaX LLC using this request to route executive
-          follow-up.
-        </span>
-      </label>
+      {consentRequired ? (
+        <label className="receptionist-consent">
+          <input name="consent" type="checkbox" required />
+          <span>
+            I consent to BidayaX LLC using this request to route executive
+            follow-up.
+          </span>
+        </label>
+      ) : null}
       <button
         className="receptionist-submit"
         type="submit"

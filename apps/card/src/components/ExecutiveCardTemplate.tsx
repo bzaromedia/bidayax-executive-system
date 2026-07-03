@@ -5,6 +5,13 @@ import type { CSSProperties, PointerEvent } from "react";
 import gsap from "gsap";
 import { QRCodeSVG } from "qrcode.react";
 import { QrCode, UserRound } from "lucide-react";
+import {
+  createCustomerCardSettingsFromExecutiveProfile,
+  resolveBrandThemeConfig,
+  resolveExecutiveAvatar,
+  resolveQrTransferFeedbackSettings,
+  resolveReceptionistBehavior
+} from "@bidayax/card-customization";
 import { motionTokens } from "@bidayax/tokens";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { emitCardInteraction, getCardLoadEventTypes } from "../lib/card-events";
@@ -41,6 +48,33 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
   const cardViewLoggedRef = useRef(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
   const qrValue = getExecutiveQrValue(executive);
+  const customerSettings = createCustomerCardSettingsFromExecutiveProfile(executive);
+  const themeResolution = resolveBrandThemeConfig(customerSettings.brandTheme);
+  const avatar = resolveExecutiveAvatar(
+    customerSettings.avatar,
+    customerSettings.profile
+  );
+  const receptionistBehavior = resolveReceptionistBehavior(
+    customerSettings.receptionist
+  );
+  const qrFeedbackSettings = resolveQrTransferFeedbackSettings(
+    customerSettings.qrFeedback
+  );
+  const themeStyle = {
+    "--bx-color-action-primary": themeResolution.theme.primaryColor,
+    "--bx-color-content-accent": themeResolution.theme.accentColor,
+    "--bx-color-content-muted": themeResolution.theme.mutedTextColor,
+    "--bx-color-content-primary": themeResolution.theme.textColor,
+    "--bx-color-content-secondary": themeResolution.theme.mutedTextColor,
+    "--bx-color-surface-canvas": themeResolution.theme.backgroundColor,
+    "--bx-color-surface-panel": themeResolution.theme.secondaryColor,
+    "--bx-color-surface-raised": themeResolution.theme.surfaceColor,
+    "--reflection-x": "50%",
+    "--spotlight-x": "50%",
+    "--spotlight-y": "45%",
+    "--tilt-x": "0deg",
+    "--tilt-y": "0deg"
+  } as CSSProperties;
 
   useEffect(() => {
     if (cardViewLoggedRef.current) {
@@ -67,10 +101,10 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
       { autoAlpha: 0, y: 18, rotateX: 2 },
       {
         autoAlpha: 1,
-        y: 0,
-        rotateX: 0,
         duration: durationToSeconds(motionTokens.duration.deliberate),
-        ease: motionTokens.easing.entrance
+        ease: motionTokens.easing.entrance,
+        rotateX: 0,
+        y: 0
       }
     );
   }, []);
@@ -119,33 +153,37 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
         className="executive-template"
         onPointerLeave={handlePointerLeave}
         onPointerMove={handlePointerMove}
-        style={
-          {
-            "--reflection-x": "50%",
-            "--spotlight-x": "50%",
-            "--spotlight-y": "45%",
-            "--tilt-x": "0deg",
-            "--tilt-y": "0deg"
-          } as CSSProperties
-        }
+        style={themeStyle}
       >
         <div className="executive-card-surface">
-          <QRTransferFeedback executive={executive} />
-          <ExecutiveHeader executive={executive} />
+          <QRTransferFeedback
+            defaultSettings={qrFeedbackSettings}
+            executive={executive}
+          />
+          <ExecutiveHeader avatar={avatar} executive={executive} />
           <ExecutiveActionGrid
+            actions={customerSettings.actions}
             executive={executive}
             onConnect={() => setIsQrOpen(true)}
           />
           <div className="executive-info-stack">
             <ExecutiveInfoCard icon={UserRound} title="About Me">
-              <p>{executive.bio}</p>
+              <p>{customerSettings.profile.bio}</p>
             </ExecutiveInfoCard>
-            <ExecutiveMeetingCard executive={executive} />
+            <ExecutiveMeetingCard
+              calendar={customerSettings.calendar}
+              executive={executive}
+            />
             <ExecutiveContactCard executive={executive} />
             <ExecutiveCompanyCard executive={executive} />
-            <ExecutiveReceptionistCard executive={executive} />
+            <ExecutiveReceptionistCard
+              behavior={receptionistBehavior}
+              executive={executive}
+              settings={customerSettings.receptionist}
+            />
           </div>
           <ExecutiveFooterActions
+            actions={customerSettings.actions}
             executive={executive}
             onQrOpen={() => setIsQrOpen(true)}
           />

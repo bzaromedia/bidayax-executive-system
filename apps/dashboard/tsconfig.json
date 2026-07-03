@@ -28,6 +28,15 @@
       ],
       "@bidayax/config/receptionist": [
         "../../packages/config/receptionist/index.ts"
+      ],
+      "@bidayax/card-customization": [
+        "../../services/card-customization/src/index.ts"
+      ],
+      "@bidayax/config": [
+        "../../packages/config/src/index.ts"
+      ],
+      "@bidayax/config/executives": [
+        "../../packages/config/executives/index.ts"
       ]
     },
     "esModuleInterop": true,

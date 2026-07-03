@@ -11,6 +11,7 @@
     "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@bidayax/card-customization": "workspace:*",
     "@bidayax/config": "workspace:*",
     "@bidayax/improvement-engine": "workspace:*",
     "@bidayax/telephony": "workspace:*",

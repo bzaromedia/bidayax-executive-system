@@ -89,6 +89,9 @@ importers:
 
   apps/card:
     dependencies:
+      '@bidayax/card-customization':
+        specifier: workspace:*
+        version: link:../../services/card-customization
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -138,6 +141,9 @@ importers:
 
   apps/dashboard:
     dependencies:
+      '@bidayax/card-customization':
+        specifier: workspace:*
+        version: link:../../services/card-customization
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
@@ -280,6 +286,25 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.1
+
+  services/card-customization:
+    dependencies:
+      '@bidayax/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
 
   services/contact-graph:
     dependencies:

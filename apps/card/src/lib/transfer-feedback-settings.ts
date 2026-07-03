@@ -1,8 +1,9 @@
-export type TransferFeedbackSettings = {
-  readonly hapticsEnabled: boolean;
-  readonly soundEnabled: boolean;
-  readonly animationEnabled: boolean;
-};
+import type { QRTransferFeedbackConfig } from "@bidayax/types";
+
+export type TransferFeedbackSettings = Pick<
+  QRTransferFeedbackConfig,
+  "animationEnabled" | "hapticsEnabled" | "soundEnabled"
+>;
 
 type TransferFeedbackStorage = Pick<Storage, "getItem" | "setItem">;
 
@@ -10,20 +11,19 @@ export const transferFeedbackSettingsStorageKey =
   "the-executive-card.transfer-feedback-settings";
 
 export const defaultTransferFeedbackSettings: TransferFeedbackSettings = {
+  animationEnabled: true,
   hapticsEnabled: true,
-  soundEnabled: false,
-  animationEnabled: true
+  soundEnabled: false
 };
 
 function normalizeTransferFeedbackSettings(
-  value: Partial<TransferFeedbackSettings> | null | undefined
+  value: Partial<TransferFeedbackSettings> | null | undefined,
+  defaults: TransferFeedbackSettings = defaultTransferFeedbackSettings
 ): TransferFeedbackSettings {
   return {
-    hapticsEnabled:
-      value?.hapticsEnabled ?? defaultTransferFeedbackSettings.hapticsEnabled,
-    soundEnabled: value?.soundEnabled ?? defaultTransferFeedbackSettings.soundEnabled,
-    animationEnabled:
-      value?.animationEnabled ?? defaultTransferFeedbackSettings.animationEnabled
+    animationEnabled: value?.animationEnabled ?? defaults.animationEnabled,
+    hapticsEnabled: value?.hapticsEnabled ?? defaults.hapticsEnabled,
+    soundEnabled: value?.soundEnabled ?? defaults.soundEnabled
   };
 }
 
@@ -37,33 +37,36 @@ export function getBrowserTransferFeedbackStorage() {
 
 export function readTransferFeedbackSettings(
   storage: TransferFeedbackStorage | null | undefined =
-    getBrowserTransferFeedbackStorage()
+    getBrowserTransferFeedbackStorage(),
+  defaults: TransferFeedbackSettings = defaultTransferFeedbackSettings
 ): TransferFeedbackSettings {
   if (!storage) {
-    return defaultTransferFeedbackSettings;
+    return defaults;
   }
 
   try {
     const rawValue = storage.getItem(transferFeedbackSettingsStorageKey);
 
     if (!rawValue) {
-      return defaultTransferFeedbackSettings;
+      return defaults;
     }
 
     return normalizeTransferFeedbackSettings(
-      JSON.parse(rawValue) as Partial<TransferFeedbackSettings>
+      JSON.parse(rawValue) as Partial<TransferFeedbackSettings>,
+      defaults
     );
   } catch {
-    return defaultTransferFeedbackSettings;
+    return defaults;
   }
 }
 
 export function writeTransferFeedbackSettings(
   settings: Partial<TransferFeedbackSettings>,
   storage: TransferFeedbackStorage | null | undefined =
-    getBrowserTransferFeedbackStorage()
+    getBrowserTransferFeedbackStorage(),
+  defaults: TransferFeedbackSettings = defaultTransferFeedbackSettings
 ): TransferFeedbackSettings {
-  const nextSettings = normalizeTransferFeedbackSettings(settings);
+  const nextSettings = normalizeTransferFeedbackSettings(settings, defaults);
 
   try {
     storage?.setItem(
@@ -81,13 +84,15 @@ export function updateTransferFeedbackSetting(
   key: keyof TransferFeedbackSettings,
   enabled: boolean,
   storage: TransferFeedbackStorage | null | undefined =
-    getBrowserTransferFeedbackStorage()
+    getBrowserTransferFeedbackStorage(),
+  defaults: TransferFeedbackSettings = defaultTransferFeedbackSettings
 ): TransferFeedbackSettings {
   return writeTransferFeedbackSettings(
     {
-      ...readTransferFeedbackSettings(storage),
+      ...readTransferFeedbackSettings(storage, defaults),
       [key]: enabled
     },
-    storage
+    storage,
+    defaults
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createCustomerCardSettingsFromExecutiveProfile } from "@bidayax/card-customization";
 import { getExecutiveProfileBySlug } from "@bidayax/config/executives";
 import {
   executiveSlugs,
@@ -83,10 +84,12 @@ export async function POST(request: Request) {
     ...(parsed.data.phone ? { phone: parsed.data.phone } : {}),
     ...(parsed.data.preferredTime ? { preferredTime: parsed.data.preferredTime } : {})
   };
+  const settings = createCustomerCardSettingsFromExecutiveProfile(executive);
   const providerStatus = getReceptionistNotificationStatus();
   const notification = createReceptionistNotificationPayload(
     receptionistRequest,
-    executive.displayName
+    executive.displayName,
+    settings.receptionist.handoffEmail
   );
   const stored = await storeReceptionistRequest({
     anonymousVisitorId: parsed.data.anonymousVisitorId ?? null,
@@ -106,4 +109,3 @@ export async function POST(request: Request) {
     { status: 202 }
   );
 }
-

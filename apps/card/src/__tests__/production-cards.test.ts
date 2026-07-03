@@ -129,6 +129,25 @@ describe("production executive cards", () => {
     expect(serialized).not.toContain("mock");
   });
 
+  it("keeps executive profile data out of JSX components", () => {
+    const componentFiles = [
+      "src/components/ExecutiveCardTemplate.tsx",
+      "src/components/ExecutiveHeader.tsx",
+      "src/components/ExecutiveActionGrid.tsx",
+      "src/components/ExecutiveInfoCard.tsx"
+    ];
+
+    for (const file of componentFiles) {
+      const source = readFileSync(resolve(process.cwd(), file), "utf8");
+
+      expect(source).not.toContain("A.D Garner");
+      expect(source).not.toContain("Naimah J. Barnes");
+      expect(source).not.toContain("Sean Hall");
+      expect(source).not.toContain("+1 (302) 330-5547");
+      expect(source).not.toContain("8 The Green Ste A");
+    }
+  });
+
   it("supports all card event names", () => {
     expect(interactionEventTypes).toEqual([
       "qr_scan",
@@ -458,7 +477,8 @@ describe("production executive cards", () => {
       "utf8"
     );
 
-    expect(template).toContain("<QRTransferFeedback executive={executive} />");
+    expect(template).toContain("defaultSettings={qrFeedbackSettings}");
+    expect(template).toContain("executive={executive}");
     expect(feedback).toContain("Executive Card received");
     expect(feedback).toContain("qr_transfer_detected");
     expect(feedback).toContain("qr_transfer_success_feedback");
@@ -553,3 +573,5 @@ describe("production executive cards", () => {
     }
   });
 });
+
+

@@ -22,7 +22,8 @@
       "@bidayax/config": ["packages/config/src/index.ts"],
       "@bidayax/config/executives": ["packages/config/executives/index.ts"],
       "@bidayax/config/receptionist": ["packages/config/receptionist/index.ts"],
-      "@bidayax/config/tailwind": ["packages/config/tailwind/preset.ts"]
+      "@bidayax/config/tailwind": ["packages/config/tailwind/preset.ts"],
+      "@bidayax/card-customization": ["services/card-customization/src/index.ts"]
     }
   }
 }

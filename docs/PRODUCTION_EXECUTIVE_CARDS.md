@@ -136,3 +136,21 @@ pnpm db:migrations:verify
 ```
 
 Card-specific tests live in `apps/card/src/__tests__/production-cards.test.ts`.
+
+## Customization Settings Foundation
+
+The production cards now render through the shared Executive Card template plus structured customer settings generated from `packages/config/executives/profiles.ts`.
+
+Active settings groups:
+
+- profile identity and contact values;
+- avatar reference with initials fallback;
+- approved brand theme resolution;
+- card action visibility;
+- internal calendar behavior;
+- receptionist routing behavior;
+- QR transfer feedback preferences.
+
+The customization service lives in `services/card-customization/`, and shared types live in `packages/types/src/card-customization.ts`. The database migration `0013_create_card_customization_settings.sql` adds settings tables and audit events for production persistence.
+
+The current three production cards keep their existing URLs and actions. Customer-specific assets should be referenced through approved local paths under `apps/card/public/uploads/avatars/` and `apps/card/public/uploads/logos/` for the launch configuration.

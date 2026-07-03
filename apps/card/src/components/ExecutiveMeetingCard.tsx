@@ -1,15 +1,24 @@
 import { CalendarCheck2 } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
+import type { CalendarBookingConfig } from "@bidayax/types";
 import { emitCardInteraction } from "../lib/card-events";
 import { getExecutiveCalendarPath } from "../lib/calendar";
 import { ExecutiveInfoCard } from "./ExecutiveInfoCard";
 
 type ExecutiveMeetingCardProps = {
+  readonly calendar?: CalendarBookingConfig;
   readonly executive: ExecutiveProfile;
 };
 
-export function ExecutiveMeetingCard({ executive }: ExecutiveMeetingCardProps) {
-  const href = getExecutiveCalendarPath(executive);
+export function ExecutiveMeetingCard({
+  calendar,
+  executive
+}: ExecutiveMeetingCardProps) {
+  if (calendar && (!calendar.enabled || calendar.meetingBehavior === "disabled")) {
+    return null;
+  }
+
+  const href = calendar?.externalCalendarUrl ?? getExecutiveCalendarPath(executive);
 
   return (
     <ExecutiveInfoCard
