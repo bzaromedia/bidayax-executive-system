@@ -25,7 +25,7 @@ body {
     var(--executive-footer-button-height) + (var(--bx-space-1) * 2)
   );
   --executive-footer-offset: max(var(--bx-space-2), env(safe-area-inset-bottom));
-  --executive-footer-gap: var(--bx-space-3);
+  --executive-footer-gap: var(--bx-space-4);
   --executive-footer-clearance: calc(
     var(--executive-footer-height)
     + var(--executive-footer-offset)
@@ -65,7 +65,7 @@ body {
   padding:
     max(var(--bx-space-4), env(safe-area-inset-top))
     var(--bx-space-4)
-    var(--executive-footer-clearance);
+    max(var(--bx-space-4), env(safe-area-inset-bottom));
   display: grid;
   align-items: start;
   overflow-x: hidden;
@@ -280,12 +280,13 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  padding-bottom: var(--executive-footer-clearance);
 }
 
 .executive-info-stack::after {
   content: "";
   display: block;
-  height: var(--bx-space-2);
+  height: 0;
 }
 
 .executive-info-card,
@@ -950,7 +951,7 @@ body {
     padding:
       var(--bx-space-8)
       var(--bx-space-8)
-      var(--executive-footer-clearance);
+      max(var(--bx-space-4), env(safe-area-inset-bottom));
   }
 
   .executive-card-surface {
