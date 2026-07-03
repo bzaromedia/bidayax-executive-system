@@ -37,7 +37,7 @@ Phase 4 stops at persistence.
 
 ## Event Types
 
-- `qr_scan`: emitted when a card opens with `entry=qr`.
+- `qr_scan`: emitted when a card opens with `source=qr`.
 - `card_view`: emitted when a card route loads.
 - `vcard_download`: emitted when vCard is clicked.
 - `call_click`: emitted when Call is clicked.

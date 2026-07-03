@@ -14,8 +14,12 @@ Validate each workflow against all three cards:
 
 | Check | Required action | Status |
 | --- | --- | --- |
-| iPhone QR scan | Scan each QR and confirm the correct HTTPS card opens. | Owner validation required |
-| Android QR scan | Scan each QR and confirm the correct HTTPS card opens. | Owner validation required |
+| iPhone QR scan | Scan each QR and confirm the correct HTTPS card opens with `?source=qr`. | Owner validation required |
+| Android QR scan | Scan each QR and confirm the correct HTTPS card opens with `?source=qr`. | Owner validation required |
+| QR transfer feedback | Confirm the receiving device shows `Executive Card received` and the card remains usable. | Owner validation required |
+| QR haptics | Confirm supported receiver devices vibrate when haptics are enabled, and unsupported devices fail silently. | Owner validation required |
+| QR sound setting | Enable sound in feedback settings and confirm a low-volume generated tone plays only after browser permission. | Owner validation required |
+| QR animation setting | Toggle animation off and confirm the confirmation remains readable without motion. | Owner validation required |
 | Mobile rendering | Confirm no text clipping, horizontal drift, or broken spacing. | Owner validation required |
 | Desktop rendering | Confirm each card remains centered, readable, and action-ready. | Owner validation required |
 | Splash screen | Confirm the logo appears only during the brief loading transition and not on the main card page. | Owner validation required |
@@ -31,6 +35,7 @@ Validate each workflow against all three cards:
 | Website link | Confirm the website action opens `https://bidayax.com`. | Owner validation required |
 | vCard import | Confirm name, role, company, phone, email, website, and two-line address import correctly. | Owner validation required |
 | Share action | Confirm shared URLs use the correct executive card URL. | Owner validation required |
+| Save Contact from QR feedback | Open a QR-marked route and confirm the feedback `Save Contact` action downloads that executive vCard. | Owner validation required |
 | Download | Confirm each download route returns only that executive package. | Owner validation required |
 
 ## Calendar Checks
@@ -56,4 +61,4 @@ Validate each workflow against all three cards:
 
 ## Completion Rule
 
-Marketing may begin only after owner device validation passes without launch-blocking issues.
+Marketing may begin only after owner device validation passes without launch-blocking issues. QR transfer feedback validation is receiver-side only; sender-side haptics require an active paired web session or native bridge and are not active v1.0 behavior.

@@ -191,11 +191,8 @@ export function ExecutiveCalendarBooking({
           </label>
           <label className="executive-calendar-message">
             <span>Message</span>
-            <textarea
-              name="message"
-              rows={4}
-              placeholder="Share the meeting context."
-            />
+            <small>Share the meeting context.</small>
+            <textarea name="message" rows={4} />
           </label>
         </div>
 

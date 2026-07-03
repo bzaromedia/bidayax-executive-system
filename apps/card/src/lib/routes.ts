@@ -24,7 +24,7 @@ export function getCardCalendarUrl(executive: Pick<ExecutiveProfile, "slug">) {
 
 export function getCardQrUrl(executive: Pick<ExecutiveProfile, "slug">) {
   const url = new URL(getCardUrl(executive));
-  url.searchParams.set("entry", "qr");
+  url.searchParams.set("source", "qr");
 
   return url.toString();
 }

@@ -10,7 +10,7 @@ import {
   receptionistLanguages,
   receptionistRequestTypes
 } from "@bidayax/types";
-import { getCardUrl } from "../lib/routes";
+import { getCardQrUrl, getCardUrl } from "../lib/routes";
 import {
   getExecutiveCalendarPath,
   getExecutiveCalendarSlots,
@@ -20,12 +20,38 @@ import { getExecutiveQrValue } from "../lib/qr";
 import { createVCard, getVCardFilename } from "../lib/vcard";
 import { getExecutiveCardMetadata } from "../lib/seo";
 import { createReceptionistNotificationPayload } from "../lib/receptionist-notification";
+import {
+  canAttemptTransferSound,
+  getTransferAnimationEnabled,
+  isQrTransferUrl,
+  triggerTransferHaptics
+} from "../lib/transfer-feedback";
+import {
+  defaultTransferFeedbackSettings,
+  readTransferFeedbackSettings,
+  writeTransferFeedbackSettings
+} from "../lib/transfer-feedback-settings";
 
 const expectedProfiles = [
   ["ad-garner", "A.D Garner", "COO / CTO / Founder"],
   ["naimah-barnes", "Naimah J. Barnes", "CEO"],
   ["sean-hall", "Sean Hall", "Executive Management"]
 ] as const;
+
+const expectedTagline =
+  "Building category-defining Synthetic Intelligence for global enterprises";
+
+class MemoryTransferFeedbackStorage {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
+}
 
 describe("production executive cards", () => {
   it("defines all three production profiles", () => {
@@ -43,7 +69,7 @@ describe("production executive cards", () => {
           phone: "+1 (302) 330-5547",
           role,
           slug,
-          tagline: "Building Trusted Intelligence For Modern Enterprises",
+          tagline: expectedTagline,
           theme: "executive-black-gold",
           website: "https://bidayax.com"
         })
@@ -63,8 +89,16 @@ describe("production executive cards", () => {
       expect(getCardUrl(profile)).toBe(
         `https://theexecutivecard.online/card/${profile.slug}`
       );
+      const directUrl = new URL(getCardUrl(profile));
+
+      expect(directUrl.searchParams.get("source")).toBeNull();
+      expect(directUrl.searchParams.get("scan")).toBeNull();
+      expect(getCardQrUrl(profile)).toBe(profile.qrUrl);
       expect(getExecutiveQrValue(profile)).toBe(profile.qrUrl);
-      expect(new URL(profile.qrUrl).searchParams.get("entry")).toBe("qr");
+      expect(new URL(profile.qrUrl).searchParams.get("source")).toBe("qr");
+      expect(isQrTransferUrl(profile.qrUrl)).toBe(true);
+      expect(isQrTransferUrl(`${getCardUrl(profile)}?scan=1`)).toBe(true);
+      expect(isQrTransferUrl(getCardUrl(profile))).toBe(false);
     }
   });
 
@@ -104,6 +138,12 @@ describe("production executive cards", () => {
       "email_click",
       "website_click",
       "share_click",
+      "qr_transfer_detected",
+      "qr_transfer_success_feedback",
+      "qr_transfer_failure_feedback",
+      "qr_transfer_haptics_toggled",
+      "qr_transfer_sound_toggled",
+      "qr_transfer_animation_toggled",
       "calendar_view",
       "calendar_slot_selected",
       "calendar_request_submitted",
@@ -398,6 +438,108 @@ describe("production executive cards", () => {
     expect(css).toContain("+ var(--bx-space-8)");
     expect(css).toContain("+ var(--bx-space-6)");
     expect(css).not.toContain("var(--bx-space-8)\n      + var(--bx-space-8)\n      + var(--bx-space-8)");
+  });
+
+  it("uses the approved production tagline for all cards", () => {
+    expect(executiveProfiles.map((profile) => profile.tagline)).toEqual([
+      expectedTagline,
+      expectedTagline,
+      expectedTagline
+    ]);
+  });
+
+  it("mounts QR transfer feedback for QR-marked card routes", () => {
+    const template = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveCardTemplate.tsx"),
+      "utf8"
+    );
+    const feedback = readFileSync(
+      resolve(process.cwd(), "src/components/QRTransferFeedback.tsx"),
+      "utf8"
+    );
+
+    expect(template).toContain("<QRTransferFeedback executive={executive} />");
+    expect(feedback).toContain("Executive Card received");
+    expect(feedback).toContain("qr_transfer_detected");
+    expect(feedback).toContain("qr_transfer_success_feedback");
+  });
+
+  it("does not crash when receiver haptics are unavailable", () => {
+    expect(
+      triggerTransferHaptics(defaultTransferFeedbackSettings, {}, "success")
+    ).toBe(false);
+  });
+
+  it("uses receiver feedback settings with safe production defaults", () => {
+    expect(defaultTransferFeedbackSettings).toEqual({
+      hapticsEnabled: true,
+      soundEnabled: false,
+      animationEnabled: true
+    });
+    expect(readTransferFeedbackSettings(null)).toEqual(
+      defaultTransferFeedbackSettings
+    );
+  });
+
+  it("persists QR transfer feedback setting toggles", () => {
+    const storage = new MemoryTransferFeedbackStorage();
+
+    writeTransferFeedbackSettings(
+      {
+        hapticsEnabled: false,
+        soundEnabled: true,
+        animationEnabled: false
+      },
+      storage
+    );
+
+    expect(readTransferFeedbackSettings(storage)).toEqual({
+      hapticsEnabled: false,
+      soundEnabled: true,
+      animationEnabled: false
+    });
+  });
+
+  it("gates transfer sound behind the sound setting", () => {
+    expect(canAttemptTransferSound(defaultTransferFeedbackSettings)).toBe(false);
+    expect(
+      canAttemptTransferSound({
+        ...defaultTransferFeedbackSettings,
+        soundEnabled: true
+      })
+    ).toBe(true);
+  });
+
+  it("disables transfer animation when reduced motion is requested", () => {
+    expect(getTransferAnimationEnabled(defaultTransferFeedbackSettings, true)).toBe(
+      false
+    );
+    expect(getTransferAnimationEnabled(defaultTransferFeedbackSettings, false)).toBe(
+      true
+    );
+  });
+
+  it("contains a safe invalid-route transfer feedback state", () => {
+    const feedback = readFileSync(
+      resolve(process.cwd(), "src/components/QRTransferFeedback.tsx"),
+      "utf8"
+    );
+
+    expect(feedback).toContain("Executive Card unavailable");
+    expect(feedback).toContain("qr_transfer_failure_feedback");
+  });
+
+  it("documents receiver-side QR feedback limitations without sender-side claims", () => {
+    const qrFeedbackDocs = readFileSync(
+      resolve(process.cwd(), "../../docs/QR_TRANSFER_FEEDBACK_SYSTEM.md"),
+      "utf8"
+    );
+
+    expect(qrFeedbackDocs).toContain("receiver device only");
+    expect(qrFeedbackDocs).toContain("active paired web session or native bridge");
+    expect(qrFeedbackDocs).not.toContain(
+      "both sender and receiver devices receive haptics"
+    );
   });
 
   it("creates public card metadata", () => {

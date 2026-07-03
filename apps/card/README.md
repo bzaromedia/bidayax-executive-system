@@ -37,7 +37,7 @@ BIDAYAX_IP_HASH_SECRET=replace-with-production-secret
 
 Emitted events:
 
-- `qr_scan` when a card opens with `entry=qr`.
+- `qr_scan` when a card opens with `source=qr`.
 - `card_view` when a card route loads.
 - `vcard_download` when vCard is clicked.
 - `call_click` when Call is clicked.

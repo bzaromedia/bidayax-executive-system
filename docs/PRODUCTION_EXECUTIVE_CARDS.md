@@ -29,7 +29,7 @@ Shared production values:
 - Email: contact@theexecutivecard.com
 - Website action: https://bidayax.com
 - Public card base URL: https://theexecutivecard.online
-- Visible tagline: Building Trusted Intelligence For Modern Enterprises
+- Visible tagline: Building category-defining Synthetic Intelligence for global enterprises
 - Theme: executive-black-gold
 
 `contact@theexecutivecard.com` must be configured in production DNS/mail before public operational use.
@@ -54,7 +54,7 @@ Each card includes:
 - fixed bottom action bar for QR, Download, and Share;
 - polyglot receptionist request workflow with consent;
 - splash screen that reserves the logo mark for loading and removes persistent logos from the main card;
-- card view, QR scan, call, email, website, vCard, share, and calendar event logging;
+- card view, QR scan, QR transfer feedback, call, email, website, vCard, share, and calendar event logging;
 - SEO metadata;
 - OpenGraph metadata;
 - responsive mobile and desktop layout.
@@ -70,6 +70,12 @@ The card app emits these events:
 - `website_click`
 - `vcard_download`
 - `share_click`
+- `qr_transfer_detected`
+- `qr_transfer_success_feedback`
+- `qr_transfer_failure_feedback`
+- `qr_transfer_haptics_toggled`
+- `qr_transfer_sound_toggled`
+- `qr_transfer_animation_toggled`
 - `calendar_view`
 - `calendar_slot_selected`
 - `calendar_request_submitted`
@@ -84,6 +90,13 @@ The card app emits these events:
 The database migration `0009_add_share_click_interaction_event.sql` extends the interaction event enum for share tracking.
 The database migration `0010_add_receptionist_request_events.sql` extends the interaction event enum for receptionist request workflow tracking.
 The database migration `0011_add_calendar_interaction_events.sql` extends the interaction event enum for internal calendar booking tracking.
+The database migration `0012_add_qr_transfer_feedback_events.sql` extends the interaction event enum for receiver-side QR transfer feedback tracking.
+
+## QR Transfer Feedback
+
+Production QR URLs use `?source=qr`. When a receiving device opens a QR-marked card URL, the card shows a temporary `Executive Card received` confirmation with a `Save Contact` action.
+
+The v1.0 feedback scope is receiver device only. Haptics depend on `navigator.vibrate()` support, sound is off by default and uses Web Audio generated tones, and animation respects reduced-motion settings. Sender-side feedback requires an active paired web session or native bridge and is not claimed as active in v1.0.
 
 ## Calendar Booking
 

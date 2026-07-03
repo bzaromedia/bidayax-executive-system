@@ -35,7 +35,7 @@ export const executiveSharedPhone = "+1 (302) 330-5547";
 export const executiveSharedEmail = "contact@theexecutivecard.com";
 export const executiveSharedWebsite = "https://bidayax.com";
 export const executiveSharedTagline =
-  "Building Trusted Intelligence For Modern Enterprises";
+  "Building category-defining Synthetic Intelligence for global enterprises";
 
 export const executiveDefaultCalendarSlots = [
   {
@@ -80,7 +80,7 @@ export const executiveProfiles = [
     tagline: executiveSharedTagline,
     bio: "A.D Garner leads operational and technology execution for BidayaX LLC.",
     calendarSlots: executiveDefaultCalendarSlots,
-    qrUrl: `${cardUrl("ad-garner")}?entry=qr`,
+    qrUrl: `${cardUrl("ad-garner")}?source=qr`,
     vcardFileName: "ad-garner.vcf",
     theme: "executive-black-gold"
   },
@@ -99,7 +99,7 @@ export const executiveProfiles = [
     tagline: executiveSharedTagline,
     bio: "Naimah J. Barnes leads BidayaX LLC and the business direction.",
     calendarSlots: executiveDefaultCalendarSlots,
-    qrUrl: `${cardUrl("naimah-barnes")}?entry=qr`,
+    qrUrl: `${cardUrl("naimah-barnes")}?source=qr`,
     vcardFileName: "naimah-barnes.vcf",
     theme: "executive-black-gold"
   },
@@ -118,7 +118,7 @@ export const executiveProfiles = [
     tagline: executiveSharedTagline,
     bio: "Sean Hall supports executive management for BidayaX LLC.",
     calendarSlots: executiveDefaultCalendarSlots,
-    qrUrl: `${cardUrl("sean-hall")}?entry=qr`,
+    qrUrl: `${cardUrl("sean-hall")}?source=qr`,
     vcardFileName: "sean-hall.vcf",
     theme: "executive-black-gold"
   }

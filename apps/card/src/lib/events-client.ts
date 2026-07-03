@@ -5,6 +5,7 @@ import type {
   InteractionEventType
 } from "./event-types";
 import { getInteractionSession } from "./session";
+import { isQrTransferUrl } from "./transfer-feedback";
 
 const eventEndpoint = "/api/events";
 
@@ -21,17 +22,7 @@ function getReferrer() {
 }
 
 function isQrEntry() {
-  try {
-    const url = new URL(window.location.href);
-    const marker =
-      url.searchParams.get("entry") ??
-      url.searchParams.get("source") ??
-      url.searchParams.get("utm_source");
-
-    return marker === "qr";
-  } catch {
-    return false;
-  }
+  return isQrTransferUrl(window.location.href);
 }
 
 export function getCardLoadEventTypes(): readonly InteractionEventType[] {

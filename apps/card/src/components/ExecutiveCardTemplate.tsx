@@ -18,6 +18,7 @@ import { ExecutiveHeader } from "./ExecutiveHeader";
 import { ExecutiveInfoCard } from "./ExecutiveInfoCard";
 import { ExecutiveMeetingCard } from "./ExecutiveMeetingCard";
 import { ExecutiveReceptionistCard } from "./ExecutiveReceptionistCard";
+import { QRTransferFeedback } from "./QRTransferFeedback";
 
 type ExecutiveCardTemplateProps = {
   readonly executive: ExecutiveProfile;
@@ -129,6 +130,7 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
         }
       >
         <div className="executive-card-surface">
+          <QRTransferFeedback executive={executive} />
           <ExecutiveHeader executive={executive} />
           <ExecutiveActionGrid
             executive={executive}

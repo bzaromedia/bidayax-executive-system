@@ -11,9 +11,31 @@
     "phone": "+1 (302) 330-5547",
     "email": "contact@theexecutivecard.com",
     "website": "https://bidayax.com",
-    "tagline": "Building Trusted Intelligence For Modern Enterprises",
+    "tagline": "Building category-defining Synthetic Intelligence for global enterprises",
     "bio": "A.D Garner leads operational and technology execution for BidayaX LLC.",
-    "qrUrl": "https://theexecutivecard.online/card/ad-garner?entry=qr",
+    "calendarSlots": [
+      {
+        "label": "Tomorrow morning",
+        "value": "tomorrow-morning",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "Tomorrow afternoon",
+        "value": "tomorrow-afternoon",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "This week",
+        "value": "this-week",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "Next week",
+        "value": "next-week",
+        "timezone": "America/New_York"
+      }
+    ],
+    "qrUrl": "https://theexecutivecard.online/card/ad-garner?source=qr",
     "vcardFileName": "ad-garner.vcf",
     "theme": "executive-black-gold"
   },

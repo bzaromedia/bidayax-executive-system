@@ -11,9 +11,31 @@
     "phone": "+1 (302) 330-5547",
     "email": "contact@theexecutivecard.com",
     "website": "https://bidayax.com",
-    "tagline": "Building Trusted Intelligence For Modern Enterprises",
+    "tagline": "Building category-defining Synthetic Intelligence for global enterprises",
     "bio": "Sean Hall supports executive management for BidayaX LLC.",
-    "qrUrl": "https://theexecutivecard.online/card/sean-hall?entry=qr",
+    "calendarSlots": [
+      {
+        "label": "Tomorrow morning",
+        "value": "tomorrow-morning",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "Tomorrow afternoon",
+        "value": "tomorrow-afternoon",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "This week",
+        "value": "this-week",
+        "timezone": "America/New_York"
+      },
+      {
+        "label": "Next week",
+        "value": "next-week",
+        "timezone": "America/New_York"
+      }
+    ],
+    "qrUrl": "https://theexecutivecard.online/card/sean-hall?source=qr",
     "vcardFileName": "sean-hall.vcf",
     "theme": "executive-black-gold"
   },
