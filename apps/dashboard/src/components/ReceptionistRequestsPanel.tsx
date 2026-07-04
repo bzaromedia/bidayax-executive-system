@@ -75,6 +75,7 @@ export function ReceptionistRequestsPanel({
                 {interaction.dialect ? <span>{interaction.dialect}</span> : null}
                 <span>{receptionistPriorityLabels[interaction.priority]} priority</span>
                 <span>Urgency: {formatWorkflowValue(interaction.urgency)}</span>
+                <span>Trust score: {interaction.trustScore === null ? "Not scored" : `${interaction.trustScore}/100`}</span>
                 <span>Follow-up: {interaction.followUpState}</span>
                 <span>Provider: {formatWorkflowValue(interaction.providerStatus)}</span>
                 <span>Callback: {interaction.callbackTime ? formatDateTime(interaction.callbackTime) : "Not requested"}</span>

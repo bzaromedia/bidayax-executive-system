@@ -7,6 +7,7 @@ import {
   resolveReceptionistProviderConfigFromEnv
 } from "./email-dispatcher";
 import { qualifyReceptionistLead } from "./lead-qualification";
+import { calculateVoiceTrustScore } from "./voice-trust-score";
 import { classifyReceptionistLanguage } from "./language-router";
 import { evaluateReceptionistRateLimit } from "./rate-limit-policy";
 import { routeReceptionistRequestToExecutive } from "./receptionist-router";
@@ -36,6 +37,20 @@ function step(
     status,
     summary
   };
+}
+
+function requestTypeToCallIntent(requestType: ReceptionistWorkflowInput["request"]["requestType"]) {
+  const mapping = {
+    general_inquiry: "unknown",
+    partnership_request: "partner",
+    qualify_lead: "sales",
+    request_callback: "customer",
+    route_message: "unknown",
+    schedule_meeting: "customer",
+    support_request: "customer"
+  } as const;
+
+  return mapping[requestType];
 }
 
 function statusForDispatch(input: {
@@ -70,6 +85,23 @@ export function runReceptionistWorkflow(
   const safety = evaluateReceptionistSafety(input.request);
   const language = classifyReceptionistLanguage(input.request.preferredLanguage);
   const lead = qualifyReceptionistLead(input.request);
+  const trust = calculateVoiceTrustScore({
+    caller: {
+      callerId: input.request.email.toLowerCase(),
+      company: input.request.company ?? null,
+      email: input.request.email,
+      lastContactAt: null,
+      name: input.request.name,
+      phone: input.request.phone ?? "unknown",
+      repeatContactCount: input.request.company ? 1 : 0,
+      verifiedIdentity: Boolean(input.request.email && input.request.company)
+    },
+    companyMatchesExecutiveContext: Boolean(input.request.company),
+    intent: requestTypeToCallIntent(input.request.requestType),
+    languageConfidence: 0.85,
+    sentiment: "neutral",
+    spamRiskScore: 0
+  });
   const route = routeReceptionistRequestToExecutive({
     executiveSlug: input.request.executiveSlug,
     handoffEmail: input.handoffEmail,
@@ -131,8 +163,10 @@ export function runReceptionistWorkflow(
     step("classify_request_type", blocked ? "blocked_by_policy" : "queued", "Request type classified.", {
       requestType: input.request.requestType
     }),
-    step("score_urgency", blocked ? "blocked_by_policy" : "queued", "Urgency score calculated.", {
+    step("score_urgency", blocked ? "blocked_by_policy" : "queued", "Urgency and voice trust scores calculated.", {
       score: lead.score,
+      trustScore: trust.score,
+      trustTier: trust.tier,
       urgency: lead.urgency
     }),
     step("route_to_executive", blocked ? "blocked_by_policy" : "queued", "Request routed to executive owner.", {

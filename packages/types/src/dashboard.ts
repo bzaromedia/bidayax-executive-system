@@ -197,6 +197,7 @@ export type DashboardReceptionistInteraction = {
   readonly priority: ReceptionistPriority;
   readonly providerStatus: string | null;
   readonly urgency: string | null;
+  readonly trustScore: number | null;
   readonly callbackTime: string | null;
   readonly meetingRequest: string | null;
   readonly auditTimeline: readonly DashboardReceptionistAuditEvent[];

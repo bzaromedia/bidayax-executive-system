@@ -43,12 +43,18 @@ These are present for safety-gated future integration. The current v1.0 release 
 | `TWILIO_WEBHOOK_SIGNING_ENABLED` | Conditional | `false` | Must be `true` for production Twilio webhooks | `.env.production`; keep `false` in mock mode |
 | `OPENAI_API_KEY` | Conditional | Empty | Required only if `VOICE_RUNTIME_PROVIDER=openai_realtime` | OpenAI account, not required for RC1 safety-gated mode |
 | `OPENAI_REALTIME_MODEL` | Conditional | Empty | Required only if OpenAI Realtime voice runtime is selected | OpenAI account, not required for RC1 safety-gated mode |
+| `DEEPGRAM_API_KEY` | Conditional | Empty | Required only if a speech-to-text provider adapter is enabled | Provider account, not required for RC1 safety-gated mode |
+| `ELEVENLABS_API_KEY` | Conditional | Empty | Required only if a text-to-speech provider adapter is enabled | Provider account, not required for RC1 safety-gated mode |
+| `DEFAULT_RECEPTIONIST_LANGUAGE` | No | `English` | Default language for the receptionist workflow when detection safely defaults | `.env.production` |
+| `VOICE_RECORDING_DISCLOSURE_ENABLED` | Conditional | `false` | Controls recording disclosure policy for live voice workflows | `.env.production`; must be configured before live calling |
+| `CALL_TRANSFER_ENABLED` | No | `false` | Enables live call transfer only after provider validation and owner approval | `.env.production`; keep `false` for RC1 |
 | `VOICE_AGENT_ENABLED` | No | `false` | Voice agent execution gate | `.env.production`; keep `false` for RC1 |
 | `VOICE_RUNTIME_PROVIDER` | No | `none` | Selects voice runtime provider | `.env.production`; keep `none` for RC1 |
 | `VOICE_TEST_MODE` | No | `true` | Keeps voice runtime in test mode | `.env.production`; keep `true` for RC1 |
 | `LIVE_INBOUND_CALLS_ENABLED` | No | `false` | Live inbound call gate | `.env.production`; keep `false` for RC1 |
 | `OUTBOUND_CALLS_ENABLED` | No | `false` | Outbound call gate | `.env.production`; keep `false` for RC1 |
 | `REQUIRE_HUMAN_APPROVAL` | No | `true` | Requires human approval for outbound flow | `.env.production`; keep `true` |
+| `HUMAN_APPROVAL_REQUIRED` | No | `true` | Alias accepted for `REQUIRE_HUMAN_APPROVAL` | `.env.production`; keep `true` |
 | `ALLOW_PRODUCTION_CALLS` | No | `false` | Final production call execution gate | `.env.production`; keep `false` for RC1 |
 
 ## Docker Compose Variables
@@ -110,12 +116,18 @@ TWILIO_WEBHOOK_SIGNING_ENABLED=false
 
 OPENAI_API_KEY=
 OPENAI_REALTIME_MODEL=
+DEEPGRAM_API_KEY=
+ELEVENLABS_API_KEY=
+DEFAULT_RECEPTIONIST_LANGUAGE=English
+VOICE_RECORDING_DISCLOSURE_ENABLED=false
+CALL_TRANSFER_ENABLED=false
 VOICE_AGENT_ENABLED=false
 VOICE_RUNTIME_PROVIDER=none
 VOICE_TEST_MODE=true
 LIVE_INBOUND_CALLS_ENABLED=false
 OUTBOUND_CALLS_ENABLED=false
 REQUIRE_HUMAN_APPROVAL=true
+HUMAN_APPROVAL_REQUIRED=true
 ALLOW_PRODUCTION_CALLS=false
 ```
 

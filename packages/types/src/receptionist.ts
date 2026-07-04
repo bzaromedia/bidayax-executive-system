@@ -264,6 +264,179 @@ export type ReceptionistNotificationPayload = {
   readonly request: ReceptionistRequest;
 };
 
+export const callIntents = [
+  "sales",
+  "investor",
+  "customer",
+  "partner",
+  "vendor",
+  "media",
+  "legal",
+  "emergency",
+  "personal",
+  "spam",
+  "unknown"
+] as const;
+
+export type CallIntent = (typeof callIntents)[number];
+
+export const receptionistActions = [
+  "book_meeting",
+  "take_message",
+  "answer_faq",
+  "qualify_lead",
+  "transfer_call",
+  "request_callback",
+  "escalate_emergency",
+  "block_spam",
+  "request_human_approval",
+  "queue_internal_request"
+] as const;
+
+export type ReceptionistAction = (typeof receptionistActions)[number];
+
+export const receptionistWorkflowNodeTypes = [
+  "trigger",
+  "language_detection",
+  "intent_classifier",
+  "trust_score",
+  "calendar_lookup",
+  "transfer",
+  "callback",
+  "message_capture",
+  "event_ledger_write",
+  "contact_graph_update",
+  "notification",
+  "human_approval",
+  "summary"
+] as const;
+
+export type ReceptionistWorkflowNodeType =
+  (typeof receptionistWorkflowNodeTypes)[number];
+
+export const receptionistProviderStatusValues = [
+  "configured",
+  "provider_unconfigured",
+  "queued",
+  "sent",
+  "failed",
+  "blocked_by_policy",
+  "requires_human_review"
+] as const;
+
+export type ReceptionistProviderStatusValue =
+  (typeof receptionistProviderStatusValues)[number];
+
+export type CallerProfile = {
+  readonly callerId: string;
+  readonly name: string | null;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly company: string | null;
+  readonly verifiedIdentity: boolean;
+  readonly repeatContactCount: number;
+  readonly lastContactAt: string | null;
+};
+
+export type ExecutiveReceptionistPolicy = {
+  readonly executiveSlug: ExecutiveSlug;
+  readonly transferEnabled: boolean;
+  readonly scheduleEnabled: boolean;
+  readonly callbackEnabled: boolean;
+  readonly blockedCallerPhones: readonly string[];
+  readonly priorityCompanies: readonly string[];
+  readonly allowedLanguages: readonly SupportedReceptionistLanguage[];
+  readonly requireHumanApprovalFor: readonly CallIntent[];
+  readonly businessHoursTimezone: string;
+};
+
+export type LanguageProfile = {
+  readonly detectedLanguage: SupportedReceptionistLanguage | "Unknown";
+  readonly detectedDialect: string | null;
+  readonly confidence: number;
+  readonly defaulted: boolean;
+};
+
+export type VoiceTrustScore = {
+  readonly score: number;
+  readonly tier: "trusted" | "known" | "unverified" | "risky";
+  readonly reasonCodes: readonly string[];
+};
+
+export type CallbackRequest = {
+  readonly callbackId: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly callerPhone: string;
+  readonly callerName: string | null;
+  readonly preferredTime: string | null;
+  readonly priorityScore: number;
+  readonly status: "queued" | "requires_human_review" | "blocked";
+};
+
+export type MeetingRequest = {
+  readonly meetingRequestId: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly requesterName: string | null;
+  readonly requesterEmail: string | null;
+  readonly requesterCompany: string | null;
+  readonly preferredTime: string | null;
+  readonly purpose: string;
+  readonly status: "queued" | "requires_human_review" | "blocked";
+};
+
+export type CallSummary = {
+  readonly originalTranscript: string;
+  readonly englishSummary: string;
+  readonly actionItems: readonly string[];
+  readonly callerIntent: CallIntent;
+  readonly confidenceScore: number;
+};
+
+export type HumanApprovalRequest = {
+  readonly approvalId: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly reasonCodes: readonly string[];
+  readonly requestedAction: ReceptionistAction;
+  readonly status: "required" | "not_required";
+};
+
+export type ReceptionistWorkflowNode = {
+  readonly id: string;
+  readonly type: ReceptionistWorkflowNodeType;
+  readonly inputs: readonly string[];
+  readonly outputs: readonly string[];
+  readonly retryPolicy?: {
+    readonly maxAttempts: number;
+    readonly backoffMs: number;
+  };
+};
+
+export type ReceptionistWorkflowRun = {
+  readonly runId: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly status: ReceptionistProviderStatusValue;
+  readonly steps: readonly ReceptionistWorkflowEventDraft[];
+  readonly startedAt: string;
+  readonly completedAt: string | null;
+};
+
+export type ReceptionistCallEvent = {
+  readonly id: string;
+  readonly executiveId: ExecutiveSlug;
+  readonly callerPhone: string;
+  readonly detectedLanguage: SupportedReceptionistLanguage | "Unknown";
+  readonly detectedDialect?: string;
+  readonly intent: CallIntent;
+  readonly urgencyScore: number;
+  readonly trustScore: number;
+  readonly transcriptOriginal: string;
+  readonly transcriptEnglish?: string;
+  readonly summary: string;
+  readonly actionTaken: ReceptionistAction;
+  readonly followUpRequired: boolean;
+  readonly createdAt: string;
+};
+
 export function isReceptionistInteractionType(
   value: string
 ): value is ReceptionistInteractionType {

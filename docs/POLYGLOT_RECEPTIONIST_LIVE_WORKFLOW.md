@@ -1,6 +1,6 @@
 # Polyglot Receptionist Live Workflow
 
-The Polyglot Receptionist is an active workflow foundation for The Executive Card. It receives card-submitted requests, validates consent, classifies language and request type, scores urgency, routes the request to the correct executive workflow, creates event-ledger records, prepares notification payloads, and exposes the result in the dashboard.
+The Polyglot Receptionist is an active workflow foundation for The Executive Card. It receives card-submitted requests and provider-safe inbound call workflow requests, validates consent, classifies language and request type, scores urgency and voice trust, routes the request to the correct executive workflow, creates event-ledger records, prepares contact graph updates and notification payloads, and exposes the result in the dashboard.
 
 Provider dispatch depends on configured provider credentials and safety flags. When email, calendar, or telephony providers are not configured, the workflow still creates queued internal requests and dashboard-visible audit records.
 
@@ -27,6 +27,7 @@ For v1.0, live telephony requires provider credentials, enabled safety flags, an
 
 ## Active Capabilities
 
+- Provider-safe call workflow algorithms for intent routing, availability policy, voice trust score, callback priority, multilingual memory, abuse detection, and escalation decisioning.
 - Card request intake through `/api/receptionist/request`.
 - Inbound call webhook normalization through `/api/receptionist/inbound-call`.
 - Callback request handling through `/api/receptionist/callback`.

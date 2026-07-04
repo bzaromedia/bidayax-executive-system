@@ -31,7 +31,7 @@ export function getLiveProviderRuntimeConfig(
     openAiApiKey: env.OPENAI_API_KEY ?? null,
     openAiRealtimeModel: env.OPENAI_REALTIME_MODEL ?? null,
     outboundCallsEnabled: readBoolean(env.OUTBOUND_CALLS_ENABLED, false),
-    requireHumanApproval: readBoolean(env.REQUIRE_HUMAN_APPROVAL, true),
+    requireHumanApproval: readBoolean(env.REQUIRE_HUMAN_APPROVAL ?? env.HUMAN_APPROVAL_REQUIRED, true),
     telephonyProvider,
     twilioAccountSid: env.TWILIO_ACCOUNT_SID ?? null,
     twilioAuthToken: env.TWILIO_AUTH_TOKEN ?? null,

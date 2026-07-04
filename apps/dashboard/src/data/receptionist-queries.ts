@@ -41,6 +41,7 @@ type InteractionRow = {
   readonly priority: string;
   readonly provider_status: string | null;
   readonly urgency: string | null;
+  readonly trust_score: string | number | null;
   readonly callback_time: Date | null;
   readonly meeting_request: string | null;
   readonly audit_timeline: unknown;
@@ -240,6 +241,7 @@ function normalizeInteractions(
         requestType: row.request_type,
         status: row.status,
         summary: row.summary,
+        trustScore: row.trust_score === null ? null : Number(row.trust_score),
         urgency: row.urgency
       }
     ];
@@ -350,6 +352,7 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
               priority,
               provider_payload.payload->>'providerStatus' as provider_status,
               urgency_payload.payload->>'urgency' as urgency,
+              urgency_payload.payload->>'trustScore' as trust_score,
               task_payload.due_at as callback_time,
               case
                 when task_payload.task_type = 'schedule_meeting' then 'meeting request queued'

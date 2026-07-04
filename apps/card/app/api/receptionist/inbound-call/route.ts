@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { normalizeInboundCallWebhook } from "@bidayax/polyglot-receptionist";
+import { normalizeInboundCallWebhook, runSimulatedInboundCallWorkflow } from "@bidayax/polyglot-receptionist";
 import { executiveSlugs, receptionistLanguages } from "@bidayax/types";
 import { processReceptionistWorkflowRequest } from "@/lib/receptionist-server-workflow";
+import { getExecutiveProfileBySlug } from "@bidayax/config/executives";
 
 export const runtime = "nodejs";
 
@@ -39,6 +40,18 @@ export async function POST(request: Request) {
   }
 
   const receptionistRequest = normalizeInboundCallWebhook(parsed.data);
+  const executive = getExecutiveProfileBySlug(parsed.data.executiveSlug);
+  const callWorkflow = runSimulatedInboundCallWorkflow({
+    callerEmail: parsed.data.callerEmail,
+    callerName: parsed.data.callerName,
+    callerPhone: parsed.data.callerPhone,
+    consent: true,
+    detectedDialect: parsed.data.dialect ?? null,
+    executiveName: executive?.displayName ?? parsed.data.executiveSlug,
+    executiveSlug: parsed.data.executiveSlug,
+    preferredLanguage: parsed.data.preferredLanguage ?? null,
+    transcript: receptionistRequest.message
+  });
   const result = await processReceptionistWorkflowRequest({
     executiveSlug: parsed.data.executiveSlug,
     rateLimitKey: `${parsed.data.executiveSlug}:${parsed.data.callerPhone}`,
@@ -47,5 +60,18 @@ export async function POST(request: Request) {
     source: "inbound_call"
   });
 
-  return NextResponse.json(result, { status: result.statusCode });
+  return NextResponse.json(
+    {
+      ...result,
+      callWorkflow: {
+        actionTaken: callWorkflow.callEvent.actionTaken,
+        followUpRequired: callWorkflow.callEvent.followUpRequired,
+        intent: callWorkflow.callEvent.intent,
+        providerStatus: callWorkflow.providerStatus,
+        trustScore: callWorkflow.callEvent.trustScore,
+        urgencyScore: callWorkflow.callEvent.urgencyScore
+      }
+    },
+    { status: result.statusCode }
+  );
 }
