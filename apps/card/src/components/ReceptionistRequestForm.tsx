@@ -65,6 +65,14 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
     return null;
   }
 
+  const submittedMessage = "Request submitted. The receptionist will follow up shortly.";
+
+  if (result.message) {
+    return result.callbackWorkflow?.message
+      ? `${result.message} ${result.callbackWorkflow.message}`
+      : result.message;
+  }
+
   if (!result.success) {
     if (result.providerStatus === "blocked_by_policy") {
       return "This request was not accepted because it failed safety or rate-limit checks.";
@@ -78,18 +86,18 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
   }
 
   if (result.providerStatus === "provider_unconfigured") {
-    return "Your request is queued internally for team follow-up. Provider dispatch is not configured yet.";
+    return submittedMessage;
   }
 
   if (result.providerStatus === "requires_human_review") {
-    return "Your request is queued for human review before any provider dispatch.";
+    return submittedMessage;
   }
 
   if (result.providerStatus === "queued" || result.providerStatus === "configured") {
-    return "Your request is queued for executive follow-up.";
+    return submittedMessage;
   }
 
-  return "Your request is accepted for executive follow-up.";
+  return submittedMessage;
 }
 
 export function ReceptionistRequestForm({
@@ -162,6 +170,7 @@ export function ReceptionistRequestForm({
       }
 
       setStatus("success");
+      event.currentTarget.reset();
       emitCardInteraction("receptionist_request_submitted", executiveSlug, {
         action: "submit_success",
         providerStatus: nextResult.providerStatus,
@@ -205,6 +214,7 @@ export function ReceptionistRequestForm({
 
   return (
     <form
+      aria-busy={status === "submitting"}
       className="receptionist-form receptionist-form-compact"
       onFocusCapture={logStarted}
       onSubmit={handleSubmit}
@@ -272,11 +282,13 @@ export function ReceptionistRequestForm({
         className="receptionist-submit"
         type="submit"
         disabled={status === "submitting"}
+        data-status={status}
       >
-        {status === "submitting" ? "Submitting" : "Submit Request"}
+        {status === "submitting" ? "Submitting..." : "Submit Request"}
       </button>
       {result ? (
         <p
+          aria-live="polite"
           className="receptionist-status"
           role="status"
           data-state={status === "success" ? "success" : "error"}

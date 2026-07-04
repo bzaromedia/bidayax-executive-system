@@ -426,6 +426,9 @@ describe("production executive cards", () => {
 
     expect(requestRoute).toContain("processReceptionistWorkflowRequest");
     expect(requestRoute).toContain("consent: z.literal(true)");
+    expect(requestRoute).toContain("callbackWorkflow");
+    expect(requestRoute).toContain("Callback queued pending voice provider configuration.");
+    expect(requestRoute).toContain("receptionist_request_failed");
   });
 
   it("does not claim live autonomous calling without provider configuration", () => {
@@ -463,7 +466,41 @@ describe("production executive cards", () => {
     expect(css).toContain(".receptionist-form");
     expect(css).toContain(".receptionist-form-compact");
     expect(css).toContain("max-height: calc(");
-    expect(css).toContain("margin-bottom: var(--executive-footer-clearance);");
+    expect(css).toContain("margin-bottom: 0;");
+    expect(css).toContain("padding-inline: 0.125rem;");
+  });
+
+  it("wires receptionist request submission states to the API response", () => {
+    const receptionistForm = readFileSync(
+      resolve(process.cwd(), "src/components/ReceptionistRequestForm.tsx"),
+      "utf8"
+    );
+    const receptionistClient = readFileSync(
+      resolve(process.cwd(), "src/lib/receptionist-client.ts"),
+      "utf8"
+    );
+
+    expect(receptionistForm).toContain("onSubmit={handleSubmit}");
+    expect(receptionistForm).toContain("aria-busy={status === \"submitting\"}");
+    expect(receptionistForm).toContain("Submitting...");
+    expect(receptionistForm).toContain("Request submitted. The receptionist will follow up shortly.");
+    expect(receptionistForm).toContain("event.currentTarget.reset();");
+    expect(receptionistClient).toContain("!response.ok");
+    expect(receptionistClient).toContain("invalid_server_response");
+  });
+
+  it("protects mobile viewport balance and unclipped receptionist inputs", () => {
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(css).toContain("min-height: 100dvh;");
+    expect(css).toContain("width: min(40rem, calc(100% - (var(--bx-space-4) * 2)))");
+    expect(css).toContain("overflow-x: visible;");
+    expect(css).toContain("border: 1px solid color-mix");
+    expect(css).toContain("box-shadow:");
+    expect(css).toContain("min-height: 2.75rem;");
   });
 
   it("hides visible scrollbars while preserving overflow when needed", () => {
@@ -488,7 +525,7 @@ describe("production executive cards", () => {
     expect(css).toContain("overflow-x: hidden;");
     expect(css).toContain("min-width: 0;");
     expect(css).toContain("overflow-wrap: anywhere;");
-    expect(css).toContain("width: min(40rem, calc(100vw - (var(--bx-space-4) * 2)))");
+    expect(css).toContain("width: min(40rem, calc(100% - (var(--bx-space-4) * 2)))");
   });
 
   it("keeps fixed navigation padding bounded to the token scale", () => {

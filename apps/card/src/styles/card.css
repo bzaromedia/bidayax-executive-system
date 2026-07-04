@@ -16,6 +16,7 @@ html,
 body {
   width: 100%;
   max-width: 100%;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
@@ -33,7 +34,7 @@ body {
   );
   width: 100%;
   max-width: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   background:
     radial-gradient(
@@ -60,7 +61,7 @@ body {
 .card-stage-container {
   width: 100%;
   max-width: 48rem;
-  min-height: 100vh;
+  min-height: 100dvh;
   margin: 0 auto;
   padding:
     max(var(--bx-space-4), env(safe-area-inset-top))
@@ -115,7 +116,7 @@ body {
   display: grid;
   gap: var(--bx-space-4);
   justify-items: center;
-  padding-top: var(--bx-space-6);
+  padding-top: max(var(--bx-space-6), env(safe-area-inset-top));
   text-align: center;
   overflow-x: hidden;
 }
@@ -417,7 +418,8 @@ body {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  overflow-x: hidden;
+  padding-inline: 0.125rem;
+  overflow-x: visible;
 }
 
 .receptionist-grid {
@@ -425,6 +427,7 @@ body {
   gap: var(--bx-space-2);
   width: 100%;
   min-width: 0;
+  padding-inline: 0.125rem;
 }
 
 .receptionist-form label {
@@ -442,18 +445,31 @@ body {
 .receptionist-form input,
 .receptionist-form select,
 .receptionist-form textarea {
+  box-sizing: border-box;
   width: 100%;
   max-width: 100%;
   min-height: 2.75rem;
-  border: 0;
+  border: 1px solid color-mix(in srgb, var(--bx-color-content-accent) 34%, transparent);
   border-radius: var(--bx-radius-md);
   background: color-mix(in srgb, var(--bx-color-surface-canvas) 82%, transparent);
   color: var(--bx-color-content-primary);
   font: inherit;
   font-size: 0.9375rem;
   line-height: 1.4;
-  padding: var(--bx-space-2);
+  outline: 0;
+  padding: var(--bx-space-2) var(--bx-space-3);
+  box-shadow: inset 0 0 0 1px transparent;
   text-transform: none;
+}
+
+.receptionist-form input:focus-visible,
+.receptionist-form select:focus-visible,
+.receptionist-form textarea:focus-visible {
+  border-color: var(--bx-color-border-focus);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--bx-color-border-focus) 42%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--bx-color-border-focus) 16%, transparent);
+  outline: 0;
 }
 
 .receptionist-form textarea {
@@ -477,7 +493,7 @@ body {
 .receptionist-form-compact input,
 .receptionist-form-compact select,
 .receptionist-form-compact textarea {
-  min-height: 2.5rem;
+  min-height: 2.75rem;
 }
 .receptionist-consent {
   grid-template-columns: auto minmax(0, 1fr);
@@ -548,7 +564,7 @@ body {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--bx-space-2);
-  width: min(40rem, calc(100vw - (var(--bx-space-4) * 2)));
+  width: min(40rem, calc(100% - (var(--bx-space-4) * 2)));
   max-width: calc(100% - (var(--bx-space-4) * 2));
   min-width: 0;
   margin: 0;
@@ -599,7 +615,7 @@ body {
   padding:
     max(var(--bx-space-3), env(safe-area-inset-top))
     var(--bx-space-3)
-    max(var(--bx-space-3), env(safe-area-inset-bottom));
+    var(--executive-footer-clearance);
   background: color-mix(in srgb, var(--bx-color-surface-canvas) 80%, transparent);
   overflow-x: hidden;
 }
@@ -639,10 +655,11 @@ body {
   max-height: calc(
     100dvh
     - max(var(--bx-space-3), env(safe-area-inset-top))
-    - max(var(--bx-space-3), env(safe-area-inset-bottom))
+    - var(--executive-footer-clearance)
   );
   align-content: start;
-  margin-bottom: var(--executive-footer-clearance);
+  margin-bottom: 0;
+  overflow: auto;
 }
 
 .executive-modal-intro {

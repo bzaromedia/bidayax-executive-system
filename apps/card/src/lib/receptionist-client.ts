@@ -22,6 +22,12 @@ export type ReceptionistFormInput = {
 
 export type ReceptionistSubmitResult = {
   readonly success: boolean;
+  readonly callbackWorkflow?: {
+    readonly message: string;
+    readonly provider: "manual_or_pending";
+    readonly status: "queued";
+  };
+  readonly message?: string;
   readonly requestId?: string;
   readonly providerStatus: ReceptionistStatus;
   readonly workflowRunId?: string;
@@ -54,7 +60,25 @@ export async function submitReceptionistRequest(
     },
     method: "POST"
   });
-  const result = (await response.json()) as ReceptionistSubmitResult;
+  let result: ReceptionistSubmitResult;
+
+  try {
+    result = (await response.json()) as ReceptionistSubmitResult;
+  } catch {
+    return {
+      error: "invalid_server_response",
+      providerStatus: "event_store_unavailable",
+      success: false
+    };
+  }
+
+  if (!response.ok && result.success !== false) {
+    return {
+      ...result,
+      error: result.error ?? "request_failed",
+      success: false
+    };
+  }
 
   return result;
 }
