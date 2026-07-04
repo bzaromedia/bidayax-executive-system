@@ -1,18 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import {
-  executiveSlugs,
-  receptionistLanguages,
-  receptionistRequestTypes,
-  type ReceptionistRequest
-} from "@bidayax/types";
+import { executiveSlugs, receptionistLanguages, type ReceptionistRequest } from "@bidayax/types";
 import { processReceptionistWorkflowRequest } from "@/lib/receptionist-server-workflow";
 
 export const runtime = "nodejs";
 
-const requestSchema = z
+const callbackSchema = z
   .object({
-    anonymousVisitorId: z.string().trim().min(8).max(128).optional(),
     company: z.string().trim().min(1).max(160).optional(),
     consent: z.literal(true),
     dialect: z.string().trim().min(1).max(80).optional(),
@@ -20,12 +14,10 @@ const requestSchema = z
     executiveSlug: z.enum(executiveSlugs),
     message: z.string().trim().min(10).max(2000),
     name: z.string().trim().min(2).max(120),
-    phone: z.string().trim().min(7).max(40).optional(),
+    phone: z.string().trim().min(7).max(40),
     preferredLanguage: z.enum(receptionistLanguages),
     preferredTime: z.string().trim().min(1).max(160).optional(),
-    requestType: z.enum(receptionistRequestTypes),
-    sessionId: z.string().trim().min(8).max(128).optional(),
-    sourceUrl: z.string().trim().url().max(2048).optional()
+    sessionId: z.string().trim().min(8).max(128).optional()
   })
   .strict();
 
@@ -37,25 +29,12 @@ async function parseJson(request: Request) {
   }
 }
 
-function rateLimitKey(request: Request, email: string, executiveSlug: string) {
-  return [
-    executiveSlug,
-    email.toLowerCase(),
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"
-  ].join(":");
-}
-
 export async function POST(request: Request) {
-  const body = await parseJson(request);
-  const parsed = requestSchema.safeParse(body);
+  const parsed = callbackSchema.safeParse(await parseJson(request));
 
   if (!parsed.success) {
     return NextResponse.json(
-      {
-        error: "invalid_receptionist_request",
-        providerStatus: "invalid",
-        success: false
-      },
+      { error: "invalid_callback_request", providerStatus: "invalid", success: false },
       { status: 400 }
     );
   }
@@ -66,21 +45,19 @@ export async function POST(request: Request) {
     executiveSlug: parsed.data.executiveSlug,
     message: parsed.data.message,
     name: parsed.data.name,
+    phone: parsed.data.phone,
     preferredLanguage: parsed.data.preferredLanguage,
-    requestType: parsed.data.requestType,
+    requestType: "request_callback",
     ...(parsed.data.company ? { company: parsed.data.company } : {}),
     ...(parsed.data.dialect ? { dialect: parsed.data.dialect } : {}),
-    ...(parsed.data.phone ? { phone: parsed.data.phone } : {}),
     ...(parsed.data.preferredTime ? { preferredTime: parsed.data.preferredTime } : {})
   };
   const result = await processReceptionistWorkflowRequest({
-    anonymousVisitorId: parsed.data.anonymousVisitorId ?? null,
     executiveSlug: parsed.data.executiveSlug,
-    rateLimitKey: rateLimitKey(request, parsed.data.email, parsed.data.executiveSlug),
+    rateLimitKey: `${parsed.data.executiveSlug}:${parsed.data.email.toLowerCase()}:callback`,
     request: receptionistRequest,
     sessionId: parsed.data.sessionId ?? null,
-    source: "web_form",
-    sourceUrl: parsed.data.sourceUrl ?? null
+    source: "callback_request"
   });
 
   return NextResponse.json(result, { status: result.statusCode });

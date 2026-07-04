@@ -7,6 +7,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.js
 COPY apps/card/package.json apps/card/package.json
 COPY packages packages
 COPY services/card-customization services/card-customization
+COPY services/polyglot-receptionist services/polyglot-receptionist
 COPY services/telemetry services/telemetry
 RUN pnpm install --frozen-lockfile
 

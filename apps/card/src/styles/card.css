@@ -462,6 +462,23 @@ body {
   resize: vertical;
 }
 
+.receptionist-form-compact {
+  gap: var(--bx-space-3);
+}
+
+.receptionist-form-compact .receptionist-form-grid {
+  gap: var(--bx-space-2);
+}
+
+.receptionist-form-compact label {
+  gap: var(--bx-space-1);
+}
+
+.receptionist-form-compact input,
+.receptionist-form-compact select,
+.receptionist-form-compact textarea {
+  min-height: 2.5rem;
+}
 .receptionist-consent {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -525,7 +542,7 @@ body {
 
 .executive-footer-actions {
   position: fixed;
-  z-index: 40;
+  z-index: 60;
   left: 50%;
   bottom: var(--executive-footer-offset);
   display: grid;
@@ -590,7 +607,7 @@ body {
 .executive-qr-sheet,
 .executive-modal-sheet {
   width: 100%;
-  max-width: min(28rem, 100%);
+  max-width: min(30rem, 100%);
   margin: 0 auto;
   display: grid;
   gap: var(--bx-space-3);
@@ -625,6 +642,7 @@ body {
     - max(var(--bx-space-3), env(safe-area-inset-bottom))
   );
   align-content: start;
+  margin-bottom: var(--executive-footer-clearance);
 }
 
 .executive-modal-intro {
@@ -709,7 +727,7 @@ body {
       var(--bx-color-surface-canvas),
       var(--bx-color-surface-base)
     );
-  animation: executive-splash-fade 760ms var(--bx-ease-standard) forwards;
+  animation: executive-splash-fade 460ms var(--bx-ease-standard) forwards;
 }
 
 .executive-splash-mark {
@@ -736,7 +754,7 @@ body {
     opacity: 1;
   }
 
-  68% {
+  72% {
     opacity: 1;
   }
 

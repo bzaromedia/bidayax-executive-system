@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { ExecutiveBrandMark } from "./ExecutiveBrandMark";
 
-const standardSplashDurationMs = 760;
-const reducedMotionSplashDurationMs = 140;
+const standardSplashDurationMs = 460;
+const reducedMotionSplashDurationMs = 300;
 
 function prefersReducedMotion() {
   if (typeof window === "undefined") {

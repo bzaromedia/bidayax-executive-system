@@ -229,7 +229,12 @@ export const receptionistLanguages = [
 export type ReceptionistLanguage = (typeof receptionistLanguages)[number];
 
 export const receptionistRequestStatuses = [
+  "configured",
   "queued",
+  "sent",
+  "failed",
+  "blocked_by_policy",
+  "requires_human_review",
   "email_ready",
   "provider_unconfigured",
   "event_store_unavailable",

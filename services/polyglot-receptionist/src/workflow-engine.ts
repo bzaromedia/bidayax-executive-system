@@ -1,0 +1,215 @@
+import type { ReceptionistPriority } from "@bidayax/types";
+import { createReceptionistAuditEvent } from "./audit-log";
+import { createCalendarRequest } from "./calendar-request-handler";
+import { createCallbackRequest } from "./callback-scheduler";
+import {
+  createReceptionistEmailNotification,
+  resolveReceptionistProviderConfigFromEnv
+} from "./email-dispatcher";
+import { qualifyReceptionistLead } from "./lead-qualification";
+import { classifyReceptionistLanguage } from "./language-router";
+import { evaluateReceptionistRateLimit } from "./rate-limit-policy";
+import { routeReceptionistRequestToExecutive } from "./receptionist-router";
+import { evaluateReceptionistSafety } from "./receptionist-safety";
+import {
+  receptionistWorkflowDefinition,
+  type ReceptionistProviderStatus,
+  type ReceptionistRun,
+  type ReceptionistRunStep,
+  type ReceptionistWorkflowInput,
+  type ReceptionistWorkflowStage
+} from "./workflow-nodes";
+
+function createRunId(now: number) {
+  return `receptionist-run-${now}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function step(
+  stage: ReceptionistWorkflowStage,
+  status: ReceptionistProviderStatus,
+  summary: string,
+  metadata: Record<string, string | number | boolean | null> = {}
+): ReceptionistRunStep {
+  return {
+    metadata,
+    stage,
+    status,
+    summary
+  };
+}
+
+function statusForDispatch(input: {
+  readonly emailConfigured: boolean;
+  readonly emailDispatchEnabled: boolean;
+  readonly requiresHumanReview: boolean;
+}): ReceptionistProviderStatus {
+  if (!input.emailConfigured) {
+    return "provider_unconfigured";
+  }
+
+  if (input.requiresHumanReview) {
+    return "requires_human_review";
+  }
+
+  return input.emailDispatchEnabled ? "queued" : "configured";
+}
+
+export function runReceptionistWorkflow(
+  input: ReceptionistWorkflowInput
+): ReceptionistRun {
+  const now = input.now ?? Date.now();
+  const runId = createRunId(now);
+  const providerConfig = {
+    ...resolveReceptionistProviderConfigFromEnv(),
+    ...input.providerConfig
+  };
+  const steps: ReceptionistRunStep[] = [];
+  const rateLimit = input.rateLimitKey
+    ? evaluateReceptionistRateLimit({ key: input.rateLimitKey, now })
+    : { allowed: true, remaining: 1, resetAt: now, reasonCode: null };
+  const safety = evaluateReceptionistSafety(input.request);
+  const language = classifyReceptionistLanguage(input.request.preferredLanguage);
+  const lead = qualifyReceptionistLead(input.request);
+  const route = routeReceptionistRequestToExecutive({
+    executiveSlug: input.request.executiveSlug,
+    handoffEmail: input.handoffEmail,
+    request: input.request
+  });
+  const requiresHumanReview =
+    lead.urgency === "high" || lead.urgency === "urgent" || input.request.requestType === "partnership_request";
+  const notificationPayload = createReceptionistEmailNotification({
+    executiveName: input.executiveName,
+    handoffEmail: route.handoffEmail,
+    request: {
+      ...input.request,
+      message: safety.sanitizedMessage
+    }
+  });
+  const callbackRequest = createCallbackRequest(input.request);
+  const calendarRequest = createCalendarRequest(input.request);
+
+  steps.push(
+    step("receive_request", "queued", "Receptionist workflow request received.", {
+      source: input.source,
+      requestType: input.request.requestType
+    })
+  );
+
+  if (!rateLimit.allowed) {
+    steps.push(
+      step("validate_consent", "blocked_by_policy", "Request blocked by rate limit policy.", {
+        reasonCode: rateLimit.reasonCode,
+        resetAt: rateLimit.resetAt
+      })
+    );
+  } else if (!safety.allowed) {
+    steps.push(
+      step("validate_consent", "blocked_by_policy", "Request blocked by safety policy.", {
+        reasonCodes: safety.reasonCodes.join(",")
+      })
+    );
+  } else {
+    steps.push(
+      step("validate_consent", "queued", "Consent and safety checks passed.", {
+        consent: input.request.consent,
+        remainingRateLimit: rateLimit.remaining
+      })
+    );
+  }
+
+  const blockedReasonCodes = [
+    ...(rateLimit.allowed ? [] : [rateLimit.reasonCode ?? "rate_limit_exceeded"]),
+    ...safety.reasonCodes
+  ];
+  const blocked = blockedReasonCodes.length > 0;
+
+  steps.push(
+    step("classify_language", blocked ? "blocked_by_policy" : "queued", "Language classified for routing.", {
+      dialect: input.request.dialect ?? null,
+      language
+    }),
+    step("classify_request_type", blocked ? "blocked_by_policy" : "queued", "Request type classified.", {
+      requestType: input.request.requestType
+    }),
+    step("score_urgency", blocked ? "blocked_by_policy" : "queued", "Urgency score calculated.", {
+      score: lead.score,
+      urgency: lead.urgency
+    }),
+    step("route_to_executive", blocked ? "blocked_by_policy" : "queued", "Request routed to executive owner.", {
+      executiveSlug: route.executiveSlug,
+      handoffEmail: route.handoffEmail
+    }),
+    step("create_event_ledger_record", blocked ? "blocked_by_policy" : "queued", "Event ledger record prepared for persistence.", {
+      anonymousVisitorId: input.anonymousVisitorId ?? null,
+      sessionId: input.sessionId ?? null
+    }),
+    step("create_callback_or_meeting_request", blocked ? "blocked_by_policy" : "queued", "Internal callback or meeting request prepared when applicable.", {
+      callbackRequested: Boolean(callbackRequest),
+      meetingRequested: Boolean(calendarRequest)
+    }),
+    step("prepare_email_notification", blocked ? "blocked_by_policy" : "queued", "Email notification payload prepared for handoff.", {
+      providerConfigured: providerConfig.emailConfigured,
+      to: notificationPayload.to
+    })
+  );
+
+  const providerStatus = blocked
+    ? "blocked_by_policy"
+    : statusForDispatch({
+        emailConfigured: providerConfig.emailConfigured,
+        emailDispatchEnabled: providerConfig.emailDispatchEnabled,
+        requiresHumanReview
+      });
+
+  steps.push(
+    step(
+      "provider_dispatch_if_configured",
+      providerStatus === "configured" ? "queued" : providerStatus,
+      providerConfig.emailConfigured
+        ? "Provider dispatch is configured but remains human-review safe."
+        : "Provider dispatch is not configured; request remains queued internally.",
+      {
+        calendarConfigured: providerConfig.calendarConfigured,
+        emailConfigured: providerConfig.emailConfigured,
+        telephonyConfigured: providerConfig.telephonyConfigured
+      }
+    ),
+    step("dashboard_visibility", providerStatus, "Workflow is visible in the dashboard queue.", {
+      providerStatus,
+      requiresHumanReview
+    }),
+    step("audit_log", providerStatus, "Workflow audit trail completed.", {
+      runId
+    })
+  );
+
+  const decision = {
+    executiveSlug: input.request.executiveSlug,
+    language,
+    reasonCodes: [...lead.reasonCodes, ...(requiresHumanReview ? ["human_review_required"] : [])],
+    requestType: input.request.requestType,
+    requiresHumanReview,
+    urgency: lead.urgency as ReceptionistPriority
+  };
+
+  return {
+    auditEvents: steps.map(createReceptionistAuditEvent).map((event) =>
+      step(event.eventType as ReceptionistWorkflowStage, providerStatus, String(event.payload.summary ?? "Workflow step."), event.payload)
+    ),
+    blockedReasonCodes: [...new Set(blockedReasonCodes)],
+    callbackRequest,
+    calendarRequest,
+    decision,
+    notificationPayload,
+    providerStates: {
+      calendar: providerConfig.calendarConfigured ? "configured" : "provider_unconfigured",
+      email: providerConfig.emailConfigured ? "configured" : "provider_unconfigured",
+      telephony: providerConfig.telephonyConfigured ? "configured" : "provider_unconfigured"
+    },
+    providerStatus,
+    runId,
+    steps,
+    workflow: receptionistWorkflowDefinition
+  };
+}
+

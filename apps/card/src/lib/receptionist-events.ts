@@ -5,16 +5,19 @@ import type {
   ExecutiveSlug,
   ReceptionistNotificationPayload,
   ReceptionistRequest,
-  ReceptionistRequestType
+  ReceptionistRequestType,
+  ReceptionistStatus
 } from "@bidayax/types";
+import type { ReceptionistRun } from "@bidayax/polyglot-receptionist";
 
 type StoreReceptionistRequestInput = {
   readonly anonymousVisitorId: string | null;
   readonly executiveSlug: ExecutiveSlug;
   readonly notification: ReceptionistNotificationPayload;
-  readonly providerStatus: "email_ready" | "provider_unconfigured";
+  readonly providerStatus: ReceptionistStatus;
   readonly request: ReceptionistRequest;
   readonly sessionId: string | null;
+  readonly workflowRun?: ReceptionistRun;
 };
 
 type StoredRequest = {
@@ -226,19 +229,44 @@ async function writeRequestRows(database: Pool, input: StoreReceptionistRequestI
       requestId,
       JSON.stringify({
         providerStatus: input.providerStatus,
-        requestType: input.request.requestType
+        requestType: input.request.requestType,
+        workflowRunId: input.workflowRun?.runId ?? null
       }),
       JSON.stringify({
         company: input.request.company ?? null,
         intent: input.request.requestType,
-        language: input.request.preferredLanguage
+        language: input.request.preferredLanguage,
+        urgency: input.workflowRun?.decision.urgency ?? priority
       }),
       JSON.stringify({
         notificationSubject: input.notification.subject,
-        notificationTo: input.notification.to
+        notificationTo: input.notification.to,
+        providerStatus: input.providerStatus
       })
     ]
   );
+
+  if (input.workflowRun) {
+    for (const workflowStep of input.workflowRun.steps) {
+      await database.query(
+        `
+          insert into receptionist_workflow_events (interaction_id, event_type, payload)
+          values ($1::uuid, $2, $3::jsonb)
+        `,
+        [
+          requestId,
+          workflowStep.stage,
+          JSON.stringify({
+            ...workflowStep.metadata,
+            providerStatus: input.providerStatus,
+            runId: input.workflowRun.runId,
+            status: workflowStep.status,
+            summary: workflowStep.summary
+          })
+        ]
+      );
+    }
+  }
 
   return requestId;
 }

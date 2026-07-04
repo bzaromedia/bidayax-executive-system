@@ -66,6 +66,10 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
   }
 
   if (!result.success) {
+    if (result.providerStatus === "blocked_by_policy") {
+      return "This request was not accepted because it failed safety or rate-limit checks.";
+    }
+
     return "Please review the request details and submit again.";
   }
 
@@ -74,7 +78,15 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
   }
 
   if (result.providerStatus === "provider_unconfigured") {
-    return "Your request is accepted for team follow-up. Email sending is not enabled from the app yet.";
+    return "Your request is queued internally for team follow-up. Provider dispatch is not configured yet.";
+  }
+
+  if (result.providerStatus === "requires_human_review") {
+    return "Your request is queued for human review before any provider dispatch.";
+  }
+
+  if (result.providerStatus === "queued" || result.providerStatus === "configured") {
+    return "Your request is queued for executive follow-up.";
   }
 
   return "Your request is accepted for executive follow-up.";
@@ -200,19 +212,19 @@ export function ReceptionistRequestForm({
       <div className="receptionist-grid">
         <label>
           <span>Name</span>
-          <input name="name" type="text" autoComplete="name" required />
+          <input name="name" type="text" autoComplete="name" maxLength={120} required />
         </label>
         <label>
           <span>Email</span>
-          <input name="email" type="email" autoComplete="email" required />
+          <input name="email" type="email" autoComplete="email" maxLength={254} required />
         </label>
         <label>
           <span>Phone</span>
-          <input name="phone" type="tel" autoComplete="tel" />
+          <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
         </label>
         <label>
           <span>Company</span>
-          <input name="company" type="text" autoComplete="organization" />
+          <input name="company" type="text" autoComplete="organization" maxLength={160} />
         </label>
         <label>
           <span>Language</span>
@@ -226,7 +238,7 @@ export function ReceptionistRequestForm({
         </label>
         <label>
           <span>Dialect</span>
-          <input name="dialect" type="text" />
+          <input name="dialect" type="text" maxLength={80} />
         </label>
         <label>
           <span>Request</span>
@@ -240,12 +252,12 @@ export function ReceptionistRequestForm({
         </label>
         <label>
           <span>Preferred time</span>
-          <input name="preferredTime" type="text" />
+          <input name="preferredTime" type="text" maxLength={160} />
         </label>
       </div>
       <label className="receptionist-message">
         <span>Message</span>
-        <textarea name="message" rows={4} required minLength={10} />
+        <textarea name="message" rows={3} required minLength={10} maxLength={2000} />
       </label>
       {consentRequired ? (
         <label className="receptionist-consent">

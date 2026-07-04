@@ -30,11 +30,10 @@ export function ExecutiveReceptionistCard({
         <div className="executive-receptionist-copy">
           <div className="executive-receptionist-title">
             <Headphones aria-hidden="true" size={22} strokeWidth={1.75} />
-            <h2>Executive Receptionist</h2>
+            <h2>Polyglot Receptionist™</h2>
           </div>
           <p>
-            Route meeting requests, callbacks, messages, and qualified inquiries
-            to the executive workflow for human-approved follow-up.
+            Open a routed multilingual workflow for meeting requests, callbacks, messages, and qualified inquiries.
           </p>
         </div>
         <button
@@ -49,14 +48,14 @@ export function ExecutiveReceptionistCard({
         <div className="executive-modal-backdrop" role="presentation">
           <section
             className="executive-modal-sheet executive-receptionist-sheet"
-            aria-label={`Executive Receptionist request for ${executive.displayName}`}
+            aria-label={`Polyglot Receptionist request for ${executive.displayName}`}
             aria-modal="true"
             role="dialog"
           >
             <div className="executive-modal-header">
               <div className="executive-receptionist-title">
                 <Headphones aria-hidden="true" size={22} strokeWidth={1.75} />
-                <h2>Executive Receptionist</h2>
+                <h2>Polyglot Receptionist™</h2>
               </div>
               <button
                 className="executive-modal-close"
@@ -69,7 +68,7 @@ export function ExecutiveReceptionistCard({
             </div>
             <p className="executive-modal-intro">
               {behavior?.greetingText ??
-                "Submit a routed request for human-approved executive follow-up."}
+                "Share your request. The workflow queues it for human-approved executive follow-up."}
             </p>
             <ReceptionistRequestForm
               executiveSlug={executive.slug}
@@ -81,6 +80,3 @@ export function ExecutiveReceptionistCard({
     </>
   );
 }
-
-
-

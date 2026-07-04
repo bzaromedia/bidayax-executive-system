@@ -173,6 +173,13 @@ export type DashboardReceptionistSummary = {
   readonly languageCount: number;
 };
 
+export type DashboardReceptionistAuditEvent = {
+  readonly eventType: string;
+  readonly status: string | null;
+  readonly summary: string | null;
+  readonly createdAt: string | null;
+};
+
 export type DashboardReceptionistInteraction = {
   readonly id: string;
   readonly interactionType: ReceptionistInteractionType;
@@ -188,6 +195,11 @@ export type DashboardReceptionistInteraction = {
   readonly followUpState: string;
   readonly summary: string;
   readonly priority: ReceptionistPriority;
+  readonly providerStatus: string | null;
+  readonly urgency: string | null;
+  readonly callbackTime: string | null;
+  readonly meetingRequest: string | null;
+  readonly auditTimeline: readonly DashboardReceptionistAuditEvent[];
   readonly createdAt: string;
 };
 

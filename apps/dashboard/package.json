@@ -14,6 +14,7 @@
     "@bidayax/card-customization": "workspace:*",
     "@bidayax/config": "workspace:*",
     "@bidayax/improvement-engine": "workspace:*",
+    "@bidayax/polyglot-receptionist": "workspace:*",
     "@bidayax/telephony": "workspace:*",
     "@bidayax/telemetry": "workspace:*",
     "@bidayax/tokens": "workspace:*",

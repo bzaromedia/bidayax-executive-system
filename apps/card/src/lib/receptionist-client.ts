@@ -24,6 +24,9 @@ export type ReceptionistSubmitResult = {
   readonly success: boolean;
   readonly requestId?: string;
   readonly providerStatus: ReceptionistStatus;
+  readonly workflowRunId?: string;
+  readonly workflowStatus?: string;
+  readonly urgency?: string;
   readonly error?: string;
 };
 

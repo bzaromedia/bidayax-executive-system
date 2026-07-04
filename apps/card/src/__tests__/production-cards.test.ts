@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   executiveDefaultCalendarSlots,
@@ -274,7 +274,10 @@ describe("production executive cards", () => {
     expect(splash).toContain("prefers-reduced-motion: reduce");
     expect(css).toContain(".executive-splash");
     expect(css).toContain(".executive-splash-mark");
+    expect(css).toContain("460ms");
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
+    expect(splash).toContain("standardSplashDurationMs = 460");
+    expect(splash).toContain("reducedMotionSplashDurationMs = 300");
   });
 
   it("uses a reduced executive name size", () => {
@@ -380,7 +383,9 @@ describe("production executive cards", () => {
 
     expect(css).toContain(".executive-footer-actions");
     expect(css).toContain("position: fixed;");
+    expect(css).toContain("z-index: 60;");
     expect(css).toContain("env(safe-area-inset-bottom)");
+    expect(css).toContain("padding-bottom: var(--executive-footer-clearance);");
     expect(css).toContain("min-height: 2.75rem;");
     expect(footer).toContain("QR");
     expect(footer).toContain("Download");
@@ -402,6 +407,42 @@ describe("production executive cards", () => {
     expect(formIndex).toBeGreaterThan(conditionalIndex);
   });
 
+  it("keeps the receptionist workflow routes available", () => {
+    const routePaths = [
+      "app/api/receptionist/request/route.ts",
+      "app/api/receptionist/inbound-call/route.ts",
+      "app/api/receptionist/callback/route.ts",
+      "app/api/receptionist/calendar-request/route.ts"
+    ];
+
+    for (const routePath of routePaths) {
+      expect(existsSync(resolve(process.cwd(), routePath))).toBe(true);
+    }
+
+    const requestRoute = readFileSync(
+      resolve(process.cwd(), "app/api/receptionist/request/route.ts"),
+      "utf8"
+    );
+
+    expect(requestRoute).toContain("processReceptionistWorkflowRequest");
+    expect(requestRoute).toContain("consent: z.literal(true)");
+  });
+
+  it("does not claim live autonomous calling without provider configuration", () => {
+    const receptionistCard = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
+      "utf8"
+    );
+    const requestRoute = readFileSync(
+      resolve(process.cwd(), "app/api/receptionist/inbound-call/route.ts"),
+      "utf8"
+    );
+
+    expect(receptionistCard).toContain("Polyglot Receptionist™");
+    expect(receptionistCard).not.toContain("live autonomous calling");
+    expect(requestRoute).toContain("normalizeInboundCallWebhook");
+    expect(requestRoute).not.toContain("sendCall");
+  });
   it("uses compact receptionist sheet and form layout classes", () => {
     const receptionistCard = readFileSync(
       resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
@@ -420,7 +461,9 @@ describe("production executive cards", () => {
     expect(receptionistForm).toContain("receptionist-form-compact");
     expect(css).toContain(".executive-receptionist-sheet");
     expect(css).toContain(".receptionist-form");
+    expect(css).toContain(".receptionist-form-compact");
     expect(css).toContain("max-height: calc(");
+    expect(css).toContain("margin-bottom: var(--executive-footer-clearance);");
   });
 
   it("hides visible scrollbars while preserving overflow when needed", () => {
@@ -573,5 +616,3 @@ describe("production executive cards", () => {
     }
   });
 });
-
-

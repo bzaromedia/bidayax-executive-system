@@ -35,6 +35,9 @@
       "@bidayax/config": [
         "../../packages/config/src/index.ts"
       ],
+      "@bidayax/polyglot-receptionist": [
+        "../../services/polyglot-receptionist/src/index.ts"
+      ],
       "@bidayax/card-customization": [
         "../../services/card-customization/src/index.ts"
       ]

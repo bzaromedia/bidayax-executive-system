@@ -6,6 +6,7 @@ import {
   isReceptionistInteractionType,
   isReceptionistIntentCategory,
   isReceptionistPriority,
+  type DashboardReceptionistAuditEvent,
   type DashboardReceptionistInteraction,
   type DashboardReceptionistIntentBreakdown,
   type DashboardReceptionistLanguageBreakdown,
@@ -38,6 +39,11 @@ type InteractionRow = {
   readonly request_type: string | null;
   readonly summary: string;
   readonly priority: string;
+  readonly provider_status: string | null;
+  readonly urgency: string | null;
+  readonly callback_time: Date | null;
+  readonly meeting_request: string | null;
+  readonly audit_timeline: unknown;
   readonly created_at: Date;
 };
 
@@ -158,6 +164,29 @@ function normalizeSummary(row: SummaryRow | undefined) {
   };
 }
 
+function isAuditEvent(value: unknown): value is DashboardReceptionistAuditEvent {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const event = value as Record<string, unknown>;
+
+  return typeof event.eventType === "string";
+}
+
+function normalizeAuditTimeline(value: unknown): readonly DashboardReceptionistAuditEvent[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter(isAuditEvent).map((event) => ({
+    createdAt: typeof event.createdAt === "string" ? event.createdAt : null,
+    eventType: event.eventType,
+    status: typeof event.status === "string" ? event.status : null,
+    summary: typeof event.summary === "string" ? event.summary : null
+  }));
+}
+
 function normalizeInteractions(
   rows: readonly InteractionRow[]
 ): readonly DashboardReceptionistInteraction[] {
@@ -192,6 +221,8 @@ function normalizeInteractions(
 
     return [
       {
+        auditTimeline: normalizeAuditTimeline(row.audit_timeline),
+        callbackTime: row.callback_time?.toISOString() ?? null,
         channel: row.channel,
         createdAt: row.created_at.toISOString(),
         dialect: row.dialect,
@@ -201,12 +232,15 @@ function normalizeInteractions(
         id: row.id,
         interactionType: row.interaction_type,
         language: row.language,
+        meetingRequest: row.meeting_request,
         priority: row.priority,
+        providerStatus: row.provider_status,
         requesterCompany: row.requester_company,
         requesterName: row.requester_name,
         requestType: row.request_type,
         status: row.status,
-        summary: row.summary
+        summary: row.summary,
+        urgency: row.urgency
       }
     ];
   });
@@ -302,7 +336,7 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
         database.query<InteractionRow>(
           `
             select
-              id::text,
+              receptionist_interactions.id::text,
               interaction_type,
               channel,
               status,
@@ -311,10 +345,19 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
               executive_slug,
               caller_or_sender as requester_name,
               intent_payload.payload->>'company' as requester_company,
-              intent_payload.payload->>'intent' as request_type,
+              coalesce(intent_payload.payload->>'requestType', intent_payload.payload->>'intent') as request_type,
               summary,
               priority,
-              created_at
+              provider_payload.payload->>'providerStatus' as provider_status,
+              urgency_payload.payload->>'urgency' as urgency,
+              task_payload.due_at as callback_time,
+              case
+                when task_payload.task_type = 'schedule_meeting' then 'meeting request queued'
+                when task_payload.task_type = 'return_call' then 'callback request queued'
+                else null
+              end as meeting_request,
+              coalesce(audit_payload.audit_timeline, '[]'::jsonb) as audit_timeline,
+              receptionist_interactions.created_at
             from receptionist_interactions
             left join lateral (
               select payload
@@ -325,6 +368,44 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
               order by created_at desc
               limit 1
             ) intent_payload on true
+            left join lateral (
+              select payload
+              from receptionist_workflow_events
+              where
+                receptionist_workflow_events.interaction_id = receptionist_interactions.id
+                and receptionist_workflow_events.event_type = 'dashboard_visibility'
+              order by created_at desc
+              limit 1
+            ) provider_payload on true
+            left join lateral (
+              select payload
+              from receptionist_workflow_events
+              where
+                receptionist_workflow_events.interaction_id = receptionist_interactions.id
+                and receptionist_workflow_events.event_type = 'score_urgency'
+              order by created_at desc
+              limit 1
+            ) urgency_payload on true
+            left join lateral (
+              select task_type, due_at
+              from receptionist_tasks
+              where receptionist_tasks.interaction_id = receptionist_interactions.id
+              order by created_at desc
+              limit 1
+            ) task_payload on true
+            left join lateral (
+              select jsonb_agg(
+                jsonb_build_object(
+                  'eventType', event_type,
+                  'status', payload->>'status',
+                  'summary', payload->>'summary',
+                  'createdAt', created_at::text
+                )
+                order by created_at asc
+              ) as audit_timeline
+              from receptionist_workflow_events
+              where receptionist_workflow_events.interaction_id = receptionist_interactions.id
+            ) audit_payload on true
             order by receptionist_interactions.created_at desc
             limit 8
           `
@@ -390,7 +471,7 @@ export async function getReceptionistDashboardData(): Promise<ReceptionistDashbo
 
     return emptyReceptionistData(
       "query_failed",
-      "Receptionist foundation queries failed. Run the Phase 8 migration before viewing receptionist simulation data."
+      "Receptionist foundation queries failed. Run the Phase 8 migration before viewing receptionist workflow data."
     );
   }
 }

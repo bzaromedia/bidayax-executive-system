@@ -95,6 +95,9 @@ importers:
       '@bidayax/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@bidayax/polyglot-receptionist':
+        specifier: workspace:*
+        version: link:../../services/polyglot-receptionist
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry
@@ -150,6 +153,9 @@ importers:
       '@bidayax/improvement-engine':
         specifier: workspace:*
         version: link:../../services/improvement-engine
+      '@bidayax/polyglot-receptionist':
+        specifier: workspace:*
+        version: link:../../services/polyglot-receptionist
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry
@@ -376,6 +382,19 @@ importers:
         version: 2.1.9(@types/node@22.20.0)
 
   services/policy-enforcement:
+    dependencies:
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
+  services/polyglot-receptionist:
     dependencies:
       '@bidayax/types':
         specifier: workspace:*
