@@ -45,10 +45,11 @@ function getSourceUrl() {
 }
 
 export async function submitReceptionistRequest(
-  input: ReceptionistFormInput
+  input: ReceptionistFormInput,
+  options: { readonly endpoint?: string } = {}
 ): Promise<ReceptionistSubmitResult> {
   const session = getInteractionSession();
-  const response = await window.fetch("/api/receptionist/request", {
+  const response = await window.fetch(options.endpoint ?? "/api/receptionist/request", {
     body: JSON.stringify({
       ...input,
       anonymousVisitorId: session?.anonymousVisitorId,

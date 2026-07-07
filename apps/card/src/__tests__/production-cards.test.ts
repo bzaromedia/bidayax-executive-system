@@ -397,7 +397,7 @@ describe("production executive cards", () => {
       resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
       "utf8"
     );
-    const launcherIndex = receptionistCard.indexOf("Open Receptionist");
+    const launcherIndex = receptionistCard.indexOf("Request Callback");
     const conditionalIndex = receptionistCard.indexOf("{isOpen ?");
     const formIndex = receptionistCard.indexOf("<ReceptionistRequestForm");
 
@@ -407,9 +407,36 @@ describe("production executive cards", () => {
     expect(formIndex).toBeGreaterThan(conditionalIndex);
   });
 
+
+  it("offers phone, text chat, voice chat, and form receptionist modes", () => {
+    const receptionistCard = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveReceptionistCard.tsx"),
+      "utf8"
+    );
+    const textChat = readFileSync(
+      resolve(process.cwd(), "src/components/ReceptionistTextChat.tsx"),
+      "utf8"
+    );
+    const voiceChat = readFileSync(
+      resolve(process.cwd(), "src/components/ReceptionistVoiceChat.tsx"),
+      "utf8"
+    );
+
+    expect(receptionistCard).toContain("Call");
+    expect(receptionistCard).toContain("Message");
+    expect(receptionistCard).toContain("Request Callback");
+    expect(receptionistCard).toContain("Text Chat");
+    expect(receptionistCard).toContain("Voice Chat");
+    expect(receptionistCard).toContain("defaultRequestTypeOverride=\"request_callback\"");
+    expect(textChat).toContain("/api/receptionist/chat");
+    expect(voiceChat).toContain("/api/receptionist/voice-chat");
+    expect(voiceChat).toContain("Live realtime providers remain disabled");
+  });
   it("keeps the receptionist workflow routes available", () => {
     const routePaths = [
       "app/api/receptionist/request/route.ts",
+      "app/api/receptionist/chat/route.ts",
+      "app/api/receptionist/voice-chat/route.ts",
       "app/api/receptionist/inbound-call/route.ts",
       "app/api/receptionist/callback/route.ts",
       "app/api/receptionist/calendar-request/route.ts"
@@ -423,12 +450,19 @@ describe("production executive cards", () => {
       resolve(process.cwd(), "app/api/receptionist/request/route.ts"),
       "utf8"
     );
+    const handler = readFileSync(
+      resolve(process.cwd(), "src/lib/receptionist-route-handler.ts"),
+      "utf8"
+    );
 
-    expect(requestRoute).toContain("processReceptionistWorkflowRequest");
-    expect(requestRoute).toContain("consent: z.literal(true)");
-    expect(requestRoute).toContain("callbackWorkflow");
-    expect(requestRoute).toContain("Callback queued pending voice provider configuration.");
-    expect(requestRoute).toContain("receptionist_request_failed");
+    expect(requestRoute).toContain("handleReceptionistRequestRoute");
+    expect(handler).toContain("processReceptionistWorkflowRequest");
+    expect(handler).toContain("consent: z.literal(true)");
+    expect(handler).toContain("callbackWorkflow");
+    expect(handler).toContain("Callback queued pending voice provider configuration.");
+    expect(handler).toContain("receptionist_request_failed");
+    expect(handler).toContain("chat_message");
+    expect(handler).toContain("voice_chat");
   });
 
   it("does not claim live autonomous calling without provider configuration", () => {

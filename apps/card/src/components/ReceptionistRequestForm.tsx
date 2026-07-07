@@ -20,6 +20,7 @@ import {
 } from "../lib/receptionist-client";
 
 type ReceptionistRequestFormProps = {
+  readonly defaultRequestTypeOverride?: ReceptionistRequestType;
   readonly executiveSlug: ExecutiveSlug;
   readonly settings?: ReceptionistSettingsConfig;
 };
@@ -101,6 +102,7 @@ function resultMessage(result: ReceptionistSubmitResult | null) {
 }
 
 export function ReceptionistRequestForm({
+  defaultRequestTypeOverride,
   executiveSlug,
   settings
 }: ReceptionistRequestFormProps) {
@@ -118,7 +120,7 @@ export function ReceptionistRequestForm({
       )
     : receptionistRequestTypeOptions;
   const defaultLanguage = settings?.defaultLanguage ?? "English";
-  const defaultRequestType = settings?.requestTypes[0] ?? "schedule_meeting";
+  const defaultRequestType = defaultRequestTypeOverride ?? settings?.requestTypes[0] ?? "schedule_meeting";
   const consentRequired = settings?.consentRequired ?? true;
 
   function logStarted() {

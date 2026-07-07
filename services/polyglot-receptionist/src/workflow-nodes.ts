@@ -41,7 +41,9 @@ export type ReceptionistWorkflowSource =
   | "web_form"
   | "inbound_call"
   | "callback_request"
-  | "calendar_request";
+  | "calendar_request"
+  | "chat_message"
+  | "voice_chat";
 
 export type ReceptionistProviderConfig = {
   readonly telephonyConfigured: boolean;

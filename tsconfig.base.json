@@ -22,6 +22,9 @@
       "@bidayax/config": ["packages/config/src/index.ts"],
       "@bidayax/config/executives": ["packages/config/executives/index.ts"],
       "@bidayax/config/receptionist": ["packages/config/receptionist/index.ts"],
+      "@bidayax/workflow-engine": ["packages/workflow-engine/src/index.ts"],
+      "@bidayax/receptionist-core": ["packages/receptionist-core/src/index.ts"],
+      "@bidayax/voice-gateway": ["services/voice-gateway/src/index.ts"],
       "@bidayax/config/tailwind": ["packages/config/tailwind/preset.ts"],
       "@bidayax/card-customization": ["services/card-customization/src/index.ts"],
       "@bidayax/polyglot-receptionist": ["services/polyglot-receptionist/src/index.ts"]

@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Headphones, X } from "lucide-react";
+import { Headphones, MessageSquare, Phone, Send, X } from "lucide-react";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import type { ResolvedReceptionistBehavior } from "@bidayax/card-customization";
 import type { ReceptionistSettingsConfig } from "@bidayax/types";
 import { ReceptionistRequestForm } from "./ReceptionistRequestForm";
+import { ReceptionistTextChat } from "./ReceptionistTextChat";
+import { ReceptionistVoiceChat } from "./ReceptionistVoiceChat";
 
 type ExecutiveReceptionistCardProps = {
   readonly behavior?: ResolvedReceptionistBehavior;
@@ -13,12 +15,25 @@ type ExecutiveReceptionistCardProps = {
   readonly settings?: ReceptionistSettingsConfig;
 };
 
+type ReceptionistMode = "text_chat" | "voice_chat" | "form";
+
+const receptionistModes: readonly {
+  readonly id: ReceptionistMode;
+  readonly label: string;
+}[] = [
+  { id: "text_chat", label: "Text Chat" },
+  { id: "voice_chat", label: "Voice Chat" },
+  { id: "form", label: "Form" }
+];
+
 export function ExecutiveReceptionistCard({
   behavior,
   executive,
   settings
 }: ExecutiveReceptionistCardProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<ReceptionistMode>("text_chat");
+  const phoneHref = `tel:${executive.phone.replace(/[^+\d]/g, "")}`;
 
   if (settings && !settings.enabled) {
     return null;
@@ -33,16 +48,37 @@ export function ExecutiveReceptionistCard({
             <h2>Polyglot Receptionist™</h2>
           </div>
           <p>
-            Open a routed multilingual workflow for meeting requests, callbacks, messages, and qualified inquiries.
+            Route calls, messages, callback requests, and qualified inquiries through a human-approved executive workflow.
           </p>
         </div>
-        <button
-          className="executive-receptionist-open"
-          type="button"
-          onClick={() => setIsOpen(true)}
-        >
-          Open Receptionist
-        </button>
+        <div className="executive-receptionist-actions" aria-label="Receptionist interaction choices">
+          <a className="executive-receptionist-choice" href={phoneHref}>
+            <Phone aria-hidden="true" size={18} />
+            <span>Call</span>
+          </a>
+          <button
+            className="executive-receptionist-choice"
+            type="button"
+            onClick={() => {
+              setMode("text_chat");
+              setIsOpen(true);
+            }}
+          >
+            <MessageSquare aria-hidden="true" size={18} />
+            <span>Message</span>
+          </button>
+          <button
+            className="executive-receptionist-choice"
+            type="button"
+            onClick={() => {
+              setMode("form");
+              setIsOpen(true);
+            }}
+          >
+            <Send aria-hidden="true" size={18} />
+            <span>Request Callback</span>
+          </button>
+        </div>
       </section>
       {isOpen ? (
         <div className="executive-modal-backdrop" role="presentation">
@@ -68,12 +104,35 @@ export function ExecutiveReceptionistCard({
             </div>
             <p className="executive-modal-intro">
               {behavior?.greetingText ??
-                "Share your request. The workflow queues it for human-approved executive follow-up."}
+                "Choose text chat, voice transcript mode, or a traditional request form. Provider dispatch remains human-approved."}
             </p>
-            <ReceptionistRequestForm
-              executiveSlug={executive.slug}
-              {...(settings ? { settings } : {})}
-            />
+            <div className="receptionist-mode-tabs" role="tablist" aria-label="Receptionist mode">
+              {receptionistModes.map((item) => (
+                <button
+                  key={item.id}
+                  className="receptionist-mode-tab"
+                  type="button"
+                  role="tab"
+                  aria-selected={mode === item.id}
+                  onClick={() => setMode(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            {mode === "text_chat" ? (
+              <ReceptionistTextChat executiveSlug={executive.slug} />
+            ) : null}
+            {mode === "voice_chat" ? (
+              <ReceptionistVoiceChat executiveSlug={executive.slug} />
+            ) : null}
+            {mode === "form" ? (
+              <ReceptionistRequestForm
+                defaultRequestTypeOverride="request_callback"
+                executiveSlug={executive.slug}
+                {...(settings ? { settings } : {})}
+              />
+            ) : null}
           </section>
         </div>
       ) : null}

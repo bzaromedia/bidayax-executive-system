@@ -327,6 +327,153 @@ export const receptionistProviderStatusValues = [
 export type ReceptionistProviderStatusValue =
   (typeof receptionistProviderStatusValues)[number];
 
+export const receptionistInteractionModes = [
+  "phone",
+  "chat",
+  "voice_chat",
+  "form"
+] as const;
+
+export type ReceptionistInteractionMode =
+  (typeof receptionistInteractionModes)[number];
+
+export const receptionistWorkflowTriggerTypes = [
+  "inbound_call",
+  "chat",
+  "voice_chat",
+  "form_submit"
+] as const;
+
+export type ReceptionistWorkflowTriggerType =
+  (typeof receptionistWorkflowTriggerTypes)[number];
+
+export const receptionistFrontOfficeStatuses = [
+  "received",
+  "processing",
+  "scheduled",
+  "callback_queued",
+  "completed",
+  "escalated",
+  "blocked"
+] as const;
+
+export type ReceptionistFrontOfficeStatus =
+  (typeof receptionistFrontOfficeStatuses)[number];
+
+export type ReceptionistInteraction = {
+  readonly id: string;
+  readonly mode: ReceptionistInteractionMode;
+  readonly executiveId: ExecutiveSlug;
+  readonly cardId: string;
+  readonly visitorId?: string;
+  readonly callerPhone?: string;
+  readonly language: string;
+  readonly dialect?: string;
+  readonly intent: string;
+  readonly urgencyScore: number;
+  readonly trustScore: number;
+  readonly action: ReceptionistAction;
+  readonly transcript?: string;
+  readonly translatedSummary?: string;
+  readonly status: ReceptionistFrontOfficeStatus;
+  readonly createdAt: string;
+};
+
+export type WorkflowNodeRun = {
+  readonly nodeId: string;
+  readonly startedAt: string;
+  readonly completedAt: string;
+  readonly status: ReceptionistProviderStatusValue;
+  readonly summary: string;
+};
+
+export type ReceptionistAuditEvent = {
+  readonly eventId: string;
+  readonly interactionId: string;
+  readonly eventType: string;
+  readonly actor: "visitor" | "receptionist" | "system" | "executive";
+  readonly timestamp: string;
+  readonly payload: Record<string, string | number | boolean | null>;
+};
+
+export type CallbackRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly priority: ReceptionistPriority;
+  readonly requireHumanApproval: boolean;
+};
+
+export type AvailabilityRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly action: "answer_now" | "transfer" | "schedule" | "take_message" | "queue_callback" | "require_approval" | "block";
+};
+
+export type CalendarRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly timezone: string;
+  readonly enabled: boolean;
+};
+
+export type TransferRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly destination: string;
+  readonly enabled: boolean;
+};
+
+export type BlockRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly pattern: string;
+  readonly reason: string;
+};
+
+export type ExecutiveReceptionistSettings = {
+  readonly languages: readonly ReceptionistLanguage[];
+  readonly defaultLanguage: ReceptionistLanguage;
+  readonly businessPhone: string;
+  readonly callbackRules: readonly CallbackRule[];
+  readonly availabilityRules: readonly AvailabilityRule[];
+  readonly calendarRules: readonly CalendarRule[];
+  readonly transferRules: readonly TransferRule[];
+  readonly blockedCallerRules: readonly BlockRule[];
+  readonly humanApprovalRequired: boolean;
+};
+
+export type AppointmentRequest = {
+  readonly appointmentRequestId: string;
+  readonly executiveSlug: ExecutiveSlug;
+  readonly requesterName: string | null;
+  readonly requesterEmail: string | null;
+  readonly requesterCompany: string | null;
+  readonly preferredTime: string | null;
+  readonly purpose: string;
+  readonly status: "queued" | "requires_human_review" | "blocked" | "scheduled";
+};
+
+export type ConversationMemory = {
+  readonly callerName: string | null;
+  readonly company: string | null;
+  readonly intent: CallIntent | ReceptionistRequestType | "unknown";
+  readonly requestedTime: string | null;
+  readonly urgency: ReceptionistPriority;
+  readonly language: string;
+  readonly summary: string;
+  readonly actionItems: readonly string[];
+  readonly followUpRequired: boolean;
+};
+
+export type ReceptionistTask = {
+  readonly taskId: string;
+  readonly interactionId: string;
+  readonly taskType: ReceptionistTaskType | "callback" | "appointment" | "message";
+  readonly status: "queued" | "requires_human_review" | "completed" | "blocked";
+  readonly dueAt: string | null;
+  readonly summary: string;
+};
+
 export type CallerProfile = {
   readonly callerId: string;
   readonly name: string | null;
@@ -413,6 +560,10 @@ export type ReceptionistWorkflowNode = {
 
 export type ReceptionistWorkflowRun = {
   readonly runId: string;
+  readonly triggerType?: ReceptionistWorkflowTriggerType;
+  readonly nodes?: readonly WorkflowNodeRun[];
+  readonly result?: ReceptionistInteraction;
+  readonly auditTrail?: readonly ReceptionistAuditEvent[];
   readonly executiveSlug: ExecutiveSlug;
   readonly status: ReceptionistProviderStatusValue;
   readonly steps: readonly ReceptionistWorkflowEventDraft[];

@@ -1,63 +1,32 @@
 # Polyglot Receptionist OS
 
-## Purpose
+The Polyglot Receptionist OS is the front-office automation layer for The Executive Card. It connects executive identity, phone, chat, voice-chat transcript mode, traditional request forms, callback requests, scheduling preparation, event logging, contact intelligence, dashboard visibility, and human-approved follow-up.
 
-Polyglot Receptionist OS is the future receptionist operating layer for The Executive Card. It will eventually support inbound calls, outbound calls, multilingual conversation, email handling, scheduling requests, contact logging, escalation, executive summaries, and workflow automation.
+## Interaction Modes
 
-Phase 8 implements only the safe foundation. It does not connect live calling, email, calendar, voice, or workflow providers.
+1. Phone Call Mode: inbound business phone webhooks normalize into receptionist workflow requests. Live call answering requires configured telephony and realtime voice providers.
+2. ChatGPT-Style Text Chat Mode: visitors can send a concise message from the card. The request feeds the same workflow engine as other modes.
+3. Voice Chat Mode: v1.0 supports provider-safe transcript mode. Live realtime voice sessions require configured providers.
+4. Traditional Form Mode: visitors submit structured callback, meeting, message, lead, partnership, or support requests.
 
-## Foundation Model
+## Shared Workflow
 
-Phase 8 defines:
+All modes feed the shared n8n-style workflow:
 
-- receptionist interactions.
-- receptionist tasks.
-- simulated conversation turns.
-- workflow events.
-- language and dialect metadata.
-- deterministic intent categories.
-- deterministic escalation recommendations.
+Trigger -> Identify executive/card -> Identify caller/visitor -> Detect language -> Consent disclosure -> Intent classification -> Urgency and trust scoring -> Action selection -> Event ledger write -> Contact graph update -> Notification preparation -> Follow-up task visibility.
 
-## Intent Categories
+## Provider Status
 
-- `general_inquiry`
-- `schedule_meeting`
-- `request_callback`
-- `partnership_interest`
-- `investor_interest`
-- `vendor_inquiry`
-- `support_request`
-- `wrong_number`
-- `spam_or_low_value`
-- `urgent_executive_attention`
-- `unknown`
+Provider dispatch is safety-gated. If telephony, realtime voice, calendar, or outbound email providers are not configured, the workflow queues internal requests and keeps them visible for human-approved follow-up.
 
-## Language Profile
+## Active in v1.0
 
-The language profile captures:
+- Shared workflow engine sources for form, callback, calendar, inbound-call, chat, and voice-chat transcript mode.
+- Request validation and safe queued mode.
+- Event ledger persistence through the existing card event path.
+- Dashboard visibility through receptionist request records.
+- Human-approval-safe provider status.
 
-- language.
-- dialect.
-- confidence.
-- script.
-- direction.
-- notes.
+## Future Provider Work
 
-Phase 8 language metadata is simulated. Live fluency depends on future voice and language infrastructure.
-
-## Escalation
-
-Escalation is a recommendation only. Phase 8 does not contact an executive automatically.
-
-Escalation is recommended when:
-
-- the intent is investor interest.
-- the intent is urgent executive attention.
-- partnership interest is high priority.
-- sentiment is negative and priority is high.
-- a task requires executive approval.
-- the interaction cannot be confidently classified.
-
-## Explicit Non-Goals
-
-Phase 8 does not build live phone calling, OpenAI Realtime sessions, Twilio integration, real email sending, real calendar booking, CRM, autonomous receptionist deployment, production phone routing, or external workflow automation.
+Live call answering, realtime AI voice, direct calendar booking, SMS, and outbound email dispatch require production provider credentials, consent rules, and owner validation before activation.

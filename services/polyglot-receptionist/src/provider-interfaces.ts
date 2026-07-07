@@ -82,3 +82,29 @@ export function resolveVoiceProviderStatus(input: {
     translation: input.translationConfigured ? "configured" : "provider_unconfigured"
   };
 }
+
+export type TelephonyProvider = VoiceTelephonyProvider;
+
+export type RealtimeVoiceProvider = RealtimeVoiceAgentProvider;
+
+export type CalendarProvider = {
+  readonly providerName: string;
+  readonly configured: boolean;
+  readonly createAppointmentRequest: (input: {
+    readonly executiveSlug: string;
+    readonly requesterEmail: string;
+    readonly requestedTime: string | null;
+    readonly summary: string;
+  }) => Promise<VoiceProviderDispatchResult>;
+};
+
+export type NotificationProvider = {
+  readonly providerName: string;
+  readonly configured: boolean;
+  readonly notifyExecutive: (input: {
+    readonly executiveSlug: string;
+    readonly to: string;
+    readonly subject: string;
+    readonly body: string;
+  }) => Promise<VoiceProviderDispatchResult>;
+};

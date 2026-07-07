@@ -194,6 +194,19 @@ importers:
         specifier: ^5.7.2
         version: 5.9.3
 
+  apps/receptionist-console:
+    dependencies:
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
   packages/config:
     dependencies:
       '@bidayax/tokens':
@@ -246,6 +259,22 @@ importers:
         specifier: ^6.0.5
         version: 6.4.3(@types/node@22.20.0)(tsx@4.22.4)
 
+  packages/receptionist-core:
+    dependencies:
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../types
+      '@bidayax/workflow-engine':
+        specifier: workspace:*
+        version: link:../workflow-engine
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
   packages/tokens:
     devDependencies:
       typescript:
@@ -292,6 +321,15 @@ importers:
       tailwind-merge:
         specifier: ^2.6.0
         version: 2.6.1
+
+  packages/workflow-engine:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
 
   services/card-customization:
     dependencies:
@@ -444,6 +482,22 @@ importers:
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../telemetry
+      '@bidayax/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.20.0)
+
+  services/voice-gateway:
+    dependencies:
+      '@bidayax/polyglot-receptionist':
+        specifier: workspace:*
+        version: link:../polyglot-receptionist
       '@bidayax/types':
         specifier: workspace:*
         version: link:../../packages/types
