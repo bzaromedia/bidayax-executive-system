@@ -189,6 +189,9 @@ describe("settings publish flow", () => {
     expect(result.snapshotHash).toBe(result.publishedVersion?.snapshotHash);
     expect(result.publishedVersion?.status).toBe("published");
     expect(result.publishedVersion?.immutable).toBe(true);
+    expect(result.auditEvents.map((event) => event.eventType)).toEqual(
+      result.emittedEvents.map((event) => event.eventName)
+    );
     expect(result.emittedEvents.map((event) => event.eventName)).toEqual([
       "settings.preview.generated",
       "receptionist.settings.previewed",
@@ -255,6 +258,12 @@ describe("settings publish flow", () => {
     expect(result.ok).toBe(false);
     expect(result.emittedEvents.map((event) => event.eventName)).toContain(
       "receptionist.settings.validation_failed"
+    );
+    expect(result.auditEvents).toContainEqual(
+      expect.objectContaining({
+        eventType: "receptionist.settings.validation_failed",
+        severity: "warning"
+      })
     );
     expect(result.validation.checks).toContainEqual(
       expect.objectContaining({

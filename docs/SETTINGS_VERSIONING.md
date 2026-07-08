@@ -1,6 +1,6 @@
 # Settings Versioning
 
-The Executive Card Modularity & Settings Layer uses a draft to preview to publish workflow. Phase 2E extends the Phase 2D immutable snapshot pipeline with validated Polyglot Receptionist settings.
+The Executive Card Modularity & Settings Layer uses a draft to preview to publish workflow. Phase 2F adds standardized Event Ledger-ready audit payloads to the immutable Phase 2D and Phase 2E settings pipeline.
 
 ## Version States
 
@@ -11,43 +11,43 @@ The Executive Card Modularity & Settings Layer uses a draft to preview to publis
 
 ## Immutable Snapshot
 
-`CardSettingsSnapshot` contains the tenant brand profile, resolved brand tokens, executive card profile, receptionist settings, generated timestamp, and deterministic snapshot hash. Receptionist values are therefore versioned with the card instead of being mutable side state.
+`CardSettingsSnapshot` contains the tenant brand profile, resolved brand tokens, executive card profile, receptionist settings, generated timestamp, and deterministic snapshot hash. Published rendering consumes this snapshot instead of mutable draft state.
 
-## Preview Behavior
+## Compatible Event Outputs
 
-Generating a preview:
+Each settings operation preserves its existing `emittedEvents` result and adds standardized `auditEvents`.
 
-1. preserves the complete receptionist settings object in the snapshot
-2. validates the receptionist settings
-3. emits `settings.preview.generated`
-4. emits `receptionist.settings.previewed` with enabled, valid, and issue-count metadata
-
-A preview can show validation issues without publishing invalid settings.
-
-## Publish Validation
-
-Publish blocks invalid receptionist settings, including unsupported voice or mood values, invalid language relationships, missing greetings, missing consent, invalid fallback behavior, incomplete routes, or invalid escalation contacts.
-
-A failed receptionist publish emits:
-
-- `settings.publish.validation_failed`
-- `receptionist.settings.validation_failed`
-
-A successful publish emits:
-
-- `settings.published`
-- `receptionist.settings.published`
-
-Existing settings events remain unchanged:
+Legacy event names remain:
 
 - `settings.draft.created`
 - `settings.preview.generated`
 - `settings.publish.validation_failed`
 - `settings.published`
 - `settings.version.archived`
+- `receptionist.settings.previewed`
+- `receptionist.settings.validation_failed`
+- `receptionist.settings.published`
 
-Events are returned as typed payloads. Phase 2E does not persist them; Event Ledger and audit persistence are Phase 2F.
+## Audit Wiring
+
+Draft, preview, archive, validation-failure, and successful publish paths convert their version events into the Phase 2F audit envelope. The conversion adds:
+
+- deterministic audit event ID
+- typed actor metadata
+- event source
+- severity
+- current snapshot hash
+- previous snapshot hash when applicable
+- sanitized metadata
+
+`SettingsVersionOperationResult` and `SettingsPublishResult` expose `auditEvents` alongside existing result fields.
+
+## Publish Validation
+
+Publish continues to block invalid profile, brand-token, CTA, and receptionist settings. Receptionist validation covers enabled state, languages, voice, mood, greeting, consent, fallback, routing, escalation, recording, and after-hours behavior.
+
+Validation failures emit warning audit events. A failed publish does not create a published version or mutate an existing version.
 
 ## Phase Boundary
 
-Phase 2E adds package validation, immutable preview state, publish gating, receptionist events, and a dashboard preview. It does not add migrations, provider credentials, telephony, database writes, or production publish APIs.
+Phase 2F provides deterministic, testable, Event Ledger-ready payloads and an immutable in-memory audit trail. It does not add database persistence, migrations, provider credentials, live telephony, or production settings mutation APIs.

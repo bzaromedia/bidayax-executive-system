@@ -9,6 +9,7 @@ export * from "./telemetry";
 export * from "./dashboard";
 export * from "./card-customization";
 export * from "./settings";
+export * from "./audit-events";
 export * from "./card-profile";
 export * from "./branding";
 export * from "./resolved-brand-tokens";

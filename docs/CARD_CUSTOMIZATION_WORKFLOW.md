@@ -54,7 +54,7 @@ The UI must not read raw draft fields directly for published output.
 
 ## Event Ledger Contract
 
-Phase 2D emits, but does not persist, these events:
+The settings workflow emits, but does not persist, these events:
 
 - `settings.draft.created`
 - `settings.preview.generated`
@@ -62,8 +62,8 @@ Phase 2D emits, but does not persist, these events:
 - `settings.published`
 - `settings.version.archived`
 
-Phase 2F will connect these payloads to the Event Ledger and settings audit
-trail.
+Phase 2F standardizes these payloads into deterministic audit envelopes and an
+immutable in-memory trail. Durable Event Ledger persistence remains deferred.
 
 ## Phase 2B-2F Boundary
 
@@ -71,4 +71,4 @@ trail.
 - Phase 2C builds the settings UI and top-right settings icon.
 - Phase 2D builds preview/publish/versioning flow.
 - Phase 2E integrates receptionist settings.
-- Phase 2F emits Event Ledger and audit trail events.
+- Phase 2F emits standardized Event Ledger-ready audit payloads and builds the audit trail.

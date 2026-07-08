@@ -1,5 +1,7 @@
 import type {
   CardSettingsVersion,
+  SettingsAuditActor,
+  SettingsAuditEvent,
   SettingsPublishResult,
   SettingsPublishValidationCheck,
   SettingsPublishValidationResult,
@@ -13,8 +15,10 @@ import {
   generatePreviewVersion
 } from "./settings-versioning";
 import { validateReceptionistSettings } from "./receptionist-settings-validation";
+import { createSettingsAuditEvents } from "./settings-audit-events";
 
 export type PublishSettingsVersionInput = {
+  readonly actor?: SettingsAuditActor | undefined;
   readonly actorId: string;
   readonly existingVersions?: readonly CardSettingsVersion[];
   readonly publishedAt?: string;
@@ -226,23 +230,27 @@ export function publishSettingsVersion(
 ): SettingsPublishResult {
   const publishedAt = createdAtOrNow(input.publishedAt);
   const emittedEvents: SettingsVersionEvent[] = [];
+  const auditEvents: SettingsAuditEvent[] = [];
   const existingVersions = input.existingVersions ?? [];
   let previewVersion = input.sourceVersion;
 
   if (input.sourceVersion.status === "draft") {
     const previewResult = generatePreviewVersion({
+      actor: input.actor,
       actorId: input.actorId,
       createdAt: publishedAt,
       draftVersion: input.sourceVersion
     });
     previewVersion = previewResult.version;
     emittedEvents.push(...previewResult.emittedEvents);
+    auditEvents.push(...previewResult.auditEvents);
   }
 
   const validation = validateSettingsForPublish(previewVersion);
   const warnings = collectWarnings(validation, previewVersion);
 
   if (!validation.valid) {
+    const auditEventStart = emittedEvents.length;
     const receptionistBlockers = validation.checks.filter(
       (check) => check.checkId.startsWith("receptionist.") && !check.passed
     );
@@ -279,9 +287,19 @@ export function publishSettingsVersion(
         : [])
     );
 
+    auditEvents.push(
+      ...createSettingsAuditEvents(emittedEvents.slice(auditEventStart), {
+        actor: input.actor,
+        actorId: input.actorId,
+        previousSnapshotHash: previewVersion.snapshotHash,
+        snapshotHash: previewVersion.snapshotHash
+      })
+    );
+
     return {
       archivedVersion: null,
       archivedVersionId: null,
+      auditEvents,
       emittedEvents,
       ok: false,
       publishedVersion: null,
@@ -300,6 +318,7 @@ export function publishSettingsVersion(
   );
   const archivedResult = previousPublishedVersion
     ? archivePublishedVersion({
+        actor: input.actor,
         actorId: input.actorId,
         createdAt: publishedAt,
         publishedVersion: previousPublishedVersion
@@ -314,8 +333,10 @@ export function publishSettingsVersion(
 
   if (archivedResult) {
     emittedEvents.push(...archivedResult.emittedEvents);
+    auditEvents.push(...archivedResult.auditEvents);
   }
 
+  const publishEventStart = emittedEvents.length;
   emittedEvents.push(
     createEvent({
       actorId: input.actorId,
@@ -343,6 +364,15 @@ export function publishSettingsVersion(
     })
   );
 
+  auditEvents.push(
+    ...createSettingsAuditEvents(emittedEvents.slice(publishEventStart), {
+      actor: input.actor,
+      actorId: input.actorId,
+      previousSnapshotHash: previousPublishedVersion?.snapshotHash ?? null,
+      snapshotHash: publishedVersion.snapshotHash
+    })
+  );
+
   const replacedVersionIds = new Set<string>([
     ...(previousPublishedVersion ? [previousPublishedVersion.versionId] : []),
     previewVersion.versionId
@@ -360,6 +390,7 @@ export function publishSettingsVersion(
   return {
     archivedVersion: archivedResult?.version ?? null,
     archivedVersionId: archivedResult?.version.versionId ?? null,
+    auditEvents,
     emittedEvents,
     ok: true,
     publishedVersion,

@@ -2,12 +2,16 @@ import type {
   CardSettingsSnapshot,
   CardSettingsVersion,
   CardSettingsVersionStatus,
+  SettingsAuditActor,
+  SettingsAuditEvent,
   SettingsVersionEvent,
   SettingsVersionEventName
 } from "@bidayax/types";
 import { validateReceptionistSettings } from "./receptionist-settings-validation";
+import { createSettingsAuditEvents } from "./settings-audit-events";
 
 export type SettingsVersionActorContext = {
+  readonly actor?: SettingsAuditActor | undefined;
   readonly actorId: string;
   readonly createdAt?: string;
 };
@@ -21,6 +25,7 @@ export type CreateCardSettingsSnapshotInput = Omit<
 
 export type CreateSettingsDraftInput = SettingsVersionActorContext & {
   readonly settingsSnapshot: CardSettingsSnapshot;
+  readonly previousSnapshotHash?: string | null | undefined;
   readonly previousVersionId?: string | null;
   readonly versionId?: string;
 };
@@ -36,6 +41,7 @@ export type ArchiveSettingsVersionInput = SettingsVersionActorContext & {
 };
 
 export type SettingsVersionOperationResult = {
+  readonly auditEvents: readonly SettingsAuditEvent[];
   readonly version: CardSettingsVersion;
   readonly emittedEvents: readonly SettingsVersionEvent[];
 };
@@ -162,21 +168,29 @@ export function createSettingsDraft(
     versionId
   });
 
+  const emittedEvents = [
+    createSettingsVersionEvent({
+      actorId: input.actorId,
+      cardId: version.cardId,
+      createdAt,
+      eventName: "settings.draft.created",
+      metadata: {
+        snapshotHash: version.snapshotHash,
+        status: version.status
+      },
+      tenantId: version.tenantId,
+      versionId
+    })
+  ];
+
   return {
-    emittedEvents: [
-      createSettingsVersionEvent({
-        actorId: input.actorId,
-        cardId: version.cardId,
-        createdAt,
-        eventName: "settings.draft.created",
-        metadata: {
-          snapshotHash: version.snapshotHash,
-          status: version.status
-        },
-        tenantId: version.tenantId,
-        versionId
-      })
-    ],
+    auditEvents: createSettingsAuditEvents(emittedEvents, {
+      actor: input.actor,
+      actorId: input.actorId,
+      previousSnapshotHash: input.previousSnapshotHash,
+      snapshotHash: version.snapshotHash
+    }),
+    emittedEvents,
     version
   };
 }
@@ -199,35 +213,43 @@ export function generatePreviewVersion(
     versionId
   });
 
+  const emittedEvents = [
+    createSettingsVersionEvent({
+      actorId: input.actorId,
+      cardId: version.cardId,
+      createdAt,
+      eventName: "settings.preview.generated",
+      metadata: {
+        draftVersionId: input.draftVersion.versionId,
+        snapshotHash: version.snapshotHash,
+        status: version.status
+      },
+      tenantId: version.tenantId,
+      versionId
+    }),
+    createSettingsVersionEvent({
+      actorId: input.actorId,
+      cardId: version.cardId,
+      createdAt,
+      eventName: "receptionist.settings.previewed",
+      metadata: {
+        enabled: version.settingsSnapshot.receptionistSettings.enabled,
+        issueCount: receptionistValidation.issues.length,
+        valid: receptionistValidation.valid
+      },
+      tenantId: version.tenantId,
+      versionId
+    })
+  ];
+
   return {
-    emittedEvents: [
-      createSettingsVersionEvent({
-        actorId: input.actorId,
-        cardId: version.cardId,
-        createdAt,
-        eventName: "settings.preview.generated",
-        metadata: {
-          draftVersionId: input.draftVersion.versionId,
-          snapshotHash: version.snapshotHash,
-          status: version.status
-        },
-        tenantId: version.tenantId,
-        versionId
-      }),
-      createSettingsVersionEvent({
-        actorId: input.actorId,
-        cardId: version.cardId,
-        createdAt,
-        eventName: "receptionist.settings.previewed",
-        metadata: {
-          enabled: version.settingsSnapshot.receptionistSettings.enabled,
-          issueCount: receptionistValidation.issues.length,
-          valid: receptionistValidation.valid
-        },
-        tenantId: version.tenantId,
-        versionId
-      })
-    ],
+    auditEvents: createSettingsAuditEvents(emittedEvents, {
+      actor: input.actor,
+      actorId: input.actorId,
+      previousSnapshotHash: input.draftVersion.snapshotHash,
+      snapshotHash: version.snapshotHash
+    }),
+    emittedEvents,
     version
   };
 }
@@ -246,22 +268,30 @@ export function archivePublishedVersion(
     versionId
   });
 
+  const emittedEvents = [
+    createSettingsVersionEvent({
+      actorId: input.actorId,
+      cardId: version.cardId,
+      createdAt,
+      eventName: "settings.version.archived",
+      metadata: {
+        archivedFromStatus: input.publishedVersion.status,
+        previousVersionId: input.publishedVersion.versionId,
+        snapshotHash: version.snapshotHash
+      },
+      tenantId: version.tenantId,
+      versionId
+    })
+  ];
+
   return {
-    emittedEvents: [
-      createSettingsVersionEvent({
-        actorId: input.actorId,
-        cardId: version.cardId,
-        createdAt,
-        eventName: "settings.version.archived",
-        metadata: {
-          archivedFromStatus: input.publishedVersion.status,
-          previousVersionId: input.publishedVersion.versionId,
-          snapshotHash: version.snapshotHash
-        },
-        tenantId: version.tenantId,
-        versionId
-      })
-    ],
+    auditEvents: createSettingsAuditEvents(emittedEvents, {
+      actor: input.actor,
+      actorId: input.actorId,
+      previousSnapshotHash: input.publishedVersion.snapshotHash,
+      snapshotHash: version.snapshotHash
+    }),
+    emittedEvents,
     version
   };
 }

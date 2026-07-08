@@ -172,6 +172,7 @@ describe("settings versioning", () => {
     expect(result.version.immutable).toBe(false);
     expect(result.emittedEvents).toHaveLength(1);
     expect(result.emittedEvents[0]?.eventName).toBe("settings.draft.created");
+    expect(result.auditEvents[0]?.eventType).toBe("settings.draft.created");
   });
 
   it("generates a preview version from a draft", () => {
@@ -189,6 +190,10 @@ describe("settings versioning", () => {
     expect(result.version.status).toBe("preview");
     expect(result.version.snapshotHash).toBe(draft.snapshotHash);
     expect(result.emittedEvents.map((event) => event.eventName)).toEqual([
+      "settings.preview.generated",
+      "receptionist.settings.previewed"
+    ]);
+    expect(result.auditEvents.map((event) => event.eventType)).toEqual([
       "settings.preview.generated",
       "receptionist.settings.previewed"
     ]);
@@ -215,6 +220,7 @@ describe("settings versioning", () => {
     expect(result.version.status).toBe("archived");
     expect(result.version.immutable).toBe(true);
     expect(result.emittedEvents[0]?.eventName).toBe("settings.version.archived");
+    expect(result.auditEvents[0]?.eventType).toBe("settings.version.archived");
   });
 
   it("finds the current published version for a card and tenant", () => {

@@ -1,3 +1,4 @@
+import type { SettingsAuditEvent } from "./audit-events";
 import type { TenantBrandProfile } from "./branding";
 import type { ExecutiveCardProfile } from "./card-profile";
 import type { ReceptionistSettings } from "./receptionist";
@@ -21,12 +22,6 @@ export const settingsVersionEventNames = [
   "receptionist.settings.published"
 ] as const;
 
-export const settingsAuditEventTypes = [
-  "settings.created",
-  "settings.updated",
-  "settings.previewed",
-  "settings.published"
-] as const;
 
 export type CardSettingsVersionStatus =
   (typeof cardSettingsVersionStatuses)[number];
@@ -34,9 +29,6 @@ export type CardSettingsVersionStatus =
 export type SettingsVersionEventName =
   (typeof settingsVersionEventNames)[number];
 
-export type SettingsAuditEventType =
-  | (typeof settingsAuditEventTypes)[number]
-  | SettingsVersionEventName;
 
 export type Tenant = {
   readonly tenantId: string;
@@ -80,16 +72,6 @@ export type SettingsVersionEvent = {
   readonly metadata: Record<string, string | number | boolean | null>;
 };
 
-export type SettingsAuditEvent = {
-  readonly eventId: string;
-  readonly tenantId: string;
-  readonly cardId: string;
-  readonly versionId: string | null;
-  readonly eventType: SettingsAuditEventType;
-  readonly actorId: string;
-  readonly createdAt: string;
-  readonly metadata: Record<string, string | number | boolean | null>;
-};
 
 export type SettingsPublishValidationCheck = {
   readonly checkId: string;
@@ -112,6 +94,7 @@ export type SettingsPublishResult = {
   readonly archivedVersion: CardSettingsVersion | null;
   readonly versions: readonly CardSettingsVersion[];
   readonly emittedEvents: readonly SettingsVersionEvent[];
+  readonly auditEvents: readonly SettingsAuditEvent[];
   readonly warnings: readonly string[];
   readonly validation: SettingsPublishValidationResult;
 };

@@ -1,13 +1,13 @@
 # Settings Acceptance Tests
 
-Phase 2 acceptance combines typed contracts, brand-token resolution, token-governed UI, immutable versioning, and receptionist settings validation.
+Phase 2 acceptance combines typed contracts, brand-token resolution, token-governed UI, immutable versioning, receptionist settings validation, and audit-event wiring.
 
 ## Foundation Checks
 
 1. `TenantBrandProfile`, `ExecutiveCardProfile`, `ReceptionistSettings`, and `CardSettingsVersion` are typed.
 2. Version status is `draft | preview | published | archived`.
 3. Brand token resolution is deterministic and contrast-safe.
-4. The top-right settings entry and settings dashboard remain token-governed.
+4. The settings dashboard remains token-governed.
 5. No settings phase bypasses packages/tokens, packages/design-system, or packages/ui.
 
 ## Versioning Checks
@@ -16,37 +16,33 @@ Phase 2 acceptance combines typed contracts, brand-token resolution, token-gover
 - previews preserve the settings snapshot hash
 - published versions are immutable
 - replacement publishes archive the prior version
-- invalid required profile or brand-token data blocks publish
-- publish results include IDs, hash, events, warnings, and validation details
+- invalid profile, brand-token, CTA, or receptionist data blocks publish
+- publish results include IDs, hash, events, audit events, warnings, and validation details
 
 ## Receptionist Checks
 
+- default language is included in supported languages
+- enabled settings require approved voice and mood values
+- custom greeting and consent rules are enforced
+- fallback, routing, and escalation settings are validated
+- previews are immutable
+- invalid receptionist settings block publish
+- receptionist preview, validation-failure, and publish events are emitted
+
+## Audit Checks
+
 `@bidayax/settings` must verify:
 
-- enabled is boolean
-- default language is supported
-- enabled settings require an approved voice profile
-- mood and greeting mode are approved
-- custom greeting is required in custom mode
-- consent is required when automation or recording is enabled
-- fallback behavior is approved
-- routes require condition, destination, and priority
-- escalation contacts require a name and valid contact method
-- previews select the effective greeting and are immutable
-- disabled settings can preview safely
-- invalid receptionist settings block publish
-- preview, validation-failure, and publish events are emitted
-
-## Event Names
-
-- `settings.draft.created`
-- `settings.preview.generated`
-- `settings.publish.validation_failed`
-- `settings.published`
-- `settings.version.archived`
-- `receptionist.settings.previewed`
-- `receptionist.settings.validation_failed`
-- `receptionist.settings.published`
+- all eight event names map to the standardized audit envelope
+- audit IDs are deterministic and independent of metadata key order
+- actor type, name, optional IP, and optional user agent are retained
+- source and severity are assigned consistently
+- current and previous snapshot hashes are represented
+- sensitive metadata keys are excluded
+- trails are tenant- and card-scoped
+- trails sort chronologically and deduplicate IDs
+- append operations do not mutate the original trail
+- draft, preview, archive, validation failure, and publish operations return audit events
 
 ## Validation Commands
 

@@ -36,7 +36,7 @@ The dashboard uses `@bidayax/settings` for validation and preview. Visual change
 - `receptionist.settings.validation_failed`
 - `receptionist.settings.published`
 
-Events are side-effect-free return values in this phase. Phase 2F will wire them to the Event Ledger and audit trail.
+Events remain side-effect-free return values. Phase 2F now maps them to standardized audit envelopes and an immutable in-memory trail; durable Event Ledger persistence is still deferred.
 
 ## Explicitly Deferred
 
