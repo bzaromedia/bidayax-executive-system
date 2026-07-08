@@ -188,7 +188,10 @@ describe("settings versioning", () => {
 
     expect(result.version.status).toBe("preview");
     expect(result.version.snapshotHash).toBe(draft.snapshotHash);
-    expect(result.emittedEvents[0]?.eventName).toBe("settings.preview.generated");
+    expect(result.emittedEvents.map((event) => event.eventName)).toEqual([
+      "settings.preview.generated",
+      "receptionist.settings.previewed"
+    ]);
   });
 
   it("archives a published version without mutating the original", () => {

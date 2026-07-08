@@ -628,6 +628,7 @@ export function isReceptionistLanguage(
 export const receptionistVoiceProfiles = [
   "executive",
   "warm",
+  "energetic",
   "calm",
   "professional",
   "luxury"
@@ -638,6 +639,7 @@ export const receptionistMoods = [
   "friendly",
   "concise",
   "formal",
+  "high_energy",
   "calm"
 ] as const;
 
@@ -673,6 +675,8 @@ export type ReceptionistRecordingPolicy = (typeof receptionistRecordingPolicies)
 export type CallRoutingRule = {
   readonly ruleId: string;
   readonly label: string;
+  readonly condition: string;
+  readonly destination: string;
   readonly intent: ReceptionistRequestType | "urgent" | "unknown";
   readonly action: "queue_callback" | "take_message" | "route_to_email" | "human_review" | "block";
   readonly priority: ReceptionistPriority;
@@ -692,6 +696,7 @@ export type EscalationContact = {
   readonly label: string;
   readonly email: string;
   readonly phone: string | null;
+  readonly preferredContactMethod?: "email" | "phone";
   readonly priority: ReceptionistPriority;
 };
 

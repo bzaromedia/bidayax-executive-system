@@ -156,6 +156,9 @@ importers:
       '@bidayax/polyglot-receptionist':
         specifier: workspace:*
         version: link:../../services/polyglot-receptionist
+      '@bidayax/settings':
+        specifier: workspace:*
+        version: link:../../packages/settings
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry

@@ -5,6 +5,7 @@ import type {
   SettingsVersionEvent,
   SettingsVersionEventName
 } from "@bidayax/types";
+import { validateReceptionistSettings } from "./receptionist-settings-validation";
 
 export type SettingsVersionActorContext = {
   readonly actorId: string;
@@ -186,6 +187,9 @@ export function generatePreviewVersion(
   const createdAt = createdAtOrNow(input.createdAt);
   const versionId =
     input.versionId ?? createVersionId("preview", input.draftVersion.snapshotHash, createdAt);
+  const receptionistValidation = validateReceptionistSettings(
+    input.draftVersion.settingsSnapshot.receptionistSettings
+  );
   const version = deepFreeze({
     ...input.draftVersion,
     createdAt,
@@ -206,6 +210,19 @@ export function generatePreviewVersion(
           draftVersionId: input.draftVersion.versionId,
           snapshotHash: version.snapshotHash,
           status: version.status
+        },
+        tenantId: version.tenantId,
+        versionId
+      }),
+      createSettingsVersionEvent({
+        actorId: input.actorId,
+        cardId: version.cardId,
+        createdAt,
+        eventName: "receptionist.settings.previewed",
+        metadata: {
+          enabled: version.settingsSnapshot.receptionistSettings.enabled,
+          issueCount: receptionistValidation.issues.length,
+          valid: receptionistValidation.valid
         },
         tenantId: version.tenantId,
         versionId

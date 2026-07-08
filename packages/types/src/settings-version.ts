@@ -15,7 +15,10 @@ export const settingsVersionEventNames = [
   "settings.preview.generated",
   "settings.publish.validation_failed",
   "settings.published",
-  "settings.version.archived"
+  "settings.version.archived",
+  "receptionist.settings.previewed",
+  "receptionist.settings.validation_failed",
+  "receptionist.settings.published"
 ] as const;
 
 export const settingsAuditEventTypes = [

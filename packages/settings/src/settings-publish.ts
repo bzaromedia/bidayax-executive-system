@@ -12,6 +12,7 @@ import {
   findCurrentPublishedVersion,
   generatePreviewVersion
 } from "./settings-versioning";
+import { validateReceptionistSettings } from "./receptionist-settings-validation";
 
 export type PublishSettingsVersionInput = {
   readonly actorId: string;
@@ -90,6 +91,7 @@ export function validateSettingsForPublish(
 ): SettingsPublishValidationResult {
   const { cardProfile, receptionistSettings, resolvedBrandTokens } =
     version.settingsSnapshot;
+  const receptionistValidation = validateReceptionistSettings(receptionistSettings);
   const checks: SettingsPublishValidationCheck[] = [
     createCheck(
       "version.status.previewable",
@@ -151,18 +153,13 @@ export function validateSettingsForPublish(
       "blocker",
       "Version snapshot hash must match the immutable settings snapshot."
     ),
-    createCheck(
-      "receptionist.consent.required",
-      hasText(receptionistSettings.consentDisclosure),
-      "blocker",
-      "Receptionist consent disclosure is required before publish."
-    ),
-    createCheck(
-      "receptionist.custom_greeting.valid",
-      receptionistSettings.greetingMode !== "custom" ||
-        hasText(receptionistSettings.customGreeting),
-      "blocker",
-      "Custom receptionist greeting cannot be empty when custom mode is selected."
+    ...receptionistValidation.issues.map((issue) =>
+      createCheck(
+        `receptionist.${issue.code}`,
+        false,
+        "blocker",
+        issue.message
+      )
     ),
     createCheck(
       "cta.primary.valid",
@@ -246,6 +243,9 @@ export function publishSettingsVersion(
   const warnings = collectWarnings(validation, previewVersion);
 
   if (!validation.valid) {
+    const receptionistBlockers = validation.checks.filter(
+      (check) => check.checkId.startsWith("receptionist.") && !check.passed
+    );
     emittedEvents.push(
       createEvent({
         actorId: input.actorId,
@@ -260,7 +260,23 @@ export function publishSettingsVersion(
         },
         tenantId: previewVersion.tenantId,
         versionId: previewVersion.versionId
-      })
+      }),
+      ...(receptionistBlockers.length > 0
+        ? [
+            createEvent({
+              actorId: input.actorId,
+              cardId: previewVersion.cardId,
+              createdAt: publishedAt,
+              eventName: "receptionist.settings.validation_failed",
+              metadata: {
+                issueCount: receptionistBlockers.length,
+                snapshotHash: previewVersion.snapshotHash
+              },
+              tenantId: previewVersion.tenantId,
+              versionId: previewVersion.versionId
+            })
+          ]
+        : [])
     );
 
     return {
@@ -308,6 +324,18 @@ export function publishSettingsVersion(
       eventName: "settings.published",
       metadata: {
         archivedVersionId: archivedResult?.version.versionId ?? null,
+        snapshotHash: publishedVersion.snapshotHash
+      },
+      tenantId: publishedVersion.tenantId,
+      versionId: publishedVersion.versionId
+    }),
+    createEvent({
+      actorId: input.actorId,
+      cardId: publishedVersion.cardId,
+      createdAt: publishedAt,
+      eventName: "receptionist.settings.published",
+      metadata: {
+        enabled: publishedVersion.settingsSnapshot.receptionistSettings.enabled,
         snapshotHash: publishedVersion.snapshotHash
       },
       tenantId: publishedVersion.tenantId,

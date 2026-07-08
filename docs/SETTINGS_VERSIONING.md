@@ -1,48 +1,44 @@
 # Settings Versioning
 
-Phase 2D adds the Preview / Publish / Versioning Flow for the Executive Card
-Modularity & Settings Layer.
-
-This phase is package-level and side-effect free. It does not create production
-database migrations, dashboard write APIs, or runtime persistence. It produces
-immutable version objects and documented Event Ledger payloads for later
-persistence layers to consume.
+The Executive Card Modularity & Settings Layer uses a draft to preview to publish workflow. Phase 2E extends the Phase 2D immutable snapshot pipeline with validated Polyglot Receptionist settings.
 
 ## Version States
 
-- `draft`: editable working settings created from customer edits.
-- `preview`: validated enough for an internal preview surface.
-- `published`: immutable settings version consumed by a live card.
-- `archived`: previous published version retired when a replacement publishes.
+- `draft`: editable working settings
+- `preview`: non-published settings prepared for review
+- `published`: immutable settings consumed by a live card
+- `archived`: previous published version replaced by a newer publish
 
 ## Immutable Snapshot
 
-A `CardSettingsSnapshot` contains:
+`CardSettingsSnapshot` contains the tenant brand profile, resolved brand tokens, executive card profile, receptionist settings, generated timestamp, and deterministic snapshot hash. Receptionist values are therefore versioned with the card instead of being mutable side state.
 
-- tenant brand profile
-- resolved brand token snapshot
-- executive card profile
-- receptionist settings
-- generated timestamp
-- deterministic settings snapshot hash
+## Preview Behavior
 
-Published card rendering must consume the snapshot, not raw draft fields.
+Generating a preview:
 
-## Publish Result
+1. preserves the complete receptionist settings object in the snapshot
+2. validates the receptionist settings
+3. emits `settings.preview.generated`
+4. emits `receptionist.settings.previewed` with enabled, valid, and issue-count metadata
 
-`publishSettingsVersion` returns:
+A preview can show validation issues without publishing invalid settings.
 
-- `publishedVersionId`
-- `archivedVersionId` when an existing published version is replaced
-- `snapshotHash`
-- `emittedEvents[]`
-- `warnings[]`
-- validation details
-- updated in-memory version list
+## Publish Validation
 
-## Event Ledger Payloads
+Publish blocks invalid receptionist settings, including unsupported voice or mood values, invalid language relationships, missing greetings, missing consent, invalid fallback behavior, incomplete routes, or invalid escalation contacts.
 
-Phase 2D emits structured payloads for these event names:
+A failed receptionist publish emits:
+
+- `settings.publish.validation_failed`
+- `receptionist.settings.validation_failed`
+
+A successful publish emits:
+
+- `settings.published`
+- `receptionist.settings.published`
+
+Existing settings events remain unchanged:
 
 - `settings.draft.created`
 - `settings.preview.generated`
@@ -50,31 +46,8 @@ Phase 2D emits structured payloads for these event names:
 - `settings.published`
 - `settings.version.archived`
 
-The events are returned to callers. They are not persisted by this phase.
-
-## Validation Before Publish
-
-Publish validation checks:
-
-- source version is draft or preview
-- executive name, title, company, email, phone, and website are present
-- resolved brand token snapshot exists
-- resolved brand tokens meet WCAG AA contrast
-- version hash matches immutable snapshot hash
-- receptionist consent disclosure is present
-- custom receptionist greeting is not empty when custom mode is selected
-- visible primary CTA has label and destination
-
-Safe brand fallback usage is reported as a warning, not a blocker.
+Events are returned as typed payloads. Phase 2E does not persist them; Event Ledger and audit persistence are Phase 2F.
 
 ## Phase Boundary
 
-Phase 2D does not add:
-
-- database persistence
-- dashboard mutation APIs
-- receptionist runtime behavior
-- production publish buttons wired to storage
-- migrations
-
-Those belong to Phase 2E and Phase 2F.
+Phase 2E adds package validation, immutable preview state, publish gating, receptionist events, and a dashboard preview. It does not add migrations, provider credentials, telephony, database writes, or production publish APIs.

@@ -191,7 +191,9 @@ describe("settings publish flow", () => {
     expect(result.publishedVersion?.immutable).toBe(true);
     expect(result.emittedEvents.map((event) => event.eventName)).toEqual([
       "settings.preview.generated",
-      "settings.published"
+      "receptionist.settings.previewed",
+      "settings.published",
+      "receptionist.settings.published"
     ]);
   });
 
@@ -237,6 +239,30 @@ describe("settings publish flow", () => {
       "settings.publish.validation_failed"
     );
     expect(result.validation.valid).toBe(false);
+  });
+
+  it("emits a receptionist validation event when receptionist settings are invalid", () => {
+    const result = publishSettingsVersion({
+      actorId: "owner-1",
+      publishedAt: "2026-07-08T13:05:00.000Z",
+      sourceVersion: draftVersion({
+        receptionist: {
+          consentDisclosure: ""
+        }
+      })
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.emittedEvents.map((event) => event.eventName)).toContain(
+      "receptionist.settings.validation_failed"
+    );
+    expect(result.validation.checks).toContainEqual(
+      expect.objectContaining({
+        checkId: "receptionist.consent_disclosure.required",
+        passed: false,
+        severity: "blocker"
+      })
+    );
   });
 
   it("blocks publish when resolved brand tokens fail AA contrast", () => {

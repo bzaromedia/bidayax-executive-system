@@ -1,5 +1,14 @@
 import type { ReactNode } from "react";
-import type { CustomerCardSettings, TenantBrandProfile } from "@bidayax/types";
+import type {
+  CustomerCardSettings,
+  ReceptionistSettings,
+  TenantBrandProfile
+} from "@bidayax/types";
+import { isReceptionistLanguage } from "@bidayax/types";
+import {
+  createReceptionistSettingsPreview,
+  type ReceptionistSettingsPreview
+} from "@bidayax/settings";
 import { resolveBrandTokens } from "@bidayax/tokens";
 import {
   Badge,
@@ -26,6 +35,7 @@ type Phase2CTemporaryPreviewState = {
   readonly settings: CustomerCardSettings;
   readonly tenantBrandProfile: TenantBrandProfile;
   readonly resolvedTokens: ReturnType<typeof resolveBrandTokens>;
+  readonly receptionistPreview: ReceptionistSettingsPreview;
   readonly activeActionCount: number;
 };
 
@@ -57,6 +67,72 @@ function createTenantBrandProfile(settings: CustomerCardSettings): TenantBrandPr
   };
 }
 
+function createReceptionistPreviewSettings(
+  settings: CustomerCardSettings
+): ReceptionistSettings {
+  const configuredLanguages = settings.receptionist.supportedLanguages.filter(
+    isReceptionistLanguage
+  );
+  const defaultLanguage = isReceptionistLanguage(
+    settings.receptionist.defaultLanguage
+  )
+    ? settings.receptionist.defaultLanguage
+    : "English";
+  const supportedLanguages = configuredLanguages.includes(defaultLanguage)
+    ? configuredLanguages
+    : [defaultLanguage, ...configuredLanguages];
+
+  return {
+    afterHoursBehavior: "queue_next_business_day",
+    appointmentRules: {
+      allowedWindows: settings.calendar.availableSlotLabels,
+      calendarUrl: settings.calendar.externalCalendarUrl,
+      enabled: settings.calendar.enabled,
+      requireHumanApproval: true,
+      timezone: "America/New_York"
+    },
+    callRoutingRules: settings.receptionist.requestTypes.map(
+      (requestType, index) => ({
+        action:
+          requestType === "request_callback"
+            ? "queue_callback" as const
+            : "route_to_email" as const,
+        condition: `intent is ${requestType}`,
+        destination: settings.receptionist.handoffEmail,
+        enabled: settings.receptionist.enabled,
+        intent: requestType,
+        label: `${requestType.replaceAll("_", " ")} route`,
+        priority: index === 0 ? "high" as const : "medium" as const,
+        ruleId: `${settings.receptionist.receptionistId}-${requestType}`
+      })
+    ),
+    consentDisclosure: settings.receptionist.consentRequired
+      ? "This AI receptionist may route and summarize your request."
+      : "",
+    customGreeting: settings.receptionist.customGreeting,
+    defaultLanguage,
+    enabled: settings.receptionist.enabled,
+    escalationContacts: [
+      {
+        contactId: `${settings.receptionist.receptionistId}-handoff`,
+        email: settings.receptionist.handoffEmail,
+        label: "Executive handoff",
+        phone: null,
+        preferredContactMethod: "email",
+        priority: "high"
+      }
+    ],
+    fallbackBehavior: "queue_callback",
+    greetingMode: settings.receptionist.greetingMode,
+    mood: settings.receptionist.mood,
+    recordingPolicy: "disabled",
+    standardGreeting: settings.receptionist.standardGreeting,
+    supportedLanguages,
+    tenantId: settings.brandTheme.ownerId,
+    voiceProfile: settings.receptionist.voiceStyle
+  };
+}
+
 function createTemporaryPreviewState(
   settings: readonly CustomerCardSettings[]
 ): readonly Phase2CTemporaryPreviewState[] {
@@ -65,6 +141,10 @@ function createTemporaryPreviewState(
     const resolvedTokens = resolveBrandTokens(tenantBrandProfile, {
       createdAt: item.profile.updatedAt
     });
+    const receptionistPreview = createReceptionistSettingsPreview(
+      createReceptionistPreviewSettings(item),
+      item.profile.updatedAt
+    );
     const activeActionCount = [
       item.actions.callEnabled,
       item.actions.emailEnabled,
@@ -77,6 +157,7 @@ function createTemporaryPreviewState(
     return {
       activeActionCount,
       resolvedTokens,
+      receptionistPreview,
       settings: item,
       tenantBrandProfile
     };
@@ -327,7 +408,7 @@ export function CardCustomizationSettings({
                 and publish readiness.
               </CardDescription>
             </div>
-            <Badge variant="accent">Phase 2C</Badge>
+            <Badge variant="accent">Phase 2E</Badge>
           </div>
         </CardHeader>
         <CardContent>
@@ -422,7 +503,10 @@ export function CardCustomizationSettings({
             title="Polyglot Receptionist Settings"
           >
             <div className="grid gap-4 xl:grid-cols-2">
-              <ReceptionistSettingsPanel settings={item.settings.receptionist} />
+              <ReceptionistSettingsPanel
+                preview={item.receptionistPreview}
+                settings={item.settings.receptionist}
+              />
               <CalendarSettingsPanel settings={item.settings.calendar} />
             </div>
           </SettingsSection>

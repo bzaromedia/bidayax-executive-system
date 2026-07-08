@@ -1,12 +1,17 @@
 import type { ReceptionistSettingsConfig } from "@bidayax/types";
+import type { ReceptionistSettingsPreview } from "@bidayax/settings";
 import { resolveReceptionistBehavior } from "@bidayax/card-customization";
 import { Badge, Card, CardContent, CardDescription, CardHeader, CardTitle, Input } from "@bidayax/ui";
 
 type ReceptionistSettingsPanelProps = {
+  readonly preview: ReceptionistSettingsPreview;
   readonly settings: ReceptionistSettingsConfig;
 };
 
-export function ReceptionistSettingsPanel({ settings }: ReceptionistSettingsPanelProps) {
+export function ReceptionistSettingsPanel({
+  preview,
+  settings
+}: ReceptionistSettingsPanelProps) {
   const behavior = resolveReceptionistBehavior(settings);
 
   return (
@@ -25,7 +30,14 @@ export function ReceptionistSettingsPanel({ settings }: ReceptionistSettingsPane
           </Badge>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <div className="flex flex-wrap gap-2">
+          <Badge variant={preview.validation.valid ? "accent" : "neutral"}>
+            {preview.status}
+          </Badge>
+          <Badge variant="neutral">{preview.languageSummary}</Badge>
+          <Badge variant="neutral">{preview.routingRuleCount} active routes</Badge>
+        </div>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="space-y-1 text-sm text-content-secondary">
             <span>Voice style</span>
@@ -48,6 +60,17 @@ export function ReceptionistSettingsPanel({ settings }: ReceptionistSettingsPane
             <Input readOnly value={behavior.greetingText} />
           </label>
         </div>
+        {preview.validation.issues.length > 0 ? (
+          <ul className="space-y-2 rounded-bxLg border border-border-subtle bg-surface-inset p-4 text-sm text-content-secondary">
+            {preview.validation.issues.map((issue) => (
+              <li key={issue.field + ":" + issue.code}>{issue.message}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-content-secondary">
+            Receptionist settings are ready for the immutable preview and publish workflow.
+          </p>
+        )}
       </CardContent>
     </Card>
   );
