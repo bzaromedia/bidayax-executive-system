@@ -28,3 +28,14 @@ export function getCardQrUrl(executive: Pick<ExecutiveProfile, "slug">) {
 
   return url.toString();
 }
+
+export const dashboardSettingsBaseUrl = (
+  process.env.NEXT_PUBLIC_DASHBOARD_BASE_URL ??
+  "https://dashboard.theexecutivecard.online"
+).replace(/\/$/, "");
+
+export function getCardSettingsDashboardUrl(
+  executive: Pick<ExecutiveProfile, "slug">
+) {
+  return `${dashboardSettingsBaseUrl}/settings/card-customization?card=${executive.slug}`;
+}

@@ -10,7 +10,11 @@ import {
   receptionistLanguages,
   receptionistRequestTypes
 } from "@bidayax/types";
-import { getCardQrUrl, getCardUrl } from "../lib/routes";
+import {
+  getCardQrUrl,
+  getCardSettingsDashboardUrl,
+  getCardUrl
+} from "../lib/routes";
 import {
   getExecutiveCalendarPath,
   getExecutiveCalendarSlots,
@@ -244,6 +248,29 @@ describe("production executive cards", () => {
     expect(template).not.toContain("executive-brand-card");
   });
 
+  it("exposes a top-right settings dashboard entry point", () => {
+    const template = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveCardTemplate.tsx"),
+      "utf8"
+    );
+    const settingsLink = readFileSync(
+      resolve(process.cwd(), "src/components/ExecutiveSettingsLink.tsx"),
+      "utf8"
+    );
+    const css = readFileSync(
+      resolve(process.cwd(), "src/styles/card.css"),
+      "utf8"
+    );
+
+    expect(template).toContain("ExecutiveSettingsLink");
+    expect(settingsLink).toContain("Settings");
+    expect(settingsLink).toContain("getCardSettingsDashboardUrl");
+    expect(css).toContain(".executive-settings-link");
+    expect(css).toContain("top: max(var(--bx-space-3), env(safe-area-inset-top));");
+    expect(getCardSettingsDashboardUrl({ slug: "ad-garner" })).toBe(
+      "https://dashboard.theexecutivecard.online/settings/card-customization?card=ad-garner"
+    );
+  });
   it("keeps the production card page executive-focused without a persistent logo", () => {
     const header = readFileSync(
       resolve(process.cwd(), "src/components/ExecutiveHeader.tsx"),
