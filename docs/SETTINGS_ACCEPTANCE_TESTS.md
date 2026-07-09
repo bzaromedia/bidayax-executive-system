@@ -54,3 +54,32 @@ pnpm verify:design-governance
 pnpm verify:public-claims
 git diff --check
 ```
+
+## Phase 2G Final Review Checks
+
+The final review must pass before pushing `feature/settings-modularity-layer` and opening the draft PR.
+
+- current branch is `feature/settings-modularity-layer`
+- Phase 2 commit history contains 2A through 2F
+- all active project files remain inside `D:\bidayax-executive-system`
+- no database migration files were added in this phase
+- no Claude Code artifacts are present
+- no live provider integrations were added
+- token resolver tests cover valid input, invalid color input, unsafe contrast, fallbacks, warnings, and deterministic hashes
+- settings versioning tests cover draft, preview, publish, archive, invalid publish, and emitted events
+- receptionist settings tests cover language, voice, mood, greeting, consent, fallback, routing, and escalation validation
+- audit tests cover standardized envelopes, deterministic IDs, actor metadata, sanitized metadata, snapshot references, filtering, deduplication, and immutable append behavior
+- design governance passes
+- public claims verification passes
+- the feature branch is pushed for review without merging
+
+## Phase 2G PR Checklist
+
+The draft PR must include:
+
+- Summary
+- Phase 2A-2F completed work
+- Validation commands and results
+- Risk notes
+- What was intentionally not added
+- Next phase recommendation
