@@ -94,3 +94,20 @@ Phase 3 acceptance requires:
 - settings publish results can persist versions and audit events
 - rollback notes exist
 - no live telephony or provider integrations are introduced
+
+## Phase 3G Acceptance Coverage
+
+Phase 3G adds or confirms tests for:
+
+- tenant-scoped asset reads
+- tenant-scoped card profile reads
+- tenant-scoped settings version reads
+- cross-tenant asset update rejection
+- append-only audit event deduplication
+- published-version archival without snapshot mutation
+- idempotency record creation and conflicting key rejection
+- archive-before-publish ordering
+- idempotent publish retry result reuse
+- transaction rollback on publish audit failure
+
+PostgreSQL integration coverage is implemented by `pnpm test:settings-persistence:postgres`. It was not counted as passed unless run against a configured disposable PostgreSQL database.

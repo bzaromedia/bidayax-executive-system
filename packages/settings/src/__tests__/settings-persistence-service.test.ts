@@ -9,15 +9,27 @@ import type {
   Tenant
 } from "@bidayax/types";
 import {
+  persistIdempotentSettingsPublishResult,
   persistSettingsPublishResult,
+  persistSettingsPublishResultTransactionally,
   persistSettingsSnapshot
 } from "../settings-persistence-service";
-import type { SettingsPersistenceRepository } from "../settings-persistence";
+import type {
+  SettingsIdempotencyRecord,
+  SettingsPersistenceRepository,
+  SettingsQueryExecutor,
+  SettingsQueryResult
+} from "../settings-persistence";
 
 const createdAt = "2026-07-09T12:00:00.000Z";
 
 class RecordingRepository implements SettingsPersistenceRepository {
   readonly calls: string[] = [];
+
+  async archiveCardSettingsVersion(version: CardSettingsVersion) {
+    this.calls.push(`archive:${version.versionId}`);
+    return { ...version, immutable: true, status: "archived" as const };
+  }
 
   async getBrandAsset() {
     return null;
@@ -39,6 +51,14 @@ class RecordingRepository implements SettingsPersistenceRepository {
     return null;
   }
 
+  async getSettingsAuditEvent() {
+    return null;
+  }
+
+  async getSettingsIdempotencyRecord(): Promise<SettingsIdempotencyRecord | null> {
+    return null;
+  }
+
   async getTenant() {
     return null;
   }
@@ -53,6 +73,11 @@ class RecordingRepository implements SettingsPersistenceRepository {
 
   async listSettingsAuditEvents() {
     return [];
+  }
+
+  async lockExecutiveCardForSettingsPublish() {
+    this.calls.push("lock:card-ad-garner");
+    return true;
   }
 
   async saveBrandAsset(asset: BrandAsset) {
@@ -82,6 +107,11 @@ class RecordingRepository implements SettingsPersistenceRepository {
     return event;
   }
 
+  async saveSettingsIdempotencyRecord(record: SettingsIdempotencyRecord) {
+    this.calls.push(`idempotency:${record.idempotencyKey}`);
+    return record;
+  }
+
   async saveTenant(tenant: Tenant) {
     this.calls.push(`tenant:${tenant.tenantId}`);
     return tenant;
@@ -90,6 +120,67 @@ class RecordingRepository implements SettingsPersistenceRepository {
   async saveTenantBrandProfile(profile: CardSettingsSnapshot["brandProfile"]) {
     this.calls.push(`brand:${profile.tenantId}`);
     return profile;
+  }
+}
+
+class RetryRecordingRepository extends RecordingRepository {
+  constructor(private readonly existing: SettingsIdempotencyRecord) {
+    super();
+  }
+
+  override async getSettingsIdempotencyRecord() {
+    this.calls.push(`idempotency-read:${this.existing.idempotencyKey}`);
+    return this.existing;
+  }
+}
+
+class FailingTransactionExecutor implements SettingsQueryExecutor {
+  readonly statements: string[] = [];
+
+  async query<Row>(
+    text: string,
+    values: readonly unknown[] = []
+  ): Promise<SettingsQueryResult<Row>> {
+    this.statements.push(text);
+    const normalized = text.toLowerCase();
+
+    if (
+      normalized === "begin" ||
+      normalized === "commit" ||
+      normalized === "rollback"
+    ) {
+      return { rowCount: 0, rows: [] };
+    }
+
+    if (normalized.includes("select card_id")) {
+      return { rowCount: 1, rows: [{ card_id: "card-ad-garner" } as Row] };
+    }
+
+    if (normalized.includes("insert into card_settings_versions")) {
+      return {
+        rowCount: 1,
+        rows: [
+          {
+            card_id: values[1],
+            created_at: values[5],
+            created_by: values[4],
+            immutable: values[8],
+            previous_version_id: values[9],
+            settings_snapshot: values[3],
+            snapshot_hash: values[7],
+            status: values[6],
+            tenant_id: values[2],
+            version_id: values[0]
+          } as Row
+        ]
+      };
+    }
+
+    if (normalized.includes("insert into settings_audit_events")) {
+      throw new Error("forced audit failure");
+    }
+
+    return { rowCount: 0, rows: [] };
   }
 }
 
@@ -262,6 +353,26 @@ function auditEvent(eventId: string): SettingsAuditEvent {
   };
 }
 
+function publishResult(overrides: Partial<SettingsPublishResult> = {}) {
+  return {
+    archivedVersion: null,
+    archivedVersionId: null,
+    auditEvents: [auditEvent("audit-1")],
+    emittedEvents: [],
+    ok: true,
+    publishedVersion: version("version-published", "published"),
+    publishedVersionId: "version-published",
+    snapshotHash: "snapshot-hash",
+    validation: {
+      checks: [],
+      valid: true
+    },
+    versions: [version("version-preview", "preview"), version("version-published", "published")],
+    warnings: [],
+    ...overrides
+  } satisfies SettingsPublishResult;
+}
+
 describe("settings persistence service", () => {
   it("persists a snapshot before live publish storage exists", async () => {
     const repository = new RecordingRepository();
@@ -299,28 +410,8 @@ describe("settings persistence service", () => {
 
   it("persists publish versions and audit events", async () => {
     const repository = new RecordingRepository();
-    const publishResult = {
-      archivedVersion: null,
-      archivedVersionId: null,
-      auditEvents: [auditEvent("audit-1")],
-      emittedEvents: [],
-      ok: true,
-      publishedVersion: version("version-published", "published"),
-      publishedVersionId: "version-published",
-      snapshotHash: "snapshot-hash",
-      validation: {
-        checks: [],
-        valid: true
-      },
-      versions: [
-        version("version-preview", "preview"),
-        version("version-published", "published")
-      ],
-      warnings: []
-    } satisfies SettingsPublishResult;
-
     const result = await persistSettingsPublishResult({
-      publishResult,
+      publishResult: publishResult(),
       repository
     });
 
@@ -329,11 +420,99 @@ describe("settings persistence service", () => {
       persistedVersionIds: ["version-preview", "version-published"]
     });
     expect(repository.calls).toEqual([
+      "lock:card-ad-garner",
       "version:version-preview",
       "version:version-published",
       "audit:audit-1"
     ]);
   });
-});
 
+  it("archives the previous published version before inserting a replacement", async () => {
+    const repository = new RecordingRepository();
+    const archived = version("version-old", "archived");
+    const result = await persistSettingsPublishResult({
+      publishResult: publishResult({
+        archivedVersion: archived,
+        archivedVersionId: "version-old",
+        auditEvents: [auditEvent("audit-archive")],
+        publishedVersion: version("version-new", "published"),
+        publishedVersionId: "version-new",
+        versions: [archived, version("version-new", "published")]
+      }),
+      repository
+    });
+
+    expect(result.persistedVersionIds).toEqual(["version-old", "version-new"]);
+    expect(repository.calls).toEqual([
+      "lock:card-ad-garner",
+      "archive:version-old",
+      "version:version-new",
+      "audit:audit-archive"
+    ]);
+  });
+
+  it("records idempotency for publish retries", async () => {
+    const repository = new RecordingRepository();
+    const result = await persistIdempotentSettingsPublishResult({
+      createdAt,
+      idempotencyKey: "request-1",
+      publishResult: publishResult({
+        auditEvents: [auditEvent("audit-idempotent")],
+        versions: [version("version-published", "published")]
+      }),
+      repository,
+      requestHash: "request-hash"
+    });
+
+    expect(result.reusedExistingResult).toBe(false);
+    expect(repository.calls).toEqual([
+      "lock:card-ad-garner",
+      "version:version-published",
+      "audit:audit-idempotent",
+      "idempotency:request-1"
+    ]);
+  });
+
+  it("returns the original idempotent publish result for a safe retry", async () => {
+    const repository = new RetryRecordingRepository({
+      cardId: "card-ad-garner",
+      createdAt,
+      expiresAt: null,
+      idempotencyKey: "request-1",
+      operation: "settings.publish",
+      requestHash: "request-hash",
+      resultSnapshotHash: "snapshot-hash",
+      resultVersionId: "version-published",
+      tenantId: "tenant-bidayax"
+    });
+    const result = await persistIdempotentSettingsPublishResult({
+      createdAt,
+      idempotencyKey: "request-1",
+      publishResult: publishResult(),
+      repository,
+      requestHash: "request-hash"
+    });
+
+    expect(result.reusedExistingResult).toBe(true);
+    expect(result.persistedVersionIds).toEqual(["version-published"]);
+    expect(repository.calls).toEqual(["idempotency-read:request-1"]);
+  });
+
+  it("rolls back transactional publish persistence when a step fails", async () => {
+    const executor = new FailingTransactionExecutor();
+
+    await expect(
+      persistSettingsPublishResultTransactionally({
+        executor,
+        publishResult: publishResult({
+          auditEvents: [auditEvent("audit-fail")],
+          versions: [version("version-published", "published")]
+        })
+      })
+    ).rejects.toThrow("forced audit failure");
+    expect(executor.statements).toContain("begin");
+    expect(executor.statements).toContain("rollback");
+    expect(executor.statements).not.toContain("commit");
+  });
+});
 

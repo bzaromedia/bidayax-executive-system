@@ -20,11 +20,33 @@ export type SettingsQueryExecutor = {
   ): Promise<SettingsQueryResult<Row>>;
 };
 
+export type SettingsIdempotencyRecord = {
+  readonly cardId: string;
+  readonly createdAt: string;
+  readonly expiresAt: string | null;
+  readonly idempotencyKey: string;
+  readonly operation: string;
+  readonly requestHash: string;
+  readonly resultSnapshotHash: string | null;
+  readonly resultVersionId: string | null;
+  readonly tenantId: string;
+};
+
+export class SettingsPersistenceConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SettingsPersistenceConflictError";
+  }
+}
+
 export type SettingsPersistenceRepository = {
   readonly saveTenant: (tenant: Tenant) => Promise<Tenant>;
   readonly getTenant: (tenantId: string) => Promise<Tenant | null>;
   readonly saveBrandAsset: (asset: BrandAsset) => Promise<BrandAsset>;
-  readonly getBrandAsset: (assetId: string) => Promise<BrandAsset | null>;
+  readonly getBrandAsset: (
+    tenantId: string,
+    assetId: string
+  ) => Promise<BrandAsset | null>;
   readonly saveTenantBrandProfile: (
     profile: TenantBrandProfile
   ) => Promise<TenantBrandProfile>;
@@ -35,6 +57,7 @@ export type SettingsPersistenceRepository = {
     profile: ExecutiveCardProfile
   ) => Promise<ExecutiveCardProfile>;
   readonly getExecutiveCardProfile: (
+    tenantId: string,
     cardId: string
   ) => Promise<ExecutiveCardProfile | null>;
   readonly saveReceptionistSettings: (
@@ -46,9 +69,18 @@ export type SettingsPersistenceRepository = {
   readonly saveCardSettingsVersion: (
     version: CardSettingsVersion
   ) => Promise<CardSettingsVersion>;
+  readonly archiveCardSettingsVersion: (
+    version: CardSettingsVersion
+  ) => Promise<CardSettingsVersion>;
   readonly getCardSettingsVersion: (
+    tenantId: string,
+    cardId: string,
     versionId: string
   ) => Promise<CardSettingsVersion | null>;
+  readonly lockExecutiveCardForSettingsPublish: (
+    tenantId: string,
+    cardId: string
+  ) => Promise<boolean>;
   readonly listCardSettingsVersions: (
     tenantId: string,
     cardId: string
@@ -60,10 +92,24 @@ export type SettingsPersistenceRepository = {
   readonly saveSettingsAuditEvent: (
     event: SettingsAuditEvent
   ) => Promise<SettingsAuditEvent>;
+  readonly getSettingsAuditEvent: (
+    tenantId: string,
+    cardId: string,
+    eventId: string
+  ) => Promise<SettingsAuditEvent | null>;
   readonly listSettingsAuditEvents: (
     tenantId: string,
     cardId: string
   ) => Promise<readonly SettingsAuditEvent[]>;
+  readonly saveSettingsIdempotencyRecord: (
+    record: SettingsIdempotencyRecord
+  ) => Promise<SettingsIdempotencyRecord>;
+  readonly getSettingsIdempotencyRecord: (
+    tenantId: string,
+    cardId: string,
+    operation: string,
+    idempotencyKey: string
+  ) => Promise<SettingsIdempotencyRecord | null>;
 };
 
 type TenantRow = {
@@ -171,6 +217,18 @@ type SettingsAuditEventRow = {
   readonly previous_snapshot_hash: string | null;
   readonly metadata: SettingsAuditEvent["metadata"];
   readonly severity: SettingsAuditEvent["severity"];
+};
+
+type SettingsIdempotencyRecordRow = {
+  readonly card_id: string;
+  readonly created_at: string | Date;
+  readonly expires_at: string | Date | null;
+  readonly idempotency_key: string;
+  readonly operation: string;
+  readonly request_hash: string;
+  readonly result_snapshot_hash: string | null;
+  readonly result_version_id: string | null;
+  readonly tenant_id: string;
 };
 
 function toIsoString(value: string | Date): string {
@@ -306,24 +364,50 @@ function mapSettingsAuditEvent(row: SettingsAuditEventRow): SettingsAuditEvent {
   };
 }
 
+function mapSettingsIdempotencyRecord(
+  row: SettingsIdempotencyRecordRow
+): SettingsIdempotencyRecord {
+  return {
+    cardId: row.card_id,
+    createdAt: toIsoString(row.created_at),
+    expiresAt: row.expires_at ? toIsoString(row.expires_at) : null,
+    idempotencyKey: row.idempotency_key,
+    operation: row.operation,
+    requestHash: row.request_hash,
+    resultSnapshotHash: row.result_snapshot_hash,
+    resultVersionId: row.result_version_id,
+    tenantId: row.tenant_id
+  };
+}
+
+function requireRow<Row>(result: SettingsQueryResult<Row>, message: string): Row {
+  const row = firstRow(result);
+
+  if (!row) {
+    throw new SettingsPersistenceConflictError(message);
+  }
+
+  return row;
+}
+
 export function createSettingsPersistenceRepository(
   executor: SettingsQueryExecutor
 ): SettingsPersistenceRepository {
   return {
-    async getBrandAsset(assetId) {
+    async getBrandAsset(tenantId, assetId) {
       const result = await executor.query<BrandAssetRow>(
-        "select * from brand_assets where asset_id = $1",
-        [assetId]
+        "select * from brand_assets where tenant_id = $1 and asset_id = $2",
+        [tenantId, assetId]
       );
       const row = firstRow(result);
 
       return row ? mapBrandAsset(row) : null;
     },
 
-    async getExecutiveCardProfile(cardId) {
+    async getExecutiveCardProfile(tenantId, cardId) {
       const result = await executor.query<ExecutiveCardProfileRow>(
-        "select * from executive_card_profiles where card_id = $1",
-        [cardId]
+        "select * from executive_card_profiles where tenant_id = $1 and card_id = $2",
+        [tenantId, cardId]
       );
       const row = firstRow(result);
 
@@ -354,10 +438,12 @@ export function createSettingsPersistenceRepository(
       return row ? mapReceptionistSettings(row) : null;
     },
 
-    async getCardSettingsVersion(versionId) {
+    async getCardSettingsVersion(tenantId, cardId, versionId) {
       const result = await executor.query<CardSettingsVersionRow>(
-        "select * from card_settings_versions where version_id = $1",
-        [versionId]
+        `select *
+           from card_settings_versions
+          where tenant_id = $1 and card_id = $2 and version_id = $3`,
+        [tenantId, cardId, versionId]
       );
       const row = firstRow(result);
 
@@ -408,6 +494,50 @@ export function createSettingsPersistenceRepository(
       return result.rows.map(mapSettingsAuditEvent);
     },
 
+    async getSettingsAuditEvent(tenantId, cardId, eventId) {
+      const result = await executor.query<SettingsAuditEventRow>(
+        `select *
+           from settings_audit_events
+          where tenant_id = $1 and card_id = $2 and event_id = $3`,
+        [tenantId, cardId, eventId]
+      );
+      const row = firstRow(result);
+
+      return row ? mapSettingsAuditEvent(row) : null;
+    },
+
+    async getSettingsIdempotencyRecord(
+      tenantId,
+      cardId,
+      operation,
+      idempotencyKey
+    ) {
+      const result = await executor.query<SettingsIdempotencyRecordRow>(
+        `select *
+           from settings_idempotency_keys
+          where tenant_id = $1
+            and card_id = $2
+            and operation = $3
+            and idempotency_key = $4`,
+        [tenantId, cardId, operation, idempotencyKey]
+      );
+      const row = firstRow(result);
+
+      return row ? mapSettingsIdempotencyRecord(row) : null;
+    },
+
+    async lockExecutiveCardForSettingsPublish(tenantId, cardId) {
+      const result = await executor.query<{ readonly card_id: string }>(
+        `select card_id
+           from executive_card_profiles
+          where tenant_id = $1 and card_id = $2
+          for update`,
+        [tenantId, cardId]
+      );
+
+      return Boolean(firstRow(result));
+    },
+
     async saveBrandAsset(asset) {
       const result = await executor.query<BrandAssetRow>(
         `insert into brand_assets (
@@ -421,13 +551,13 @@ export function createSettingsPersistenceRepository(
            created_at
          ) values ($1, $2, $3, $4, $5, $6, $7, $8)
          on conflict (asset_id) do update set
-           tenant_id = excluded.tenant_id,
            asset_type = excluded.asset_type,
            storage_path = excluded.storage_path,
            alt_text = excluded.alt_text,
            mime_type = excluded.mime_type,
            checksum_sha256 = excluded.checksum_sha256,
            created_at = excluded.created_at
+         where brand_assets.tenant_id = excluded.tenant_id
          returning *`,
         [
           asset.assetId,
@@ -441,7 +571,12 @@ export function createSettingsPersistenceRepository(
         ]
       );
 
-      return mapBrandAsset(firstRow(result) as BrandAssetRow);
+      return mapBrandAsset(
+        requireRow(
+          result,
+          `Brand asset ${asset.assetId} belongs to a different tenant.`
+        )
+      );
     },
 
     async saveCardSettingsVersion(version) {
@@ -458,14 +593,7 @@ export function createSettingsPersistenceRepository(
            immutable,
            previous_version_id
          ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         on conflict (version_id) do update set
-           settings_snapshot = excluded.settings_snapshot,
-           created_by = excluded.created_by,
-           created_at = excluded.created_at,
-           status = excluded.status,
-           snapshot_hash = excluded.snapshot_hash,
-           immutable = excluded.immutable,
-           previous_version_id = excluded.previous_version_id
+         on conflict (version_id) do nothing
          returning *`,
         [
           version.versionId,
@@ -481,7 +609,51 @@ export function createSettingsPersistenceRepository(
         ]
       );
 
-      return mapCardSettingsVersion(firstRow(result) as CardSettingsVersionRow);
+      const row = firstRow(result);
+
+      if (row) {
+        return mapCardSettingsVersion(row);
+      }
+
+      const existing = await this.getCardSettingsVersion(
+        version.tenantId,
+        version.cardId,
+        version.versionId
+      );
+
+      if (
+        existing &&
+        existing.snapshotHash === version.snapshotHash &&
+        existing.status === version.status
+      ) {
+        return existing;
+      }
+
+      throw new SettingsPersistenceConflictError(
+        `Settings version ${version.versionId} already exists with different immutable content.`
+      );
+    },
+
+    async archiveCardSettingsVersion(version) {
+      const result = await executor.query<CardSettingsVersionRow>(
+        `update card_settings_versions
+            set status = 'archived',
+                immutable = true
+          where tenant_id = $1
+            and card_id = $2
+            and version_id = $3
+            and status = 'published'
+            and snapshot_hash = $4
+          returning *`,
+        [version.tenantId, version.cardId, version.versionId, version.snapshotHash]
+      );
+
+      return mapCardSettingsVersion(
+        requireRow(
+          result,
+          `Published settings version ${version.versionId} could not be archived.`
+        )
+      );
     },
 
     async saveExecutiveCardProfile(profile) {
@@ -511,7 +683,6 @@ export function createSettingsPersistenceRepository(
            $11, $12, $13, $14, $15, $16, $17, $18, $19
          )
          on conflict (card_id) do update set
-           tenant_id = excluded.tenant_id,
            executive_name = excluded.executive_name,
            title = excluded.title,
            company = excluded.company,
@@ -530,6 +701,7 @@ export function createSettingsPersistenceRepository(
            draft_version = excluded.draft_version,
            status = excluded.status,
            updated_at = now()
+         where executive_card_profiles.tenant_id = excluded.tenant_id
          returning *`,
         [
           profile.cardId,
@@ -554,7 +726,12 @@ export function createSettingsPersistenceRepository(
         ]
       );
 
-      return mapExecutiveCardProfile(firstRow(result) as ExecutiveCardProfileRow);
+      return mapExecutiveCardProfile(
+        requireRow(
+          result,
+          `Card profile ${profile.cardId} belongs to a different tenant.`
+        )
+      );
     },
 
     async saveReceptionistSettings(settings) {
@@ -636,15 +813,7 @@ export function createSettingsPersistenceRepository(
            metadata,
            severity
          ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         on conflict (event_id) do update set
-           event_type = excluded.event_type,
-           actor = excluded.actor,
-           occurred_at = excluded.occurred_at,
-           source = excluded.source,
-           snapshot_hash = excluded.snapshot_hash,
-           previous_snapshot_hash = excluded.previous_snapshot_hash,
-           metadata = excluded.metadata,
-           severity = excluded.severity
+         on conflict (event_id) do nothing
          returning *`,
         [
           event.eventId,
@@ -661,7 +830,64 @@ export function createSettingsPersistenceRepository(
         ]
       );
 
-      return mapSettingsAuditEvent(firstRow(result) as SettingsAuditEventRow);
+      const row = firstRow(result);
+
+      if (row) {
+        return mapSettingsAuditEvent(row);
+      }
+
+      const existing = await this.getSettingsAuditEvent(
+        event.tenantId,
+        event.cardId,
+        event.eventId
+      );
+
+      if (existing) {
+        return existing;
+      }
+
+      throw new SettingsPersistenceConflictError(
+        `Audit event ${event.eventId} already exists for a different tenant or card.`
+      );
+    },
+
+    async saveSettingsIdempotencyRecord(record) {
+      const result = await executor.query<SettingsIdempotencyRecordRow>(
+        `insert into settings_idempotency_keys (
+           tenant_id,
+           card_id,
+           operation,
+           idempotency_key,
+           request_hash,
+           result_version_id,
+           result_snapshot_hash,
+           created_at,
+           expires_at
+         ) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         on conflict (tenant_id, card_id, operation, idempotency_key) do update set
+           result_version_id = settings_idempotency_keys.result_version_id,
+           result_snapshot_hash = settings_idempotency_keys.result_snapshot_hash
+         where settings_idempotency_keys.request_hash = excluded.request_hash
+         returning *`,
+        [
+          record.tenantId,
+          record.cardId,
+          record.operation,
+          record.idempotencyKey,
+          record.requestHash,
+          record.resultVersionId,
+          record.resultSnapshotHash,
+          record.createdAt,
+          record.expiresAt
+        ]
+      );
+
+      return mapSettingsIdempotencyRecord(
+        requireRow(
+          result,
+          `Idempotency key ${record.idempotencyKey} was already used with a different request.`
+        )
+      );
     },
 
     async saveTenant(tenant) {

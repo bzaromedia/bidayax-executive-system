@@ -9,7 +9,10 @@ import type {
   Tenant,
   TenantBrandProfile
 } from "@bidayax/types";
-import { createSettingsPersistenceRepository } from "../settings-persistence";
+import {
+  SettingsPersistenceConflictError,
+  createSettingsPersistenceRepository
+} from "../settings-persistence";
 import type {
   SettingsQueryExecutor,
   SettingsQueryResult
@@ -20,6 +23,7 @@ const createdAt = "2026-07-09T10:00:00.000Z";
 type StoredRows = {
   auditEvents: SettingsAuditEventRow[];
   assets: BrandAssetRow[];
+  idempotencyRecords: SettingsIdempotencyRecordRow[];
   cardProfiles: ExecutiveCardProfileRow[];
   receptionistSettings: ReceptionistSettingsRow[];
   tenants: TenantRow[];
@@ -134,12 +138,25 @@ type SettingsAuditEventRow = {
   readonly severity: SettingsAuditEvent["severity"];
 };
 
+type SettingsIdempotencyRecordRow = {
+  readonly card_id: string;
+  readonly created_at: string;
+  readonly expires_at: string | null;
+  readonly idempotency_key: string;
+  readonly operation: string;
+  readonly request_hash: string;
+  readonly result_snapshot_hash: string | null;
+  readonly result_version_id: string | null;
+  readonly tenant_id: string;
+};
+
 class FakeSettingsExecutor implements SettingsQueryExecutor {
   readonly statements: string[] = [];
   readonly rows: StoredRows = {
     auditEvents: [],
     assets: [],
     cardProfiles: [],
+    idempotencyRecords: [],
     receptionistSettings: [],
     tenantBrandProfiles: [],
     tenants: [],
@@ -177,6 +194,14 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
     }
 
     if (normalized.includes("insert into brand_assets")) {
+      const existing = this.rows.assets.find(
+        (row) => row.asset_id === values[0] && row.tenant_id !== values[1]
+      );
+
+      if (existing) {
+        return many<Row>([]);
+      }
+
       const row = {
         alt_text: values[4],
         asset_id: values[0],
@@ -192,7 +217,11 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
     }
 
     if (normalized.includes("select * from brand_assets")) {
-      return many<Row>(this.rows.assets.filter((row) => row.asset_id === values[0]));
+      return many<Row>(
+        this.rows.assets.filter(
+          (row) => row.tenant_id === values[0] && row.asset_id === values[1]
+        )
+      );
     }
 
     if (normalized.includes("insert into tenant_brand_profiles")) {
@@ -229,6 +258,14 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
     }
 
     if (normalized.includes("insert into executive_card_profiles")) {
+      const existing = this.rows.cardProfiles.find(
+        (row) => row.card_id === values[0] && row.tenant_id !== values[1]
+      );
+
+      if (existing) {
+        return many<Row>([]);
+      }
+
       const row = {
         bio: values[5],
         calendar_url: values[10],
@@ -260,7 +297,9 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
 
     if (normalized.includes("select * from executive_card_profiles")) {
       return many<Row>(
-        this.rows.cardProfiles.filter((row) => row.card_id === values[0])
+        this.rows.cardProfiles.filter(
+          (row) => row.tenant_id === values[0] && row.card_id === values[1]
+        )
       );
     }
 
@@ -300,6 +339,14 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
     }
 
     if (normalized.includes("insert into card_settings_versions")) {
+      const existing = this.rows.versions.find(
+        (row) => row.version_id === values[0]
+      );
+
+      if (existing) {
+        return many<Row>([]);
+      }
+
       const row = {
         card_id: values[1],
         created_at: values[5],
@@ -320,6 +367,38 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
       return one<Row>(row);
     }
 
+        if (normalized.includes("update card_settings_versions")) {
+      const row = this.rows.versions.find(
+        (entry) =>
+          entry.tenant_id === values[0] &&
+          entry.card_id === values[1] &&
+          entry.version_id === values[2] &&
+          entry.status === "published" &&
+          entry.snapshot_hash === values[3]
+      );
+
+      if (!row) {
+        return many<Row>([]);
+      }
+
+      const archived = { ...row, immutable: true, status: "archived" } as CardSettingsVersionRow;
+      this.rows.versions = upsert(
+        this.rows.versions,
+        archived,
+        (entry) => entry.version_id
+      );
+
+      return one<Row>(archived);
+    }
+
+    if (normalized.includes("select card_id")) {
+      return many<Row>(
+        this.rows.cardProfiles.filter(
+          (row) => row.tenant_id === values[0] && row.card_id === values[1]
+        )
+      );
+    }
+
     if (normalized.includes("status = 'published'")) {
       return many<Row>(
         this.rows.versions.filter(
@@ -331,17 +410,27 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
       );
     }
 
-    if (normalized.includes("select * from card_settings_versions")) {
+    if (normalized.includes("from card_settings_versions")) {
       return many<Row>(
         this.rows.versions.filter((row) =>
-          values.length === 1
-            ? row.version_id === values[0]
+          values.length === 3
+            ? row.tenant_id === values[0] &&
+              row.card_id === values[1] &&
+              row.version_id === values[2]
             : row.tenant_id === values[0] && row.card_id === values[1]
         )
       );
     }
 
     if (normalized.includes("insert into settings_audit_events")) {
+      const existing = this.rows.auditEvents.find(
+        (row) => row.event_id === values[0]
+      );
+
+      if (existing) {
+        return many<Row>([]);
+      }
+
       const row = {
         actor: values[4],
         card_id: values[3],
@@ -366,7 +455,55 @@ class FakeSettingsExecutor implements SettingsQueryExecutor {
     if (normalized.includes("from settings_audit_events")) {
       return many<Row>(
         this.rows.auditEvents.filter(
-          (row) => row.tenant_id === values[0] && row.card_id === values[1]
+          (row) =>
+            row.tenant_id === values[0] &&
+            row.card_id === values[1] &&
+            (values.length < 3 || row.event_id === values[2])
+        )
+      );
+    }
+
+    if (normalized.includes("insert into settings_idempotency_keys")) {
+      const existing = this.rows.idempotencyRecords.find(
+        (row) =>
+          row.tenant_id === values[0] &&
+          row.card_id === values[1] &&
+          row.operation === values[2] &&
+          row.idempotency_key === values[3]
+      );
+
+      if (existing && existing.request_hash !== values[4]) {
+        return many<Row>([]);
+      }
+
+      if (existing) {
+        return one<Row>(existing);
+      }
+
+      const row = {
+        card_id: values[1],
+        created_at: values[7],
+        expires_at: values[8],
+        idempotency_key: values[3],
+        operation: values[2],
+        request_hash: values[4],
+        result_snapshot_hash: values[6],
+        result_version_id: values[5],
+        tenant_id: values[0]
+      } as SettingsIdempotencyRecordRow;
+      this.rows.idempotencyRecords = [...this.rows.idempotencyRecords, row];
+
+      return one<Row>(row);
+    }
+
+    if (normalized.includes("from settings_idempotency_keys")) {
+      return many<Row>(
+        this.rows.idempotencyRecords.filter(
+          (row) =>
+            row.tenant_id === values[0] &&
+            row.card_id === values[1] &&
+            row.operation === values[2] &&
+            row.idempotency_key === values[3]
         )
       );
     }
@@ -613,22 +750,145 @@ describe("settings persistence repository", () => {
     expect(savedAudit.metadata.status).toBe("draft");
 
     await expect(repository.getTenant("tenant-bidayax")).resolves.toEqual(savedTenant);
-    await expect(repository.getBrandAsset("asset-logo")).resolves.toEqual(savedAsset);
+    await expect(
+      repository.getBrandAsset("tenant-bidayax", "asset-logo")
+    ).resolves.toEqual(savedAsset);
     await expect(repository.getTenantBrandProfile("tenant-bidayax")).resolves.toEqual(
       savedBrand
     );
-    await expect(repository.getExecutiveCardProfile("card-ad-garner")).resolves.toEqual(
-      savedCard
-    );
+    await expect(
+      repository.getExecutiveCardProfile("tenant-bidayax", "card-ad-garner")
+    ).resolves.toEqual(savedCard);
     await expect(repository.getReceptionistSettings("tenant-bidayax")).resolves.toEqual(
       savedReceptionist
     );
-    await expect(repository.getCardSettingsVersion("version-draft")).resolves.toEqual(
-      savedVersion
-    );
+    await expect(
+      repository.getCardSettingsVersion(
+        "tenant-bidayax",
+        "card-ad-garner",
+        "version-draft"
+      )
+    ).resolves.toEqual(savedVersion);
     await expect(
       repository.listSettingsAuditEvents("tenant-bidayax", "card-ad-garner")
     ).resolves.toEqual([savedAudit]);
+  });
+
+
+
+  it("denies cross-tenant reads and updates by scoped ownership", async () => {
+    const executor = new FakeSettingsExecutor();
+    const repository = createSettingsPersistenceRepository(executor);
+
+    await repository.saveBrandAsset({
+      altText: "Logo",
+      assetId: "asset-logo",
+      assetType: "logo",
+      checksumSha256: "sha256-test",
+      createdAt,
+      mimeType: "image/svg+xml",
+      storagePath: "/uploads/logos/logo.svg",
+      tenantId: "tenant-bidayax"
+    });
+    await repository.saveExecutiveCardProfile(cardProfile());
+    await repository.saveCardSettingsVersion(cardSettingsVersion());
+
+    await expect(
+      repository.getBrandAsset("tenant-other", "asset-logo")
+    ).resolves.toBeNull();
+    await expect(
+      repository.getExecutiveCardProfile("tenant-other", "card-ad-garner")
+    ).resolves.toBeNull();
+    await expect(
+      repository.getCardSettingsVersion(
+        "tenant-other",
+        "card-ad-garner",
+        "version-draft"
+      )
+    ).resolves.toBeNull();
+    await expect(
+      repository.saveBrandAsset({
+        altText: "Other",
+        assetId: "asset-logo",
+        assetType: "logo",
+        checksumSha256: "sha256-other",
+        createdAt,
+        mimeType: "image/svg+xml",
+        storagePath: "/uploads/logos/other.svg",
+        tenantId: "tenant-other"
+      })
+    ).rejects.toBeInstanceOf(SettingsPersistenceConflictError);
+  });
+
+  it("keeps audit events append-only and safely deduplicated", async () => {
+    const executor = new FakeSettingsExecutor();
+    const repository = createSettingsPersistenceRepository(executor);
+    const first = await repository.saveSettingsAuditEvent(auditEvent());
+    const duplicate = await repository.saveSettingsAuditEvent({
+      ...auditEvent(),
+      metadata: { status: "mutated" },
+      severity: "critical"
+    });
+
+    expect(duplicate).toEqual(first);
+    await expect(
+      repository.listSettingsAuditEvents("tenant-bidayax", "card-ad-garner")
+    ).resolves.toEqual([first]);
+  });
+
+  it("archives published versions without mutating snapshot content", async () => {
+    const executor = new FakeSettingsExecutor();
+    const repository = createSettingsPersistenceRepository(executor);
+    const published = {
+      ...cardSettingsVersion(),
+      immutable: true,
+      status: "published" as const,
+      versionId: "version-published"
+    };
+
+    await repository.saveCardSettingsVersion(published);
+    const archived = await repository.archiveCardSettingsVersion({
+      ...published,
+      status: "archived"
+    });
+
+    expect(archived.status).toBe("archived");
+    expect(archived.snapshotHash).toBe(published.snapshotHash);
+    expect(archived.settingsSnapshot).toEqual(published.settingsSnapshot);
+  });
+
+  it("stores idempotency records and rejects key reuse with different content", async () => {
+    const executor = new FakeSettingsExecutor();
+    const repository = createSettingsPersistenceRepository(executor);
+    const record = {
+      cardId: "card-ad-garner",
+      createdAt,
+      expiresAt: null,
+      idempotencyKey: "request-1",
+      operation: "settings.publish",
+      requestHash: "request-hash",
+      resultSnapshotHash: "snapshot-hash",
+      resultVersionId: "version-published",
+      tenantId: "tenant-bidayax"
+    };
+
+    await expect(repository.saveSettingsIdempotencyRecord(record)).resolves.toEqual(
+      record
+    );
+    await expect(
+      repository.getSettingsIdempotencyRecord(
+        "tenant-bidayax",
+        "card-ad-garner",
+        "settings.publish",
+        "request-1"
+      )
+    ).resolves.toEqual(record);
+    await expect(
+      repository.saveSettingsIdempotencyRecord({
+        ...record,
+        requestHash: "different-hash"
+      })
+    ).rejects.toBeInstanceOf(SettingsPersistenceConflictError);
   });
 
   it("uses Phase 3 persistence tables without touching provider tables", async () => {
@@ -650,7 +910,3 @@ describe("settings persistence repository", () => {
     );
   });
 });
-
-
-
-

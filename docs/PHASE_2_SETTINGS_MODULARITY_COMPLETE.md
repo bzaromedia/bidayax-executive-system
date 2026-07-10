@@ -122,3 +122,17 @@ git log --oneline -8
 ## Next Recommended Phase
 
 Phase 3 - Settings Persistence + Database Migration Layer.
+
+## Phase 3G PR Readiness Addendum
+
+The Phase 2 Settings Modularity branch now includes Phase 3 persistence hardening. Reviewers should evaluate Phase 2 and Phase 3 together as one draft PR scope:
+
+- documented settings model and UI foundation
+- brand token resolver
+- preview/publish/versioning flow
+- receptionist settings integration
+- settings audit event builders
+- settings persistence migration and repository layer
+- Phase 3G tenant isolation, immutability, idempotency, concurrency, rollback, and security hardening
+
+Intentional exclusions remain unchanged: no provider integrations, no live telephony, no production calling enablement, and no PR merge.

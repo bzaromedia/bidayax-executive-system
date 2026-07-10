@@ -88,3 +88,12 @@ The PR body must include:
 - Risk notes
 - What was intentionally not added
 - Next phase recommendation
+
+## Phase 3G Branch Hygiene
+
+- Active branch: `feature/settings-modularity-layer`
+- Do not rewrite commit `a1c388e`.
+- Commit Phase 3G corrective changes separately.
+- Push the existing branch only; do not create a second PR.
+- Keep the PR in draft unless all mandatory local validation passes and PostgreSQL integration status is accurately documented.
+- Do not merge until reviewer approval and deployment readiness checks are complete.

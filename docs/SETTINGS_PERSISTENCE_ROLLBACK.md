@@ -53,3 +53,39 @@ Adjust paths for the production database host and permissions.
 - Do not drop the earlier `receptionist_settings` table from migration `0013`; it belongs to the prior card customization slice.
 - Do not drop Event Ledger, contact graph, intent scoring, telemetry, telephony, or receptionist workflow tables.
 - Do not run global database cleanup commands.
+
+## Phase 3G Rollback Safety Addendum
+
+### Pre-Production Rollback
+
+Use only when migration 0014 has not stored meaningful live data. Confirm table row counts first. Dropping Phase 3 tables before production data exists is acceptable after a database backup.
+
+### Post-Production Rollback
+
+Do not run an automatic destructive rollback. First export or back up:
+
+- tenants
+- brand assets
+- tenant brand profiles
+- executive card profiles
+- tenant receptionist settings
+- card settings versions
+- settings idempotency keys
+- settings audit events
+
+Post-production rollback can permanently destroy published settings evidence and audit history. Preserve audit and published-version records where record-retention obligations apply.
+
+### Dependency Order
+
+If a manual rollback is approved after backup, drop dependent tables before parent tables:
+
+1. `settings_idempotency_keys`
+2. `settings_audit_events`
+3. `card_settings_versions`
+4. `tenant_receptionist_settings`
+5. `executive_card_profiles`
+6. `tenant_brand_profiles`
+7. `brand_assets`
+8. `tenants`
+
+Also drop trigger functions only after dependent triggers are removed.

@@ -145,3 +145,20 @@ Publish result persistence writes:
 ## Next Step
 
 Phase 3B should wire authenticated dashboard API routes to the repository and wrap multi-step writes in a transaction boundary.
+
+## Phase 3G Hardening Addendum
+
+Phase 3G added the following persistence safeguards:
+
+- tenant-scoped repository reads for assets, cards, versions, audit events, and idempotency records
+- cross-tenant upsert rejection for brand assets and executive card profiles
+- append-only audit event persistence
+- immutable settings version insert behavior
+- dedicated published-version archive method
+- publish card-row locking with `FOR UPDATE`
+- archive-before-publish sequencing
+- `settings_idempotency_keys` table for duplicate publish submissions
+- database triggers for published-version immutability and audit append-only enforcement
+- guarded PostgreSQL integration harness: `pnpm test:settings-persistence:postgres`
+
+The PostgreSQL harness requires `NODE_ENV=test` and `SETTINGS_PERSISTENCE_TEST_DATABASE_URL` pointed at a disposable database whose name contains `test`, `ci`, or `local`.

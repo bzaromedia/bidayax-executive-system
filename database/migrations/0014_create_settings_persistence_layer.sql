@@ -130,8 +130,79 @@ CREATE TABLE IF NOT EXISTS settings_audit_events (
   severity TEXT NOT NULL CHECK (severity IN ('info', 'warning', 'critical'))
 );
 
+
+CREATE TABLE IF NOT EXISTS settings_idempotency_keys (
+  tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  card_id TEXT NOT NULL REFERENCES executive_card_profiles(card_id) ON DELETE CASCADE,
+  operation TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  result_version_id TEXT REFERENCES card_settings_versions(version_id),
+  result_snapshot_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL,
+  expires_at TIMESTAMPTZ,
+  PRIMARY KEY (tenant_id, card_id, operation, idempotency_key)
+);
+
+CREATE OR REPLACE FUNCTION prevent_published_settings_version_mutation()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.status = 'published' AND NEW.status = 'published' THEN
+    RAISE EXCEPTION 'published settings versions are immutable';
+  END IF;
+
+  IF OLD.status = 'published' AND NEW.status = 'archived' THEN
+    IF NEW.version_id <> OLD.version_id
+      OR NEW.card_id <> OLD.card_id
+      OR NEW.tenant_id <> OLD.tenant_id
+      OR NEW.settings_snapshot <> OLD.settings_snapshot
+      OR NEW.created_by <> OLD.created_by
+      OR NEW.created_at <> OLD.created_at
+      OR NEW.snapshot_hash <> OLD.snapshot_hash
+      OR NEW.previous_version_id IS DISTINCT FROM OLD.previous_version_id THEN
+      RAISE EXCEPTION 'archiving may only update lifecycle metadata';
+    END IF;
+
+    NEW.immutable := TRUE;
+    RETURN NEW;
+  END IF;
+
+  IF OLD.immutable = TRUE THEN
+    RAISE EXCEPTION 'immutable settings versions cannot be updated';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_published_settings_version_mutation
+  ON card_settings_versions;
+
+CREATE TRIGGER trg_prevent_published_settings_version_mutation
+  BEFORE UPDATE ON card_settings_versions
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_published_settings_version_mutation();
+
+CREATE OR REPLACE FUNCTION prevent_settings_audit_event_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'settings audit events are append-only';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_prevent_settings_audit_event_update
+  ON settings_audit_events;
+
+CREATE TRIGGER trg_prevent_settings_audit_event_update
+  BEFORE UPDATE ON settings_audit_events
+  FOR EACH ROW
+  EXECUTE FUNCTION prevent_settings_audit_event_update();
+
 CREATE INDEX IF NOT EXISTS idx_brand_assets_tenant
   ON brand_assets(tenant_id, asset_type);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_brand_assets_tenant_asset
+  ON brand_assets(tenant_id, asset_id);
 
 CREATE INDEX IF NOT EXISTS idx_executive_card_profiles_tenant
   ON executive_card_profiles(tenant_id, status);
@@ -149,9 +220,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_card_settings_versions_current_published
 CREATE INDEX IF NOT EXISTS idx_settings_audit_events_card_time
   ON settings_audit_events(card_id, tenant_id, occurred_at DESC);
 
+CREATE INDEX IF NOT EXISTS idx_settings_audit_events_tenant_event
+  ON settings_audit_events(tenant_id, card_id, event_id);
+
+CREATE INDEX IF NOT EXISTS idx_settings_idempotency_lookup
+  ON settings_idempotency_keys(tenant_id, card_id, operation, created_at DESC);
+
 COMMENT ON TABLE tenants IS 'Tenant ownership records for configurable Executive Cards.';
 COMMENT ON TABLE tenant_brand_profiles IS 'Tenant brand inputs before token resolution.';
 COMMENT ON TABLE executive_card_profiles IS 'Editable executive card profile content.';
 COMMENT ON TABLE tenant_receptionist_settings IS 'Phase 3 tenant-scoped Polyglot Receptionist settings.';
 COMMENT ON TABLE card_settings_versions IS 'Immutable draft, preview, published, and archived settings snapshots.';
-COMMENT ON TABLE settings_audit_events IS 'Event Ledger-ready audit events for settings changes.';
+COMMENT ON TABLE settings_audit_events IS 'Event Ledger-ready append-only audit events for settings changes.';
+COMMENT ON TABLE settings_idempotency_keys IS 'Tenant-scoped idempotency records for settings write operations.';
