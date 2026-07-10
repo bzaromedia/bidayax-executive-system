@@ -51,3 +51,33 @@ Validation failures emit warning audit events. A failed publish does not create 
 ## Phase Boundary
 
 Phase 2F provides deterministic, testable, Event Ledger-ready payloads and an immutable in-memory audit trail. It does not add database persistence, migrations, provider credentials, live telephony, or production settings mutation APIs.
+
+## Phase 3 Persistence Notes
+
+Phase 3 persists settings versions in:
+
+```text
+card_settings_versions
+```
+
+The table stores the immutable `settingsSnapshot` as JSONB, along with version ID, tenant ID, card ID, status, creator, timestamp, snapshot hash, immutability flag, and previous version reference.
+
+A partial unique index enforces one current published version per tenant/card pair:
+
+```text
+idx_card_settings_versions_current_published
+```
+
+Settings audit events are persisted separately in:
+
+```text
+settings_audit_events
+```
+
+The package-level repository is exposed from `@bidayax/settings` as `createSettingsPersistenceRepository(executor)`. The repository accepts a query executor instead of importing a concrete database driver, so API routes can pass a Postgres-backed executor later without changing settings package logic.
+
+Rollback guidance is documented in:
+
+```text
+docs/SETTINGS_PERSISTENCE_ROLLBACK.md
+```

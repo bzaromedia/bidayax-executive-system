@@ -139,3 +139,25 @@ Publishing is blocked unless:
 - receptionist routing rules validate;
 - preview acceptance checks pass;
 - the new version can be stored as an immutable snapshot.
+
+## Phase 3 Persistence Implementation
+
+Phase 3 adds the production persistence tables in:
+
+```text
+database/migrations/0014_create_settings_persistence_layer.sql
+```
+
+Implemented tables:
+
+- `tenants`
+- `brand_assets`
+- `tenant_brand_profiles`
+- `executive_card_profiles`
+- `tenant_receptionist_settings`
+- `card_settings_versions`
+- `settings_audit_events`
+
+The earlier migration `0013_create_card_customization_settings.sql` already contains a table named `receptionist_settings` for the prior card customization slice. Phase 3 therefore uses `tenant_receptionist_settings` for the modular settings layer to avoid overwriting or reshaping existing deployed data.
+
+The `@bidayax/settings` package now exposes repository and service helpers for these tables. They require a query executor and do not create a direct dependency on a provider-specific database client.

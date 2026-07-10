@@ -83,3 +83,14 @@ The draft PR must include:
 - Risk notes
 - What was intentionally not added
 - Next phase recommendation
+
+## Phase 3 Persistence Checks
+
+Phase 3 acceptance requires:
+
+- migration `0014_create_settings_persistence_layer.sql` exists and passes migration verification
+- tenant, asset, brand profile, card profile, receptionist settings, version, and audit event tables are documented
+- repository functions serialize and read typed settings data without importing provider integrations
+- settings publish results can persist versions and audit events
+- rollback notes exist
+- no live telephony or provider integrations are introduced
