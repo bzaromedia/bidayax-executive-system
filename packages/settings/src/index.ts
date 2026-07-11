@@ -6,3 +6,8 @@ export * from "./settings-audit-events";
 export * from "./settings-audit-trail";
 export * from "./settings-persistence";
 export * from "./settings-persistence-service";
+export * from "./settings-authorization";
+export * from "./settings-api-contracts";
+export * from "./settings-cache";
+export * from "./settings-observability";
+export * from "./settings-asset-management";
