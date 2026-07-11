@@ -235,7 +235,36 @@ body {
   transform: scale(0.98);
 }
 
+
+.executive-settings-link {
+  position: absolute;
+  z-index: 38;
+  top: max(var(--bx-space-3), env(safe-area-inset-top));
+  right: var(--bx-space-2);
+  display: inline-grid;
+  width: var(--executive-footer-button-height);
+  height: var(--executive-footer-button-height);
+  place-items: center;
+  border: 0;
+  border-radius: var(--executive-footer-button-height);
+  background: color-mix(in srgb, var(--bx-color-surface-canvas) 76%, transparent);
+  color: var(--bx-color-content-primary);
+  box-shadow: var(--bx-shadow-raised);
+  transition:
+    background var(--bx-motion-fast) var(--bx-ease-standard),
+    color var(--bx-motion-fast) var(--bx-ease-standard),
+    transform var(--bx-motion-fast) var(--bx-ease-standard);
+}
+
+.executive-settings-link:hover,
+.executive-settings-link:focus-visible {
+  background: color-mix(in srgb, var(--bx-color-content-accent) 14%, var(--bx-color-surface-canvas));
+  color: var(--bx-color-content-accent);
+  transform: translateY(-1px);
+}
+
 .executive-action:focus-visible,
+.executive-settings-link:focus-visible,
 .executive-footer-link:focus-visible,
 .executive-text-link:focus-visible,
 .executive-qr-close:focus-visible,

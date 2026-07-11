@@ -8,13 +8,15 @@
     "build": "node ../../node_modules/next/dist/bin/next build",
     "start": "node ../../node_modules/next/dist/bin/next start -p 3001",
     "lint": "node ../../node_modules/eslint/bin/eslint.js app src --ext .ts,.tsx",
-    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit",
+    "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.ts"
   },
   "dependencies": {
     "@bidayax/card-customization": "workspace:*",
     "@bidayax/config": "workspace:*",
     "@bidayax/improvement-engine": "workspace:*",
     "@bidayax/polyglot-receptionist": "workspace:*",
+    "@bidayax/settings": "workspace:*",
     "@bidayax/telephony": "workspace:*",
     "@bidayax/telemetry": "workspace:*",
     "@bidayax/tokens": "workspace:*",

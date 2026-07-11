@@ -16,8 +16,25 @@ export default function CardCustomizationSettingsPage() {
       status="ready"
       title="Card Customization Settings"
     >
-      <CardCustomizationSettings settings={settings} />
+      <CardCustomizationSettings
+        apiIntegration={{
+          cacheStrategy:
+            "Tenant and card scoped cache keys; publish invalidates published card, brand token, and version-history entries.",
+          persistenceMode: process.env.DATABASE_URL
+            ? "database_configured"
+            : "fallback_defaults",
+          routes: [
+            "/api/settings/card-customization/[slug]",
+            "/api/settings/theme/[slug]",
+            "/api/settings/receptionist/[slug]",
+            "/api/settings/qr-feedback/[slug]"
+          ],
+          warning: process.env.DATABASE_URL
+            ? null
+            : "DATABASE_URL is not configured locally. Reads use source-of-truth defaults and writes return a safe database_unconfigured response."
+        }}
+        settings={settings}
+      />
     </DashboardShell>
   );
 }
-

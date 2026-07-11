@@ -14,10 +14,10 @@ type RouteContext = {
   }>;
 };
 
-export async function GET(_request: Request, context: RouteContext) {
+export async function GET(request: Request, context: RouteContext) {
   const params = await context.params;
 
-  return getSettingsPayload(params.slug, settingsKind);
+  return getSettingsPayload(request, params.slug, settingsKind);
 }
 
 export async function POST(request: Request, context: RouteContext) {

@@ -25,6 +25,7 @@ import { ExecutiveHeader } from "./ExecutiveHeader";
 import { ExecutiveInfoCard } from "./ExecutiveInfoCard";
 import { ExecutiveMeetingCard } from "./ExecutiveMeetingCard";
 import { ExecutiveReceptionistCard } from "./ExecutiveReceptionistCard";
+import { ExecutiveSettingsLink } from "./ExecutiveSettingsLink";
 import { QRTransferFeedback } from "./QRTransferFeedback";
 
 type ExecutiveCardTemplateProps = {
@@ -165,6 +166,7 @@ export function ExecutiveCardTemplate({ executive }: ExecutiveCardTemplateProps)
             defaultSettings={qrFeedbackSettings}
             executive={executive}
           />
+          <ExecutiveSettingsLink executive={executive} />
           <ExecutiveHeader avatar={avatar} executive={executive} />
           <ExecutiveActionGrid
             actions={customerSettings.actions}

@@ -36,7 +36,8 @@
     "turbo:lint": "turbo run lint",
     "turbo:typecheck": "turbo run typecheck",
     "storybook": "pnpm --filter @bidayax/design-system storybook",
-    "build:storybook": "pnpm --filter @bidayax/design-system build-storybook"
+    "build:storybook": "pnpm --filter @bidayax/design-system build-storybook",
+    "test:settings-persistence:postgres": "node --experimental-strip-types scripts/settings-persistence-postgres-test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

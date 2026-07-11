@@ -8,6 +8,11 @@ export * from "./live-provider";
 export * from "./telemetry";
 export * from "./dashboard";
 export * from "./card-customization";
+export * from "./settings";
+export * from "./audit-events";
+export * from "./card-profile";
+export * from "./branding";
+export * from "./resolved-brand-tokens";
 export * from "./data-trust";
 export * from "./policy-enforcement";
 
@@ -33,5 +38,3 @@ export type EvidenceMetric = {
   readonly unit: string;
   readonly source: string;
 };
-
-

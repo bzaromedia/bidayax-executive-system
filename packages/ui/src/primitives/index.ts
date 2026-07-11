@@ -5,6 +5,7 @@ export * from "./card";
 export * from "./container";
 export * from "./grid";
 export * from "./icon-button";
+export * from "./icons";
 export * from "./input";
 export * from "./label";
 export * from "./section";

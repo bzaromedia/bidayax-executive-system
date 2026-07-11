@@ -624,3 +624,97 @@ export function isReceptionistLanguage(
   return (receptionistLanguages as readonly string[]).includes(value);
 }
 
+
+export const receptionistVoiceProfiles = [
+  "executive",
+  "warm",
+  "energetic",
+  "calm",
+  "professional",
+  "luxury"
+] as const;
+
+export const receptionistMoods = [
+  "confident",
+  "friendly",
+  "concise",
+  "formal",
+  "high_energy",
+  "calm"
+] as const;
+
+export const receptionistGreetingModes = ["standard", "custom"] as const;
+
+export const receptionistFallbackBehaviors = [
+  "queue_callback",
+  "take_message",
+  "route_to_email",
+  "human_review"
+] as const;
+
+export const receptionistAfterHoursBehaviors = [
+  "queue_next_business_day",
+  "take_message",
+  "urgent_escalation_only",
+  "disabled"
+] as const;
+
+export const receptionistRecordingPolicies = [
+  "disabled",
+  "disclose_and_record",
+  "transcript_only"
+] as const;
+
+export type ReceptionistVoiceProfile = (typeof receptionistVoiceProfiles)[number];
+export type ReceptionistMood = (typeof receptionistMoods)[number];
+export type ReceptionistGreetingMode = (typeof receptionistGreetingModes)[number];
+export type ReceptionistFallbackBehavior = (typeof receptionistFallbackBehaviors)[number];
+export type ReceptionistAfterHoursBehavior = (typeof receptionistAfterHoursBehaviors)[number];
+export type ReceptionistRecordingPolicy = (typeof receptionistRecordingPolicies)[number];
+
+export type CallRoutingRule = {
+  readonly ruleId: string;
+  readonly label: string;
+  readonly condition: string;
+  readonly destination: string;
+  readonly intent: ReceptionistRequestType | "urgent" | "unknown";
+  readonly action: "queue_callback" | "take_message" | "route_to_email" | "human_review" | "block";
+  readonly priority: ReceptionistPriority;
+  readonly enabled: boolean;
+};
+
+export type AppointmentRules = {
+  readonly enabled: boolean;
+  readonly calendarUrl: string | null;
+  readonly timezone: string;
+  readonly allowedWindows: readonly string[];
+  readonly requireHumanApproval: boolean;
+};
+
+export type EscalationContact = {
+  readonly contactId: string;
+  readonly label: string;
+  readonly email: string;
+  readonly phone: string | null;
+  readonly preferredContactMethod?: "email" | "phone";
+  readonly priority: ReceptionistPriority;
+};
+
+export type ReceptionistSettings = {
+  readonly tenantId: string;
+  readonly enabled: boolean;
+  readonly defaultLanguage: ReceptionistLanguage;
+  readonly supportedLanguages: readonly ReceptionistLanguage[];
+  readonly voiceProfile: ReceptionistVoiceProfile;
+  readonly mood: ReceptionistMood;
+  readonly greetingMode: ReceptionistGreetingMode;
+  readonly standardGreeting: string;
+  readonly customGreeting: string | null;
+  readonly fallbackBehavior: ReceptionistFallbackBehavior;
+  readonly callRoutingRules: readonly CallRoutingRule[];
+  readonly appointmentRules: AppointmentRules;
+  readonly afterHoursBehavior: ReceptionistAfterHoursBehavior;
+  readonly escalationContacts: readonly EscalationContact[];
+  readonly consentDisclosure: string;
+  readonly recordingPolicy: ReceptionistRecordingPolicy;
+};
