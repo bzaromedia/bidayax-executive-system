@@ -105,3 +105,13 @@ styling inside apps.
 Phase 2C should connect settings UI and the top-right card settings icon to this
 resolver through preview-only workflows. It should not let unvalidated raw
 customer values reach the production card presentation layer.
+### Authorized Token Package Change
+
+Phase 2B intentionally modifies `packages/tokens` because the Brand Token Resolver is part of the token source of truth. The approved path is:
+
+1. brand inputs are validated in `packages/tokens/src/brand-token-validation.ts`;
+2. colors are normalized and checked in `packages/tokens/src/color-utils.ts`;
+3. safe resolved tokens are emitted from `packages/tokens/src/brand-token-resolver.ts`;
+4. apps consume resolved tokens through package exports instead of app-local styling.
+
+This is the only approved override for the locked token package in this PR. New app-level colors, spacing, radii, typography, or motion values remain prohibited outside `packages/tokens`, `packages/design-system`, and `packages/ui`.

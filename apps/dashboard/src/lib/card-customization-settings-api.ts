@@ -176,6 +176,66 @@ async function writeAuditEvent(event: CustomizationAuditEvent) {
   return true;
 }
 
+type SettingsApiOutcome =
+  | "authentication_failure"
+  | "authorization_failure"
+  | "persistence_failure"
+  | "success"
+  | "validation_failure";
+
+type SettingsApiAction = "read" | "write";
+
+function authErrorCodeForStatus(status: 401 | 403) {
+  return status === 401 ? "unauthenticated" : "authorization_failed";
+}
+
+function logSettingsApiOutcome(input: {
+  readonly action: SettingsApiAction;
+  readonly errorCode?: string | undefined;
+  readonly kind: SettingsKind;
+  readonly level?: "info" | "warning" | "error" | undefined;
+  readonly message: string;
+  readonly outcome: SettingsApiOutcome;
+  readonly persistenceMode?: RoutePersistenceStatus["mode"] | undefined;
+  readonly requestId: string;
+  readonly slug: string;
+  readonly status: number;
+  readonly tenantId?: string | undefined;
+}) {
+  const logEvent = createSettingsLogEvent({
+    event: "settings_api_request_outcome",
+    level:
+      input.level ??
+      (input.outcome === "success" ? "info" : input.outcome === "persistence_failure" ? "error" : "warning"),
+    message: input.message,
+    metadata: {
+      action: input.action,
+      errorCode: input.errorCode,
+      kind: input.kind,
+      outcome: input.outcome,
+      persistenceMode: input.persistenceMode,
+      requestId: input.requestId,
+      slug: input.slug,
+      status: input.status,
+      tenantId: input.tenantId
+    }
+  });
+
+  console.info(
+    JSON.stringify({
+      component: "settings-api-route",
+      event: logEvent.event,
+      level: logEvent.level,
+      message: logEvent.message,
+      metadata: logEvent.metadata,
+      occurredAt: logEvent.occurredAt,
+      requestId: input.requestId
+    })
+  );
+
+  return logEvent;
+}
+
 export function getSettingsPayload(
   request: Request,
   slug: string,
@@ -186,6 +246,17 @@ export function getSettingsPayload(
   try {
     assertValidSettingsSlug(slug);
   } catch {
+    logSettingsApiOutcome({
+      action: "read",
+      errorCode: "invalid_payload",
+      kind,
+      message: "Settings slug is invalid.",
+      outcome: "validation_failure",
+      requestId,
+      slug,
+      status: 400
+    });
+
     return NextResponse.json(
       settingsApiError("invalid_payload", "Settings slug is invalid.", requestId),
       { status: 400 }
@@ -195,21 +266,46 @@ export function getSettingsPayload(
   const value = defaultValueForKind(slug, kind);
 
   if (!value) {
+    logSettingsApiOutcome({
+      action: "read",
+      errorCode: "not_found",
+      kind,
+      message: "Settings were not found for this card.",
+      outcome: "validation_failure",
+      requestId,
+      slug,
+      status: 404
+    });
+
     return NextResponse.json(
       settingsApiError("not_found", "Settings were not found for this card.", requestId),
       { status: 404 }
     );
   }
 
+  const tenantId = getTenantId(slug);
   const authContext = readTrustedSettingsAuthContext({
     request,
     resourceCardId: slug,
-    resourceTenantId: getTenantId(slug)
+    resourceTenantId: tenantId
   });
 
   if (!authContext.ok) {
+    const errorCode = authErrorCodeForStatus(authContext.status);
+    logSettingsApiOutcome({
+      action: "read",
+      errorCode,
+      kind,
+      message: authContext.reason,
+      outcome: authContext.status === 401 ? "authentication_failure" : "authorization_failure",
+      requestId,
+      slug,
+      status: authContext.status,
+      tenantId
+    });
+
     return NextResponse.json(
-      settingsApiError("unauthenticated", authContext.reason, requestId),
+      settingsApiError(errorCode, authContext.reason, requestId),
       { status: authContext.status }
     );
   }
@@ -220,11 +316,23 @@ export function getSettingsPayload(
     permission: "settings:read",
     resource: {
       cardId: slug,
-      tenantId: getTenantId(slug)
+      tenantId
     }
   });
 
   if (!authorization.allowed) {
+    logSettingsApiOutcome({
+      action: "read",
+      errorCode: "authorization_failed",
+      kind,
+      message: authorization.reason,
+      outcome: "authorization_failure",
+      requestId,
+      slug,
+      status: 403,
+      tenantId: context.tenantId
+    });
+
     return NextResponse.json(
       settingsApiError("authorization_failed", authorization.reason, requestId),
       { status: 403 }
@@ -248,6 +356,18 @@ export function getSettingsPayload(
     tenantId: context.tenantId,
     unit: "count",
     value: 1
+  });
+
+  logSettingsApiOutcome({
+    action: "read",
+    kind,
+    message: "Settings API request completed successfully.",
+    outcome: "success",
+    persistenceMode: persistence.mode,
+    requestId,
+    slug,
+    status: 200,
+    tenantId: context.tenantId
   });
 
   return NextResponse.json(
@@ -280,6 +400,17 @@ export async function postSettingsPayload(
   try {
     assertValidSettingsSlug(slug);
   } catch {
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode: "invalid_payload",
+      kind,
+      message: "Settings slug is invalid.",
+      outcome: "validation_failure",
+      requestId,
+      slug,
+      status: 400
+    });
+
     return NextResponse.json(
       settingsApiError("invalid_payload", "Settings slug is invalid.", requestId),
       { status: 400 }
@@ -289,21 +420,46 @@ export async function postSettingsPayload(
   const currentValue = defaultValueForKind(slug, kind);
 
   if (!currentValue) {
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode: "not_found",
+      kind,
+      message: "Settings were not found for this card.",
+      outcome: "validation_failure",
+      requestId,
+      slug,
+      status: 404
+    });
+
     return NextResponse.json(
       settingsApiError("not_found", "Settings were not found for this card.", requestId),
       { status: 404 }
     );
   }
 
+  const tenantId = getTenantId(slug);
   const authContext = readTrustedSettingsAuthContext({
     request,
     resourceCardId: slug,
-    resourceTenantId: getTenantId(slug)
+    resourceTenantId: tenantId
   });
 
   if (!authContext.ok) {
+    const errorCode = authErrorCodeForStatus(authContext.status);
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode,
+      kind,
+      message: authContext.reason,
+      outcome: authContext.status === 401 ? "authentication_failure" : "authorization_failure",
+      requestId,
+      slug,
+      status: authContext.status,
+      tenantId
+    });
+
     return NextResponse.json(
-      settingsApiError("unauthenticated", authContext.reason, requestId),
+      settingsApiError(errorCode, authContext.reason, requestId),
       { status: authContext.status }
     );
   }
@@ -314,19 +470,21 @@ export async function postSettingsPayload(
     permission: kind === "card-customization" ? "settings:update" : "settings:preview",
     resource: {
       cardId: slug,
-      tenantId: getTenantId(slug)
+      tenantId
     }
   });
 
   if (!authorization.allowed) {
-    const logEvent = createSettingsLogEvent({
-      event: "settings_authorization_failure",
-      level: "warning",
+    const logEvent = logSettingsApiOutcome({
+      action: "write",
+      errorCode: "authorization_failed",
+      kind,
       message: authorization.reason,
-      metadata: {
-        kind,
-        slug
-      }
+      outcome: "authorization_failure",
+      requestId,
+      slug,
+      status: 403,
+      tenantId: context.tenantId
     });
 
     return NextResponse.json(
@@ -338,6 +496,19 @@ export async function postSettingsPayload(
   const persistence = persistenceStatusForWrite();
 
   if (!persistence.configured) {
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode: "database_unconfigured",
+      kind,
+      message: persistence.warning ?? "Database persistence is not configured.",
+      outcome: "persistence_failure",
+      persistenceMode: persistence.mode,
+      requestId,
+      slug,
+      status: 503,
+      tenantId: context.tenantId
+    });
+
     return NextResponse.json(
       settingsApiError(
         "database_unconfigured",
@@ -353,6 +524,18 @@ export async function postSettingsPayload(
   const parsed = schema.safeParse(body);
 
   if (!parsed.success) {
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode: "invalid_payload",
+      kind,
+      message: "Settings payload did not match the required schema.",
+      outcome: "validation_failure",
+      requestId,
+      slug,
+      status: 400,
+      tenantId: context.tenantId
+    });
+
     return NextResponse.json(
       settingsApiError("invalid_payload", "Settings payload did not match the required schema.", requestId),
       { status: 400 }
@@ -365,6 +548,18 @@ export async function postSettingsPayload(
     );
 
     if (!themeValidation.valid) {
+      logSettingsApiOutcome({
+        action: "write",
+        errorCode: "invalid_payload",
+        kind,
+        message: "Theme settings failed validation.",
+        outcome: "validation_failure",
+        requestId,
+        slug,
+        status: 400,
+        tenantId: context.tenantId
+      });
+
       return NextResponse.json(
         {
           ...settingsApiError("invalid_payload", "Theme settings failed validation.", requestId),
@@ -382,7 +577,42 @@ export async function postSettingsPayload(
     oldValue: currentValue,
     settingType: kind
   });
-  const persisted = await writeAuditEvent(auditEvent);
+
+  let persisted = false;
+
+  try {
+    persisted = await writeAuditEvent(auditEvent);
+  } catch {
+    logSettingsApiOutcome({
+      action: "write",
+      errorCode: "persistence_failed",
+      kind,
+      message: "Settings audit event persistence failed.",
+      outcome: "persistence_failure",
+      persistenceMode: persistence.mode,
+      requestId,
+      slug,
+      status: 503,
+      tenantId: context.tenantId
+    });
+
+    return NextResponse.json(
+      settingsApiError("database_unconfigured", "Settings persistence failed.", requestId),
+      { status: 503 }
+    );
+  }
+
+  logSettingsApiOutcome({
+    action: "write",
+    kind,
+    message: "Settings API request accepted successfully.",
+    outcome: "success",
+    persistenceMode: persistence.mode,
+    requestId,
+    slug,
+    status: 202,
+    tenantId: context.tenantId
+  });
 
   return NextResponse.json(
     settingsApiSuccess({

@@ -47,3 +47,12 @@ Single Source of Truth
 ```
 
 No application surface can bypass this path.
+## Token Package Change Approval
+
+`packages/tokens` is the approved source of truth for token definitions and token-resolution algorithms. Changes to this package are allowed only when they are:
+
+1. documented in the relevant token-system documentation;
+2. covered by token or design-governance tests;
+3. consumed by apps through package exports rather than app-local hardcoded values.
+
+The Phase 2 Brand Token Resolver follows this approval path so client brand inputs can be normalized into safe BidayaX token slots without bypassing design governance.

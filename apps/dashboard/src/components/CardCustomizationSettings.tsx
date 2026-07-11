@@ -9,7 +9,7 @@ import {
   createReceptionistSettingsPreview,
   type ReceptionistSettingsPreview
 } from "@bidayax/settings";
-import { resolveBrandTokens } from "@bidayax/tokens";
+import { radiusTokens, resolveBrandTokens } from "@bidayax/tokens";
 import {
   Badge,
   Card,
@@ -58,8 +58,8 @@ function createTenantBrandProfile(settings: CustomerCardSettings): TenantBrandPr
   return {
     accentColor: settings.brandTheme.accentColor,
     backgroundColor: settings.brandTheme.backgroundColor,
-    buttonRadius: "0.5rem",
-    cardRadius: "0.75rem",
+    buttonRadius: radiusTokens.lg,
+    cardRadius: radiusTokens.xl,
     companyName: settings.profile.company,
     contrastMode: "standard",
     createdAt: settings.profile.updatedAt,

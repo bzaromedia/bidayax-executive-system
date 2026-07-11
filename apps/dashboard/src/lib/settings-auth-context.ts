@@ -69,7 +69,13 @@ function readBearerToken(request: Request): string | null {
 }
 
 function verifyToken(token: string, secret: string): unknown | null {
-  const [payload, signature] = token.split(".");
+  const segments = token.split(".");
+
+  if (segments.length !== 2) {
+    return null;
+  }
+
+  const [payload, signature] = segments;
 
   if (!payload || !signature) {
     return null;

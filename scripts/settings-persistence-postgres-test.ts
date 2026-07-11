@@ -103,6 +103,10 @@ try {
      values ('tenant-test', 'Test Tenant', 'owner@example.test', 'active', now(), now())`
   );
   await client.query(
+    `insert into tenants (tenant_id, company_name, owner_email, status, created_at, updated_at)
+     values ('tenant-other', 'Other Tenant', 'owner-other@example.test', 'active', now(), now())`
+  );
+  await client.query(
     `insert into brand_assets (asset_id, tenant_id, asset_type, storage_path, alt_text, mime_type, checksum_sha256, created_at)
      values ('asset-test', 'tenant-test', 'logo', '/test/logo.svg', 'Logo', 'image/svg+xml', 'hash', now())`
   );
@@ -159,6 +163,80 @@ try {
        'version-published', 'hash-1', now(), null
      )`
   );
+  await client.query(
+    `insert into card_settings_versions (
+       version_id, card_id, tenant_id, settings_snapshot, created_by, created_at,
+       status, snapshot_hash, immutable, previous_version_id
+     ) values (
+       'version-draft', 'card-test', 'tenant-test', '{"snapshotHash":"hash-draft"}'::jsonb,
+       'actor-test', now(), 'draft', 'hash-draft', false, null
+     )`
+  );
+  await client.query(
+    `insert into settings_idempotency_keys (
+       tenant_id, card_id, operation, idempotency_key, request_hash,
+       result_version_id, result_snapshot_hash, created_at, expires_at
+     ) values (
+       'tenant-test', 'card-test', 'settings.preview', 'request-update', 'request-update-hash',
+       'version-draft', 'hash-draft', now(), null
+     )`
+  );
+
+  await expectError("tenant_card_mismatch_version_insert", async () => {
+    await client.query(
+      `insert into card_settings_versions (
+         version_id, card_id, tenant_id, settings_snapshot, created_by, created_at,
+         status, snapshot_hash, immutable, previous_version_id
+       ) values (
+         'version-mismatched', 'card-test', 'tenant-other', '{"snapshotHash":"hash-mismatch"}'::jsonb,
+         'actor-test', now(), 'draft', 'hash-mismatch', false, null
+       )`
+    );
+  });
+
+  await expectError("tenant_card_mismatch_version_update", async () => {
+    await client.query(
+      `update card_settings_versions
+          set tenant_id = 'tenant-other'
+        where version_id = 'version-draft'`
+    );
+  });
+
+  await expectError("tenant_card_mismatch_audit_insert", async () => {
+    await client.query(
+      `insert into settings_audit_events (
+         event_id, event_type, tenant_id, card_id, actor, occurred_at, source,
+         snapshot_hash, previous_snapshot_hash, metadata, severity
+       ) values (
+         'audit-mismatched', 'settings.preview.generated', 'tenant-other', 'card-test',
+         '{"actorId":"actor-test","actorType":"user","displayName":"Tester"}'::jsonb,
+         now(), 'settings-preview', 'hash-draft', null, '{"safe":true}'::jsonb, 'info'
+       )`
+    );
+  });
+
+  await expectError("tenant_card_mismatch_idempotency_insert", async () => {
+    await client.query(
+      `insert into settings_idempotency_keys (
+         tenant_id, card_id, operation, idempotency_key, request_hash,
+         result_version_id, result_snapshot_hash, created_at, expires_at
+       ) values (
+         'tenant-other', 'card-test', 'settings.publish', 'request-mismatched', 'request-mismatch-hash',
+         'version-published', 'hash-1', now(), null
+       )`
+    );
+  });
+
+  await expectError("tenant_card_mismatch_idempotency_update", async () => {
+    await client.query(
+      `update settings_idempotency_keys
+          set tenant_id = 'tenant-other'
+        where tenant_id = 'tenant-test'
+          and card_id = 'card-test'
+          and operation = 'settings.preview'
+          and idempotency_key = 'request-update'`
+    );
+  });
 
   await expectError("duplicate_published", async () => {
     await client.query(
@@ -204,6 +282,8 @@ try {
   finish("passed", [
     `complete migration chain applied inside a transaction (${migrationFiles.length} files)`,
     "settings tables exist",
+    "tenant/card mismatch inserts rejected",
+    "tenant/card mismatch updates rejected",
     "duplicate active published version rejected",
     "published version mutation rejected",
     "audit event mutation rejected",

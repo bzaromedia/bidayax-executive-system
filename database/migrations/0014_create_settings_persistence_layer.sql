@@ -144,6 +144,51 @@ CREATE TABLE IF NOT EXISTS settings_idempotency_keys (
   PRIMARY KEY (tenant_id, card_id, operation, idempotency_key)
 );
 
+CREATE OR REPLACE FUNCTION enforce_settings_card_tenant_match()
+RETURNS TRIGGER AS $$
+DECLARE
+  owning_tenant_id TEXT;
+BEGIN
+  SELECT tenant_id
+    INTO owning_tenant_id
+    FROM executive_card_profiles
+   WHERE card_id = NEW.card_id;
+
+  IF owning_tenant_id IS NULL THEN
+    RAISE EXCEPTION 'settings card tenant ownership check failed: card % does not exist', NEW.card_id;
+  END IF;
+
+  IF NEW.tenant_id <> owning_tenant_id THEN
+    RAISE EXCEPTION 'settings tenant_id must match card owner tenant_id';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_card_settings_versions_tenant_match
+  ON card_settings_versions;
+
+CREATE TRIGGER trg_card_settings_versions_tenant_match
+  BEFORE INSERT OR UPDATE ON card_settings_versions
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_settings_card_tenant_match();
+
+DROP TRIGGER IF EXISTS trg_settings_audit_events_tenant_match
+  ON settings_audit_events;
+
+CREATE TRIGGER trg_settings_audit_events_tenant_match
+  BEFORE INSERT OR UPDATE ON settings_audit_events
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_settings_card_tenant_match();
+
+DROP TRIGGER IF EXISTS trg_settings_idempotency_keys_tenant_match
+  ON settings_idempotency_keys;
+
+CREATE TRIGGER trg_settings_idempotency_keys_tenant_match
+  BEFORE INSERT OR UPDATE ON settings_idempotency_keys
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_settings_card_tenant_match();
 CREATE OR REPLACE FUNCTION prevent_published_settings_version_mutation()
 RETURNS TRIGGER AS $$
 BEGIN

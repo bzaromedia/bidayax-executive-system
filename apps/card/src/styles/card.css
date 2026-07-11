@@ -242,11 +242,11 @@ body {
   top: max(var(--bx-space-3), env(safe-area-inset-top));
   right: var(--bx-space-2);
   display: inline-grid;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: var(--executive-footer-button-height);
+  height: var(--executive-footer-button-height);
   place-items: center;
   border: 0;
-  border-radius: 9999px;
+  border-radius: var(--executive-footer-button-height);
   background: color-mix(in srgb, var(--bx-color-surface-canvas) 76%, transparent);
   color: var(--bx-color-content-primary);
   box-shadow: var(--bx-shadow-raised);

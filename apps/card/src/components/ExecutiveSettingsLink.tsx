@@ -1,4 +1,4 @@
-import { Settings } from "lucide-react";
+import { SettingsIcon } from "@bidayax/ui";
 import type { ExecutiveProfile } from "@bidayax/config/executives";
 import { getCardSettingsDashboardUrl } from "../lib/routes";
 
@@ -16,7 +16,7 @@ export function ExecutiveSettingsLink({ executive }: ExecutiveSettingsLinkProps)
       aria-label={`Open settings dashboard for ${executive.displayName}`}
       title="Settings"
     >
-      <Settings aria-hidden="true" size={20} strokeWidth={1.85} />
+      <SettingsIcon aria-hidden="true" size={20} strokeWidth={1.85} />
     </a>
   );
 }
