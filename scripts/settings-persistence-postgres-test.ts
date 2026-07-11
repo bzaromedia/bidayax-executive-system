@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import pg from "pg";
 
@@ -42,9 +42,15 @@ if (!/test|ci|local/i.test(databaseName)) {
 }
 
 const client = new Client({ connectionString: databaseUrl });
-const migrationSql = await readFile(
-  join(process.cwd(), "database", "migrations", "0014_create_settings_persistence_layer.sql"),
-  "utf8"
+const migrationsDirectory = join(process.cwd(), "database", "migrations");
+const migrationFiles = (await readdir(migrationsDirectory))
+  .filter((file) => /^\d+_.*\.sql$/.test(file))
+  .sort();
+const migrationSqlFiles = await Promise.all(
+  migrationFiles.map(async (file) => ({
+    file,
+    sql: await readFile(join(migrationsDirectory, file), "utf8")
+  }))
 );
 
 async function expectError(label: string, action: () => Promise<void>) {
@@ -67,7 +73,9 @@ async function expectError(label: string, action: () => Promise<void>) {
 try {
   await client.connect();
   await client.query("BEGIN");
-  await client.query(migrationSql);
+  for (const migration of migrationSqlFiles) {
+    await client.query(migration.sql);
+  }
 
   const tableCheck = await client.query<{ table_name: string }>(
     `select table_name
@@ -194,7 +202,7 @@ try {
 
   await client.query("ROLLBACK");
   finish("passed", [
-    "migration 0014 applied inside a transaction",
+    `complete migration chain applied inside a transaction (${migrationFiles.length} files)`,
     "settings tables exist",
     "duplicate active published version rejected",
     "published version mutation rejected",
@@ -212,4 +220,3 @@ try {
 } finally {
   await client.end().catch(() => undefined);
 }
-

@@ -25,13 +25,17 @@ All routes return a typed envelope from `@bidayax/settings`:
 - optional `cache`
 - optional `audit`
 
+## Authentication
+
+Production settings routes require a trusted signed settings session token. Plain request headers cannot override tenant, actor, role, or card assignment. If `SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET` is missing in production, routes fail closed with `unauthenticated`.
+
 ## Write Behavior
 
 Write requests validate the body against the existing Zod settings schemas. Theme writes also run brand theme validation. If persistence is unavailable, write routes return HTTP `503` with `database_unconfigured`.
 
 ## Idempotency
 
-The package-level API contracts include idempotency key normalization for publish flows. The route-level publish endpoint remains a later application integration step; Phase 3 persistence already owns idempotent publish storage.
+The package-level API contracts include idempotency key normalization for publish flows. Phase 3 persistence owns idempotent publish storage; Phase 4G keeps cache invalidation and publish persistence behind successful committed publication semantics.
 
 ## PostgreSQL Status
 

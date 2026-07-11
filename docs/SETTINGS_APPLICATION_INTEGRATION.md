@@ -18,11 +18,12 @@ The visual Settings Dashboard remains token-governed and does not introduce app-
 `apps/dashboard/src/lib/card-customization-settings-api.ts` now wraps settings reads and writes with:
 
 - URL-safe slug validation
-- tenant-aware authorization
+- trusted signed-session authorization
 - typed success/error envelopes
 - route-scoped cache keys
 - settings API metrics
 - safe unconfigured database behavior
+- no tenant or role override from plain request headers
 
 ## Persistence Boundary
 

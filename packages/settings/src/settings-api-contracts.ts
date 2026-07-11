@@ -19,6 +19,7 @@ export type SettingsApiAction = (typeof settingsApiActions)[number];
 
 export type SettingsApiErrorCode =
   | "authorization_failed"
+  | "unauthenticated"
   | "conflict"
   | "database_unconfigured"
   | "invalid_payload"

@@ -18,11 +18,10 @@ import {
   createSettingsRequestId,
   makeSettingsCacheKey,
   settingsApiError,
-  settingsApiSuccess,
-  type SettingsActorRole,
-  type SettingsAuthorizationContext
+  settingsApiSuccess
 } from "@bidayax/settings";
 import type { BrandThemeConfig } from "@bidayax/types";
+import { readTrustedSettingsAuthContext } from "./settings-auth-context";
 
 export type SettingsKind = "card-customization" | "qr-feedback" | "receptionist" | "theme";
 
@@ -105,39 +104,6 @@ function getTenantId(slug: string): string {
   return settings?.brandTheme.ownerId ?? "tenant-bidayax";
 }
 
-function getActorRole(request: Request): SettingsActorRole {
-  const role = request.headers.get("x-settings-role") ??
-    (process.env.NODE_ENV === "production" ? "viewer" : "administrator");
-
-  if (["administrator", "executive", "viewer", "system"].includes(role)) {
-    return role as SettingsActorRole;
-  }
-
-  return "viewer";
-}
-
-function getAuthorizationContext(
-  request: Request,
-  slug: string
-): SettingsAuthorizationContext {
-  const tenantId = request.headers.get("x-tenant-id") ?? getTenantId(slug);
-  const actorId = request.headers.get("x-actor-id") ?? "dashboard-settings";
-  const displayName = request.headers.get("x-actor-name") ?? "Dashboard Settings";
-  const assignedCards = request.headers.get("x-card-ids")
-    ?.split(",")
-    .map((cardId) => cardId.trim())
-    .filter(Boolean);
-
-  return {
-    actorId,
-    cardIds: assignedCards ?? [slug],
-    displayName,
-    ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
-    role: getActorRole(request),
-    tenantId,
-    userAgent: request.headers.get("user-agent") ?? undefined
-  };
-}
 
 function persistenceStatusForRead(): RoutePersistenceStatus {
   return getDatabasePool()
@@ -235,7 +201,20 @@ export function getSettingsPayload(
     );
   }
 
-  const context = getAuthorizationContext(request, slug);
+  const authContext = readTrustedSettingsAuthContext({
+    request,
+    resourceCardId: slug,
+    resourceTenantId: getTenantId(slug)
+  });
+
+  if (!authContext.ok) {
+    return NextResponse.json(
+      settingsApiError("unauthenticated", authContext.reason, requestId),
+      { status: authContext.status }
+    );
+  }
+
+  const context = authContext.context;
   const authorization = authorizeSettingsAction({
     context,
     permission: "settings:read",
@@ -316,7 +295,20 @@ export async function postSettingsPayload(
     );
   }
 
-  const context = getAuthorizationContext(request, slug);
+  const authContext = readTrustedSettingsAuthContext({
+    request,
+    resourceCardId: slug,
+    resourceTenantId: getTenantId(slug)
+  });
+
+  if (!authContext.ok) {
+    return NextResponse.json(
+      settingsApiError("unauthenticated", authContext.reason, requestId),
+      { status: authContext.status }
+    );
+  }
+
+  const context = authContext.context;
   const authorization = authorizeSettingsAction({
     context,
     permission: kind === "card-customization" ? "settings:update" : "settings:preview",

@@ -4,6 +4,8 @@ Phase 4 adds package-level tests for settings API and authorization behavior.
 
 ## Covered
 
+- trusted signed settings session parsing
+- header override rejection for tenant, role, and card assignment
 - administrator tenant-scoped publish authorization
 - cross-tenant read denial
 - executive publish denial
@@ -37,4 +39,4 @@ pnpm verify:production
 pnpm test:settings-persistence:postgres
 ```
 
-`pnpm test:settings-persistence:postgres` is expected to skip unless a disposable PostgreSQL test URL is configured with the required safety guard.
+`pnpm test:settings-persistence:postgres` applies the full migration chain when `NODE_ENV=test` and a disposable PostgreSQL URL are configured. It is expected to skip locally unless that safe database is available.
