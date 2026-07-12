@@ -2,7 +2,11 @@ import type { SettingsAuditActor } from "@bidayax/types";
 
 export const settingsActorRoles = [
   "administrator",
+  "tenant_owner",
+  "tenant_admin",
   "executive",
+  "settings_editor",
+  "receptionist_manager",
   "viewer",
   "system"
 ] as const;
@@ -13,7 +17,12 @@ export const settingsPermissions = [
   "settings:preview",
   "settings:publish",
   "settings:history:read",
-  "settings:asset:write"
+  "settings:asset:write",
+  "receptionist:configure",
+  "audit:read",
+  "members:manage",
+  "sessions:revoke",
+  "card-access:manage"
 ] as const;
 
 export type SettingsActorRole = (typeof settingsActorRoles)[number];
@@ -25,6 +34,7 @@ export type SettingsAuthorizationContext = {
   readonly role: SettingsActorRole;
   readonly tenantId: string;
   readonly cardIds?: readonly string[];
+  readonly permissions?: readonly SettingsPermission[];
   readonly ipAddress?: string | undefined;
   readonly userAgent?: string | undefined;
 };
@@ -43,11 +53,25 @@ export type SettingsAuthorizationDecision = {
 
 const rolePermissions: Record<SettingsActorRole, readonly SettingsPermission[]> = {
   administrator: settingsPermissions,
+  tenant_owner: settingsPermissions,
+  tenant_admin: settingsPermissions,
   executive: [
     "settings:read",
     "settings:update",
     "settings:preview",
     "settings:history:read"
+  ],
+  settings_editor: [
+    "settings:read",
+    "settings:update",
+    "settings:preview",
+    "settings:history:read",
+    "settings:asset:write"
+  ],
+  receptionist_manager: [
+    "settings:read",
+    "settings:history:read",
+    "receptionist:configure"
   ],
   system: [
     "settings:read",
@@ -73,7 +97,14 @@ function toAuditActor(
 ): SettingsAuditActor {
   const actor: SettingsAuditActor = {
     actorId: context.actorId,
-    actorType: context.role === "system" ? "system" : context.role === "administrator" ? "admin" : "user",
+    actorType:
+      context.role === "system"
+        ? "system"
+        : context.role === "administrator" ||
+            context.role === "tenant_owner" ||
+            context.role === "tenant_admin"
+          ? "admin"
+          : "user",
     displayName: context.displayName
   };
 
@@ -88,7 +119,13 @@ function cardAllowed(
   context: SettingsAuthorizationContext,
   resource: SettingsAuthorizationResource
 ): boolean {
-  if (!resource.cardId || context.role === "administrator" || context.role === "system") {
+  if (
+    !resource.cardId ||
+    context.role === "administrator" ||
+    context.role === "tenant_owner" ||
+    context.role === "tenant_admin" ||
+    context.role === "system"
+  ) {
     return true;
   }
 
@@ -111,7 +148,12 @@ export function authorizeSettingsAction(input: {
     };
   }
 
-  if (!rolePermissions[input.context.role].includes(input.permission)) {
+  const effectivePermissions = new Set([
+    ...rolePermissions[input.context.role],
+    ...(input.context.permissions ?? [])
+  ]);
+
+  if (!effectivePermissions.has(input.permission)) {
     return {
       allowed: false,
       auditActor,
@@ -150,4 +192,3 @@ export function requireSettingsAuthorization(input: {
 
   return decision;
 }
-

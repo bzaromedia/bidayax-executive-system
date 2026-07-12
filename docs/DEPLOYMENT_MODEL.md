@@ -88,3 +88,16 @@ Future production deployment should expose:
 ## Non-Implementation Note
 
 The `infrastructure` folders are reserved for future Docker, Caddy, and Hostinger VPS configuration. They contain no deployment implementation in Phase 1.
+
+## Phase 5 Identity Deployment Addendum
+
+Phase 5 requires production WorkOS/AuthKit configuration before settings login can operate in production. Missing mandatory identity configuration causes identity routes to fail closed.
+
+Required deployment actions:
+
+- Apply migration `0015_create_identity_provider_integration.sql` after the Phase 2-4H settings migrations.
+- Configure WorkOS AuthKit application, callback URL, logout return, and webhook URL.
+- Populate environment variables through the deployment secret manager only.
+- Create internal tenant memberships and card grants before user access is expected.
+- Run `pnpm test:settings-persistence:postgres` against a disposable database before merge/release.
+- Keep production calling disabled and do not configure telephony providers.

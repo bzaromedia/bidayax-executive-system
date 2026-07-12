@@ -185,8 +185,12 @@ type SettingsApiOutcome =
 
 type SettingsApiAction = "read" | "write";
 
-function authErrorCodeForStatus(status: 401 | 403) {
-  return status === 401 ? "unauthenticated" : "authorization_failed";
+function authErrorCodeForStatus(status: 401 | 403 | 503) {
+  return status === 401
+    ? "unauthenticated"
+    : status === 403
+      ? "authorization_failed"
+      : "identity_unavailable";
 }
 
 function logSettingsApiOutcome(input: {
@@ -236,7 +240,7 @@ function logSettingsApiOutcome(input: {
   return logEvent;
 }
 
-export function getSettingsPayload(
+export async function getSettingsPayload(
   request: Request,
   slug: string,
   kind: SettingsKind
@@ -284,7 +288,7 @@ export function getSettingsPayload(
   }
 
   const tenantId = getTenantId(slug);
-  const authContext = readTrustedSettingsAuthContext({
+  const authContext = await readTrustedSettingsAuthContext({
     request,
     resourceCardId: slug,
     resourceTenantId: tenantId
@@ -297,7 +301,12 @@ export function getSettingsPayload(
       errorCode,
       kind,
       message: authContext.reason,
-      outcome: authContext.status === 401 ? "authentication_failure" : "authorization_failure",
+      outcome:
+        authContext.status === 401
+          ? "authentication_failure"
+          : authContext.status === 403
+            ? "authorization_failure"
+            : "persistence_failure",
       requestId,
       slug,
       status: authContext.status,
@@ -438,7 +447,7 @@ export async function postSettingsPayload(
   }
 
   const tenantId = getTenantId(slug);
-  const authContext = readTrustedSettingsAuthContext({
+  const authContext = await readTrustedSettingsAuthContext({
     request,
     resourceCardId: slug,
     resourceTenantId: tenantId
@@ -451,7 +460,12 @@ export async function postSettingsPayload(
       errorCode,
       kind,
       message: authContext.reason,
-      outcome: authContext.status === 401 ? "authentication_failure" : "authorization_failure",
+      outcome:
+        authContext.status === 401
+          ? "authentication_failure"
+          : authContext.status === 403
+            ? "authorization_failure"
+            : "persistence_failure",
       requestId,
       slug,
       status: authContext.status,

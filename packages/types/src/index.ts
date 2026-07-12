@@ -15,6 +15,7 @@ export * from "./branding";
 export * from "./resolved-brand-tokens";
 export * from "./data-trust";
 export * from "./policy-enforcement";
+export * from "./identity";
 
 export type Phase =
   | "phase-1"

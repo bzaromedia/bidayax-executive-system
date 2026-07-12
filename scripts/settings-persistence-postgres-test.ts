@@ -98,6 +98,29 @@ try {
     throw new Error(`Expected 8 settings tables, found ${tableCheck.rowCount ?? 0}.`);
   }
 
+  const identityTableCheck = await client.query<{ table_name: string }>(
+    `select table_name
+       from information_schema.tables
+      where table_schema = 'public'
+        and table_name in (
+          'user_identities',
+          'identity_provider_accounts',
+          'identity_provider_tenant_links',
+          'tenant_memberships',
+          'card_access_grants',
+          'application_sessions',
+          'identity_oauth_transactions',
+          'identity_audit_events',
+          'identity_webhook_receipts'
+        )
+      order by table_name`
+  );
+
+  if (identityTableCheck.rowCount !== 9) {
+    throw new Error(
+      `Expected 9 identity tables, found ${identityTableCheck.rowCount ?? 0}.`
+    );
+  }
   await client.query(
     `insert into tenants (tenant_id, company_name, owner_email, status, created_at, updated_at)
      values ('tenant-test', 'Test Tenant', 'owner@example.test', 'active', now(), now())`
@@ -135,6 +158,141 @@ try {
        'card_profile', null, null, 'draft'
      )`
   );
+  await client.query(
+    `insert into user_identities (
+       user_id, provider, provider_subject, email, normalized_email,
+       email_verified, display_name, status, created_at, updated_at, last_authenticated_at
+     ) values (
+       'user-identity-test', 'workos', 'provider-user-test', 'identity@example.test',
+       'identity@example.test', true, 'Identity Tester', 'active', now(), now(), now()
+     )`
+  );
+  await client.query(
+    `insert into identity_provider_accounts (
+       provider_account_id, user_id, provider, provider_subject, provider_tenant_id,
+       provider_metadata, created_at, updated_at
+     ) values (
+       'provider-account-test', 'user-identity-test', 'workos', 'provider-user-test',
+       'provider-tenant-test', '{}'::jsonb, now(), now()
+     )`
+  );
+  await client.query(
+    `insert into identity_provider_tenant_links (
+       provider, provider_tenant_id, tenant_id
+     ) values ('workos', 'provider-tenant-test', 'tenant-test')`
+  );
+  await client.query(
+    `insert into tenant_memberships (
+       membership_id, tenant_id, user_id, role, status, created_at, updated_at
+     ) values (
+       'membership-identity-test', 'tenant-test', 'user-identity-test',
+       'tenant_admin', 'active', now(), now()
+     )`
+  );
+  await client.query(
+    `insert into card_access_grants (
+       grant_id, tenant_id, card_id, user_id, permission_set, created_at
+     ) values (
+       'grant-identity-test', 'tenant-test', 'card-test', 'user-identity-test',
+       '["settings:read"]'::jsonb, now()
+     )`
+  );
+  await client.query(
+    `insert into application_sessions (
+       session_id, session_token_hash, csrf_token_hash, user_id, tenant_id,
+       provider, provider_session_id, authentication_method, created_at,
+       last_seen_at, idle_expires_at, absolute_expires_at
+     ) values (
+       'session-identity-test', 'session-token-hash', 'csrf-token-hash',
+       'user-identity-test', 'tenant-test', 'workos', 'provider-session-test',
+       'Passkey', now(), now(), now() + interval '30 minutes', now() + interval '8 hours'
+     )`
+  );
+  await client.query(
+    `insert into identity_audit_events (
+       event_id, event_type, user_id, tenant_id, session_id, provider,
+       occurred_at, result, reason_code, metadata
+     ) values (
+       'identity-audit-test', 'identity.session.created', 'user-identity-test',
+       'tenant-test', 'session-identity-test', 'workos', now(), 'succeeded',
+       'APPLICATION_SESSION_CREATED', '{"safe":true}'::jsonb
+     )`
+  );
+  await client.query(
+    `insert into identity_webhook_receipts (
+       provider, provider_event_id, event_type, occurred_at, received_at, payload_hash
+     ) values (
+       'workos', 'provider-event-test', 'session.created', now(), now(), 'payload-hash'
+     )`
+  );
+
+  await expectError("identity_cross_tenant_card_grant", async () => {
+    await client.query(
+      `insert into card_access_grants (
+         grant_id, tenant_id, card_id, user_id, permission_set, created_at
+       ) values (
+         'grant-cross-tenant', 'tenant-other', 'card-test', 'user-identity-test',
+         '["settings:read"]'::jsonb, now()
+       )`
+    );
+  });
+
+  await expectError("identity_duplicate_provider_subject", async () => {
+    await client.query(
+      `insert into user_identities (
+         user_id, provider, provider_subject, email, normalized_email,
+         email_verified, display_name, status, created_at, updated_at, last_authenticated_at
+       ) values (
+         'user-identity-duplicate', 'workos', 'provider-user-test', 'duplicate@example.test',
+         'duplicate@example.test', true, 'Duplicate', 'active', now(), now(), now()
+       )`
+    );
+  });
+
+  await expectError("identity_duplicate_webhook", async () => {
+    await client.query(
+      `insert into identity_webhook_receipts (
+         provider, provider_event_id, event_type, occurred_at, received_at, payload_hash
+       ) values (
+         'workos', 'provider-event-test', 'session.created', now(), now(), 'other-hash'
+       )`
+    );
+  });
+
+  await expectError("identity_audit_append_only", async () => {
+    await client.query(
+      `update identity_audit_events
+          set metadata = '{"mutated":true}'::jsonb
+        where event_id = 'identity-audit-test'`
+    );
+  });
+
+  await client.query(
+    `update tenant_memberships
+        set status = 'revoked', revoked_at = now(), updated_at = now()
+      where membership_id = 'membership-identity-test'`
+  );
+  const revokedSession = await client.query<{ revoked_at: string | null }>(
+    `select revoked_at from application_sessions
+      where session_id = 'session-identity-test'`
+  );
+  if (!revokedSession.rows[0]?.revoked_at) {
+    throw new Error("Membership revocation did not revoke the active session.");
+  }
+
+  await expectError("identity_revoked_membership_session", async () => {
+    await client.query(
+      `insert into application_sessions (
+         session_id, session_token_hash, csrf_token_hash, user_id, tenant_id,
+         provider, authentication_method, created_at, last_seen_at,
+         idle_expires_at, absolute_expires_at
+       ) values (
+         'session-revoked-membership', 'session-revoked-hash', 'csrf-revoked-hash',
+         'user-identity-test', 'tenant-test', 'workos', 'Password',
+         now(), now(), now() + interval '30 minutes', now() + interval '8 hours'
+       )`
+    );
+  });
   await client.query(
     `insert into card_settings_versions (
        version_id, card_id, tenant_id, settings_snapshot, created_by, created_at,
@@ -282,6 +440,13 @@ try {
   finish("passed", [
     `complete migration chain applied inside a transaction (${migrationFiles.length} files)`,
     "settings tables exist",
+    "identity tables exist",
+    "identity provider subject uniqueness enforced",
+    "cross-tenant card grants rejected",
+    "membership revocation terminates application sessions",
+    "revoked memberships cannot create sessions",
+    "identity audit events are append-only",
+    "provider webhook replay is rejected",
     "tenant/card mismatch inserts rejected",
     "tenant/card mismatch updates rejected",
     "duplicate active published version rejected",

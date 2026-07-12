@@ -314,3 +314,22 @@ Before any future feature ships:
 - How is it audited?
 - How can it be corrected or deleted?
 - What happens if the automation is wrong?
+
+## Phase 5 Identity Security Addendum
+
+Phase 5 moves settings access from temporary signed settings tokens to production identity-provider authentication plus internal BidayaX authorization. Browser-controlled tenant, role, card, and permission claims are not authoritative.
+
+Security controls added:
+
+- WorkOS AuthKit provider token verification.
+- Server-side OAuth transaction storage with hashed state and encrypted PKCE verifier.
+- Internal tenant membership and card grant resolution.
+- Opaque HttpOnly application sessions with hashed persistence.
+- Double-submit CSRF for unsafe identity actions.
+- Revocable and expiring sessions.
+- Append-only identity audit events.
+- Provider webhook replay protection.
+- Fail-closed production configuration.
+- Development identity simulation blocked in production.
+
+Telephony providers and production calling remain disabled.
