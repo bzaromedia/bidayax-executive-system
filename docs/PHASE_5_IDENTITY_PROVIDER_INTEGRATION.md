@@ -57,3 +57,20 @@ Phase 5 replaces temporary settings-session issuance with a production identity-
 - Sessions are revocable and expire by idle and absolute limits.
 - Identity audit events are sanitized and append-only.
 - Full migration chain and disposable PostgreSQL integration tests pass before merge.
+
+## Phase 5G Review Update
+
+Phase 5G completed a security-review hardening pass over the production identity-provider integration.
+
+Corrections added:
+
+- Explicit provider-token `exp` requirement.
+- Provider-token future `iat` rejection beyond clock skew.
+- Session refresh replay protection by revoking the old session before issuing a replacement.
+- `identity.session.revoked` audit evidence for refresh, logout, and provider session-revocation webhook paths.
+- Sanitized `identity.login.failed` and `identity.provider_webhook.rejected` audit events for negative callback and webhook paths.
+- Production environment validation for weak transaction keys, wildcard redirect origins, placeholder secrets, and insecure production cookies.
+
+The review verdict is pass with documented limitations because real WorkOS credentials are not configured in this repository. Live WorkOS authentication, callback, logout, and webhook acceptance tests remain required after provider provisioning.
+
+Production calling remains disabled. No telephony provider was added.

@@ -48,3 +48,19 @@ pnpm test:settings-persistence:postgres
 ```
 
 `pnpm test:settings-persistence:postgres` must use `NODE_ENV=test` and a disposable PostgreSQL database. It must not run against production or unknown database URLs.
+
+## Phase 5G Identity Security Review Coverage
+
+Additional Phase 5G checks added before PR #2 readiness:
+
+- Provider tokens without `exp` are rejected.
+- Provider tokens with `iat` beyond allowed clock skew are rejected.
+- Existing issuer, audience, signature, expiry, not-before, malformed-token, nonce, and webhook timestamp tests remain active.
+- Application session refresh consumes the old session before issuing the replacement.
+- Replayed session refresh is rejected with `session_rotation_replayed`.
+- Logout emits both `identity.logout` and `identity.session.revoked` audit evidence.
+- Provider session revocation webhook processing emits sanitized `identity.session.revoked` evidence.
+- Missing callback evidence, callback failures, missing webhook signatures, and webhook verification failures emit sanitized audit events where persistence is available.
+- Production identity configuration rejects weak transaction keys, wildcard redirect origins, placeholder production secrets, and insecure production cookies.
+
+Real WorkOS login, callback, logout, and webhook acceptance tests remain pending until real provider credentials and callback/webhook configuration are provisioned outside source control.

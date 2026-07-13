@@ -34,6 +34,8 @@ const environment: IdentityEnvironment = {
 async function token(input: {
   readonly audience?: string;
   readonly expiresAt?: number;
+  readonly includeExpiration?: boolean;
+  readonly issuedAt?: number;
   readonly issuer?: string;
   readonly notBefore?: number;
   readonly signingSecret?: Uint8Array;
@@ -43,8 +45,10 @@ async function token(input: {
     .setSubject("user_provider")
     .setIssuer(input.issuer ?? environment.workosIssuer)
     .setAudience(input.audience ?? environment.allowedAudience)
-    .setIssuedAt(now)
-    .setExpirationTime(input.expiresAt ?? now + 300);
+    .setIssuedAt(input.issuedAt ?? now);
+  if (input.includeExpiration !== false) {
+    jwt = jwt.setExpirationTime(input.expiresAt ?? now + 300);
+  }
   if (input.notBefore !== undefined) jwt = jwt.setNotBefore(input.notBefore);
   return jwt.sign(input.signingSecret ?? secret);
 }
@@ -110,6 +114,27 @@ describe("WorkOS provider security", () => {
   it("rejects malformed tokens", async () => {
     await expect(
       verifyProviderAccessToken("not.a.valid.jwt", secret, {
+        algorithms: ["HS256"],
+        audience: environment.allowedAudience,
+        clockSkewSeconds: 30,
+        issuer: environment.workosIssuer
+      })
+    ).rejects.toBeDefined();
+  });
+  it("rejects tokens without required expiration", async () => {
+    await expect(
+      verifyProviderAccessToken(await token({ includeExpiration: false }), secret, {
+        algorithms: ["HS256"],
+        audience: environment.allowedAudience,
+        clockSkewSeconds: 30,
+        issuer: environment.workosIssuer
+      })
+    ).rejects.toBeDefined();
+  });
+
+  it("rejects tokens issued too far in the future", async () => {
+    await expect(
+      verifyProviderAccessToken(await token({ issuedAt: now + 300 }), secret, {
         algorithms: ["HS256"],
         audience: environment.allowedAudience,
         clockSkewSeconds: 30,

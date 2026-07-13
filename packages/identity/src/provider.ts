@@ -135,8 +135,30 @@ export async function verifyProviderAccessToken(
     clockTolerance: input.clockSkewSeconds,
     issuer: input.issuer
   });
+  enforceVerifiedProviderClaims(verified.payload, input.clockSkewSeconds);
   return verified.payload;
 }
+
+function enforceVerifiedProviderClaims(
+  claims: JWTPayload,
+  clockSkewSeconds: number
+): void {
+  if (typeof claims.exp !== "number") {
+    throw new IdentityProviderError(
+      "provider_token_invalid",
+      "Identity provider token expiration is required."
+    );
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (typeof claims.iat === "number" && claims.iat > now + clockSkewSeconds) {
+    throw new IdentityProviderError(
+      "provider_token_invalid",
+      "Identity provider token was issued too far in the future."
+    );
+  }
+}
+
 export function createWorkosProviderAdapter(
   environment: IdentityEnvironment,
   options: {
@@ -155,6 +177,7 @@ export function createWorkosProviderAdapter(
         clockTolerance: environment.clockSkewSeconds,
         issuer: environment.workosIssuer
       });
+      enforceVerifiedProviderClaims(verified.payload, environment.clockSkewSeconds);
       return verified.payload;
     });
 

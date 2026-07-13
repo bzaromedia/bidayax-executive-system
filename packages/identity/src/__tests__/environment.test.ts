@@ -33,4 +33,67 @@ describe("identity environment", () => {
       })
     ).toBe(false);
   });
+  it("rejects weak transaction encryption keys", () => {
+    const result = readIdentityEnvironment({
+      APP_BASE_URL: "https://dashboard.example.test",
+      IDENTITY_TRANSACTION_ENCRYPTION_KEY: "short",
+      WORKOS_API_KEY: "workos_api_valid_value",
+      WORKOS_CLIENT_ID: "client_valid",
+      WORKOS_REDIRECT_URI: "https://dashboard.example.test/auth/callback",
+      WORKOS_WEBHOOK_SECRET: "webhook_valid_value"
+    });
+    expect(result.configured).toBe(false);
+    if (!result.configured) {
+      expect(result.errors.join(" ")).toContain("at least 32 characters");
+    }
+  });
+
+  it("rejects wildcard redirect origins", () => {
+    const result = readIdentityEnvironment({
+      APP_BASE_URL: "https://dashboard.example.test",
+      IDENTITY_ALLOWED_REDIRECT_ORIGINS: "https://*.example.test",
+      IDENTITY_TRANSACTION_ENCRYPTION_KEY: "identity-transaction-key-32-chars",
+      WORKOS_API_KEY: "workos_api_valid_value",
+      WORKOS_CLIENT_ID: "client_valid",
+      WORKOS_REDIRECT_URI: "https://dashboard.example.test/auth/callback",
+      WORKOS_WEBHOOK_SECRET: "webhook_valid_value"
+    });
+    expect(result.configured).toBe(false);
+    if (!result.configured) {
+      expect(result.errors.join(" ")).toContain("wildcards");
+    }
+  });
+
+  it("requires secure cookies in production", () => {
+    const result = readIdentityEnvironment({
+      APP_BASE_URL: "https://dashboard.example.test",
+      IDENTITY_TRANSACTION_ENCRYPTION_KEY: "identity-transaction-key-32-chars",
+      NODE_ENV: "production",
+      WORKOS_API_KEY: "workos_api_valid_value",
+      WORKOS_CLIENT_ID: "client_valid",
+      WORKOS_REDIRECT_URI: "https://dashboard.example.test/auth/callback",
+      WORKOS_WEBHOOK_SECRET: "webhook_valid_value"
+    });
+    expect(result.configured).toBe(false);
+    if (!result.configured) {
+      expect(result.errors.join(" ")).toContain("IDENTITY_SECURE_COOKIES=true");
+    }
+  });
+
+  it("rejects placeholder secrets in production", () => {
+    const result = readIdentityEnvironment({
+      APP_BASE_URL: "https://dashboard.example.test",
+      IDENTITY_SECURE_COOKIES: "true",
+      IDENTITY_TRANSACTION_ENCRYPTION_KEY: "placeholder",
+      NODE_ENV: "production",
+      WORKOS_API_KEY: "redacted",
+      WORKOS_CLIENT_ID: "client_valid",
+      WORKOS_REDIRECT_URI: "https://dashboard.example.test/auth/callback",
+      WORKOS_WEBHOOK_SECRET: "webhook_valid_value"
+    });
+    expect(result.configured).toBe(false);
+    if (!result.configured) {
+      expect(result.errors.join(" ")).toContain("placeholder value");
+    }
+  });
 });

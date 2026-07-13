@@ -22,6 +22,8 @@ import {
   completeIdentityLogin,
   IdentityServiceError,
   processIdentityWebhook,
+  revokeApplicationSession,
+  rotateApplicationSession,
   startIdentityLogin
 } from "../service";
 import { createStoredOAuthTransaction } from "../session";
@@ -269,5 +271,57 @@ describe("identity service vertical slice", () => {
         signature: "verified"
       })
     ).toEqual({ duplicate: true, eventType: "session.revoked" });
+  });
+  it("rotates sessions once and rejects refresh replay", async () => {
+    const test = fixture();
+    let revoked = false;
+    test.repository.revokeSession = async () => {
+      if (revoked) return false;
+      revoked = true;
+      return true;
+    };
+
+    const session = {
+      authenticationMethod: "Passkey",
+      providerSessionId: "session-provider",
+      sessionId: "session-old",
+      tenantId: "tenant-test",
+      userId: "usr_provider-user"
+    };
+    const issued = await rotateApplicationSession({
+      environment,
+      now: "2026-01-01T00:02:00.000Z",
+      repository: test.repository,
+      session
+    });
+    expect(issued.session.rotatedFromSessionId).toBe("session-old");
+    expect(test.audit.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining([
+        "identity.session.revoked",
+        "identity.session.refreshed"
+      ])
+    );
+    await expect(
+      rotateApplicationSession({
+        environment,
+        now: "2026-01-01T00:03:00.000Z",
+        repository: test.repository,
+        session
+      })
+    ).rejects.toMatchObject({ code: "session_rotation_replayed" });
+  });
+
+  it("records logout and session revocation audit events", async () => {
+    const test = fixture();
+    await revokeApplicationSession({
+      now: "2026-01-01T00:02:00.000Z",
+      repository: test.repository,
+      sessionId: "session-old",
+      tenantId: "tenant-test",
+      userId: "usr_provider-user"
+    });
+    expect(test.audit.map((event) => event.eventType)).toEqual(
+      expect.arrayContaining(["identity.logout", "identity.session.revoked"])
+    );
   });
 });

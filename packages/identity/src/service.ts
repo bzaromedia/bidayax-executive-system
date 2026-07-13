@@ -29,6 +29,7 @@ export class IdentityServiceError extends Error {
     | "identity_disabled"
     | "membership_missing"
     | "membership_ambiguous"
+    | "session_rotation_replayed"
     | "webhook_replayed";
 
   constructor(code: IdentityServiceError["code"], message: string) {
@@ -260,6 +261,14 @@ export async function rotateApplicationSession(input: {
   };
 }): Promise<IssuedApplicationSession> {
   const now = input.now ?? new Date().toISOString();
+  const revoked = await input.repository.revokeSession(input.session.sessionId, now);
+  if (!revoked) {
+    throw new IdentityServiceError(
+      "session_rotation_replayed",
+      "Application session refresh was already consumed."
+    );
+  }
+
   const issued = await issueApplicationSession({
     authenticationMethod: input.session.authenticationMethod,
     environment: input.environment,
@@ -272,8 +281,16 @@ export async function rotateApplicationSession(input: {
     tenantId: input.session.tenantId,
     userId: input.session.userId
   });
-  await input.repository.revokeSession(input.session.sessionId, now);
-  await input.repository.saveAuditEvent(
+  for (const event of [
+    createIdentityAuditEvent({
+      eventType: "identity.session.revoked",
+      occurredAt: now,
+      reasonCode: "SESSION_ROTATED_OLD_SESSION_REVOKED",
+      result: "succeeded",
+      sessionId: input.session.sessionId,
+      tenantId: input.session.tenantId,
+      userId: input.session.userId
+    }),
     createIdentityAuditEvent({
       eventType: "identity.session.refreshed",
       occurredAt: now,
@@ -283,10 +300,11 @@ export async function rotateApplicationSession(input: {
       tenantId: issued.session.tenantId,
       userId: issued.session.userId
     })
-  );
+  ]) {
+    await input.repository.saveAuditEvent(event);
+  }
   return issued;
 }
-
 export async function revokeApplicationSession(input: {
   readonly now?: string;
   readonly repository: IdentityRepository;
@@ -295,8 +313,8 @@ export async function revokeApplicationSession(input: {
   readonly userId: string;
 }): Promise<void> {
   const now = input.now ?? new Date().toISOString();
-  await input.repository.revokeSession(input.sessionId, now);
-  await input.repository.saveAuditEvent(
+  const revoked = await input.repository.revokeSession(input.sessionId, now);
+  for (const event of [
     createIdentityAuditEvent({
       eventType: "identity.logout",
       occurredAt: now,
@@ -305,10 +323,20 @@ export async function revokeApplicationSession(input: {
       sessionId: input.sessionId,
       tenantId: input.tenantId,
       userId: input.userId
+    }),
+    createIdentityAuditEvent({
+      eventType: "identity.session.revoked",
+      occurredAt: now,
+      reasonCode: revoked ? "USER_LOGOUT_SESSION_REVOKED" : "USER_LOGOUT_SESSION_ALREADY_REVOKED",
+      result: "succeeded",
+      sessionId: input.sessionId,
+      tenantId: input.tenantId,
+      userId: input.userId
     })
-  );
+  ]) {
+    await input.repository.saveAuditEvent(event);
+  }
 }
-
 function providerSubjectFromWebhook(data: unknown): string | null {
   if (!data || typeof data !== "object") return null;
   const record = data as Record<string, unknown>;
@@ -350,10 +378,18 @@ export async function processIdentityWebhook(input: {
   if (event.eventType === "session.revoked") {
     const providerSessionId = providerSessionFromWebhook(event.data);
     if (providerSessionId) {
-      await input.repository.revokeSessionsByProviderSession(providerSessionId, now);
+      const revokedCount = await input.repository.revokeSessionsByProviderSession(providerSessionId, now);
+      await input.repository.saveAuditEvent(
+        createIdentityAuditEvent({
+          eventType: "identity.session.revoked",
+          metadata: { providerEventId: event.eventId, revokedSessionCount: revokedCount },
+          occurredAt: now,
+          reasonCode: "PROVIDER_SESSION_REVOKED",
+          result: "succeeded"
+        })
+      );
     }
   }
-
   if (event.eventType === "user.deleted") {
     const subject = providerSubjectFromWebhook(event.data);
     if (subject) {

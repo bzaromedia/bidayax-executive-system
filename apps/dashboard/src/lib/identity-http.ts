@@ -3,6 +3,7 @@ import {
   applicationSessionCookieName,
   clearIdentityCookie,
   createWorkosProviderAdapter,
+  createIdentityAuditEvent,
   identityCsrfCookieName,
   identityTransactionCookieName,
   isAllowedReturnTo,
@@ -23,6 +24,14 @@ import {
 
 function requestIp(request: Request): string | undefined {
   return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || undefined;
+}
+
+async function saveIdentityAuditEventSafely(event: ReturnType<typeof createIdentityAuditEvent>) {
+  try {
+    await withIdentityTransaction((repository) => repository.saveAuditEvent(event));
+  } catch {
+    // Identity audit failure must not leak details into public auth responses.
+  }
 }
 
 export function identityConfigurationError() {
@@ -83,6 +92,15 @@ export async function callbackResponse(request: Request) {
     identityTransactionCookieName
   );
   if (!code || !state || !transactionToken) {
+    await saveIdentityAuditEventSafely(
+      createIdentityAuditEvent({
+        eventType: "identity.login.failed",
+        metadata: { failureStage: "callback_required_values" },
+        occurredAt: new Date().toISOString(),
+        reasonCode: "CALLBACK_MISSING_REQUIRED_VALUES",
+        result: "failed"
+      })
+    );
     return NextResponse.redirect(
       new URL("/settings/card-customization?auth=failed", environment.applicationBaseUrl)
     );
@@ -143,12 +161,20 @@ export async function callbackResponse(request: Request) {
     response.headers.set("cache-control", "no-store");
     return response;
   } catch {
+    await saveIdentityAuditEventSafely(
+      createIdentityAuditEvent({
+        eventType: "identity.login.failed",
+        metadata: { failureStage: "callback_completion" },
+        occurredAt: new Date().toISOString(),
+        reasonCode: "LOGIN_CALLBACK_FAILED",
+        result: "failed"
+      })
+    );
     return NextResponse.redirect(
       new URL("/settings/card-customization?auth=failed", environment.applicationBaseUrl)
     );
   }
 }
-
 export async function sessionResponse(request: Request) {
   const resolution = await resolveRequestApplicationSession(request);
   if (!resolution.ok) {
@@ -292,6 +318,15 @@ export async function webhookResponse(request: Request) {
   if (!environment) return identityConfigurationError();
   const signature = request.headers.get("workos-signature");
   if (!signature) {
+    await saveIdentityAuditEventSafely(
+      createIdentityAuditEvent({
+        eventType: "identity.provider_webhook.rejected",
+        metadata: { failureStage: "missing_signature" },
+        occurredAt: new Date().toISOString(),
+        reasonCode: "WEBHOOK_SIGNATURE_MISSING",
+        result: "failed"
+      })
+    );
     return NextResponse.json({ error: { code: "invalid_signature" } }, { status: 401 });
   }
   const payload = await request.text();
@@ -306,6 +341,15 @@ export async function webhookResponse(request: Request) {
     );
     return NextResponse.json({ accepted: true, duplicate: result.duplicate });
   } catch {
+    await saveIdentityAuditEventSafely(
+      createIdentityAuditEvent({
+        eventType: "identity.provider_webhook.rejected",
+        metadata: { failureStage: "verification_or_processing" },
+        occurredAt: new Date().toISOString(),
+        reasonCode: "WEBHOOK_REJECTED",
+        result: "failed"
+      })
+    );
     return NextResponse.json({ error: { code: "invalid_webhook" } }, { status: 401 });
   }
 }

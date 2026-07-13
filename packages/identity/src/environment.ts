@@ -36,6 +36,40 @@ function safeOrigins(value: string | undefined, applicationBaseUrl: string): rea
   return configured.length > 0 ? configured : [new URL(applicationBaseUrl).origin];
 }
 
+function looksLikePlaceholder(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.length === 0 ||
+    normalized.includes("placeholder") ||
+    normalized.includes("changeme") ||
+    normalized.includes("change-me") ||
+    normalized.includes("replace-me") ||
+    normalized === "redacted" ||
+    normalized === "test" ||
+    normalized.includes("<") ||
+    normalized.includes(">")
+  );
+}
+
+function validateAllowedOrigins(origins: readonly string[]): readonly string[] {
+  const errors: string[] = [];
+  for (const origin of origins) {
+    if (origin.includes("*")) {
+      errors.push("IDENTITY_ALLOWED_REDIRECT_ORIGINS must not contain wildcards.");
+      continue;
+    }
+    try {
+      const parsed = new URL(origin);
+      const normalized = origin.endsWith("/") ? origin.slice(0, -1) : origin;
+      if (parsed.origin !== normalized) {
+        errors.push("IDENTITY_ALLOWED_REDIRECT_ORIGINS entries must be exact origins.");
+      }
+    } catch {
+      errors.push("IDENTITY_ALLOWED_REDIRECT_ORIGINS entries must be valid absolute origins.");
+    }
+  }
+  return errors;
+}
 export function readIdentityEnvironment(
   env: EnvironmentMap = process.env
 ): IdentityEnvironmentResult {
@@ -65,6 +99,34 @@ export function readIdentityEnvironment(
     errors.push("Identity URLs must be valid absolute URLs.");
   }
 
+  let allowedRedirectOrigins: readonly string[] = [];
+  try {
+    allowedRedirectOrigins = safeOrigins(env.IDENTITY_ALLOWED_REDIRECT_ORIGINS, applicationBaseUrl);
+    errors.push(...validateAllowedOrigins(allowedRedirectOrigins));
+  } catch {
+    errors.push("IDENTITY_ALLOWED_REDIRECT_ORIGINS could not be derived safely.");
+  }
+
+  if (transactionEncryptionKey && transactionEncryptionKey.length < 32) {
+    errors.push("IDENTITY_TRANSACTION_ENCRYPTION_KEY must be at least 32 characters.");
+  }
+
+  if (env.NODE_ENV === "production") {
+    for (const [name, value] of [
+      ["WORKOS_CLIENT_ID", workosClientId],
+      ["WORKOS_API_KEY", workosApiKey],
+      ["WORKOS_WEBHOOK_SECRET", workosWebhookSecret],
+      ["IDENTITY_TRANSACTION_ENCRYPTION_KEY", transactionEncryptionKey]
+    ] as const) {
+      if (value && looksLikePlaceholder(value)) {
+        errors.push(`${name} must not use a placeholder value in production.`);
+      }
+    }
+    if (env.IDENTITY_SECURE_COOKIES !== "true") {
+      errors.push("IDENTITY_SECURE_COOKIES=true is required in production.");
+    }
+  }
+
   if (errors.length > 0) {
     return { configured: false, errors };
   }
@@ -76,7 +138,7 @@ export function readIdentityEnvironment(
     value: {
       absoluteTimeoutSeconds: positiveInteger(env.IDENTITY_SESSION_ABSOLUTE_SECONDS, 28_800),
       allowedAudience: env.IDENTITY_ALLOWED_AUDIENCE ?? workosClientId,
-      allowedRedirectOrigins: safeOrigins(env.IDENTITY_ALLOWED_REDIRECT_ORIGINS, applicationBaseUrl),
+      allowedRedirectOrigins,
       applicationBaseUrl,
       callbackUrl,
       clockSkewSeconds: positiveInteger(env.IDENTITY_CLOCK_SKEW_SECONDS, 60),
