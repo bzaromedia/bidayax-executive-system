@@ -93,6 +93,292 @@ export const outboundCallRequestStatuses = [
 export type OutboundCallRequestStatus =
   (typeof outboundCallRequestStatuses)[number];
 
+
+export const telephonyDomainCallStates = [
+  "requested",
+  "queued",
+  "dialing",
+  "ringing",
+  "answered",
+  "in_conversation",
+  "transferred",
+  "held",
+  "resumed",
+  "completed",
+  "failed",
+  "busy",
+  "no_answer",
+  "voicemail",
+  "cancelled"
+] as const;
+
+export type TelephonyDomainCallState =
+  (typeof telephonyDomainCallStates)[number];
+
+export const telephonyCallbackStates = [
+  "requested",
+  "scheduled",
+  "assigned",
+  "attempting",
+  "completed",
+  "failed",
+  "cancelled"
+] as const;
+
+export type TelephonyCallbackState = (typeof telephonyCallbackStates)[number];
+
+export const telephonyAppointmentStates = [
+  "requested",
+  "pending",
+  "confirmed",
+  "cancelled",
+  "completed"
+] as const;
+
+export type TelephonyAppointmentState =
+  (typeof telephonyAppointmentStates)[number];
+
+export const telephonyVoicemailStates = [
+  "received",
+  "stored",
+  "processed",
+  "archived"
+] as const;
+
+export type TelephonyVoicemailState = (typeof telephonyVoicemailStates)[number];
+
+export const telephonyPhoneNumberStatuses = [
+  "reserved",
+  "active",
+  "suspended",
+  "released"
+] as const;
+
+export type TelephonyPhoneNumberStatus =
+  (typeof telephonyPhoneNumberStatuses)[number];
+
+export const telephonyRoutingRuleTypes = [
+  "business_hours",
+  "after_hours",
+  "holiday",
+  "executive_unavailable",
+  "language",
+  "overflow",
+  "emergency",
+  "callback_required",
+  "priority",
+  "escalation"
+] as const;
+
+export type TelephonyRoutingRuleType =
+  (typeof telephonyRoutingRuleTypes)[number];
+
+export const telephonyUsageCategories = [
+  "provider_minutes",
+  "future_ai_runtime",
+  "future_transcription",
+  "future_tts",
+  "future_stt",
+  "recording_storage",
+  "callback_attempt",
+  "appointment_request"
+] as const;
+
+export type TelephonyUsageCategory = (typeof telephonyUsageCategories)[number];
+
+export type TelephonyParty = {
+  readonly displayName?: string;
+  readonly phoneNumber?: string;
+  readonly email?: string;
+  readonly company?: string;
+  readonly language?: string;
+};
+
+export type PhoneNumber = {
+  readonly phoneNumberId: string;
+  readonly tenantId: string;
+  readonly e164Number: string;
+  readonly extension?: string | null;
+  readonly status: TelephonyPhoneNumberStatus;
+  readonly capabilities: readonly ("inbound" | "outbound" | "sms" | "voice")[];
+  readonly country: string;
+  readonly timezone: string;
+  readonly providerReference?: Record<string, unknown> | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type CallSession = {
+  readonly sessionId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly phoneNumberId: string;
+  readonly caller: TelephonyParty;
+  readonly callee: TelephonyParty;
+  readonly direction: TelephonyCallDirection;
+  readonly state: TelephonyDomainCallState;
+  readonly startTime?: string | null;
+  readonly answerTime?: string | null;
+  readonly endTime?: string | null;
+  readonly durationSeconds?: number | null;
+  readonly outcome?: string | null;
+  readonly recordingReference?: string | null;
+  readonly transcriptReference?: string | null;
+  readonly metadata: Record<string, unknown>;
+};
+
+export type TelephonyCallbackRequest = {
+  readonly callbackRequestId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly sessionId?: string | null;
+  readonly requester: TelephonyParty;
+  readonly requestedTime?: string | null;
+  readonly priorityScore: number;
+  readonly state: TelephonyCallbackState;
+  readonly reason: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type TelephonyAppointmentRequest = {
+  readonly appointmentRequestId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly sessionId?: string | null;
+  readonly requester: TelephonyParty;
+  readonly requestedTime?: string | null;
+  readonly timezone: string;
+  readonly state: TelephonyAppointmentState;
+  readonly purpose: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type CallTranscript = {
+  readonly transcriptId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly sessionId: string;
+  readonly status: TranscriptStatus;
+  readonly language?: string | null;
+  readonly storageReference?: string | null;
+  readonly retentionUntil?: string | null;
+  readonly createdAt: string;
+};
+
+export type VoiceProfile = {
+  readonly voiceProfileId: string;
+  readonly tenantId: string;
+  readonly language: string;
+  readonly accent?: string | null;
+  readonly tone: "executive" | "warm" | "calm" | "professional" | "urgent";
+  readonly speed: "slow" | "standard" | "fast";
+  readonly gender: "neutral" | "feminine" | "masculine" | "unspecified";
+  readonly providerMapping?: Record<string, unknown> | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type CallRecording = {
+  readonly recordingId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly sessionId: string;
+  readonly status: "disabled" | "pending" | "stored" | "archived" | "deleted";
+  readonly storageReference?: string | null;
+  readonly consentCaptured: boolean;
+  readonly retentionUntil?: string | null;
+  readonly createdAt: string;
+};
+
+export type Voicemail = {
+  readonly voicemailId: string;
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly sessionId?: string | null;
+  readonly state: TelephonyVoicemailState;
+  readonly caller: TelephonyParty;
+  readonly recordingReference?: string | null;
+  readonly transcriptReference?: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type CallQueue = {
+  readonly queueId: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly name: string;
+  readonly status: "active" | "paused" | "archived";
+  readonly maxDepth: number;
+  readonly priority: number;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type TelephonyCallRoutingRule = {
+  readonly ruleId: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly ruleType: TelephonyRoutingRuleType;
+  readonly priority: number;
+  readonly condition: Record<string, unknown>;
+  readonly action: "route_to_queue" | "queue_callback" | "take_message" | "escalate" | "block";
+  readonly destination?: string | null;
+  readonly enabled: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type EscalationPolicy = {
+  readonly policyId: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly name: string;
+  readonly hierarchy: readonly string[];
+  readonly emergencyBehavior: "block" | "escalate_human" | "take_message";
+  readonly requireHumanApproval: boolean;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+};
+
+export type TelephonyUsageLedgerEntry = {
+  readonly ledgerEntryId: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly sessionId?: string | null;
+  readonly category: TelephonyUsageCategory;
+  readonly quantity: number;
+  readonly unit: "second" | "minute" | "request" | "byte" | "usd";
+  readonly estimatedCostCents: number;
+  readonly occurredAt: string;
+  readonly metadata: Record<string, unknown>;
+};
+
+export type TelephonyAuditEvent = {
+  readonly eventId: string;
+  readonly eventType: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly sessionId?: string | null;
+  readonly actor: {
+    readonly actorId: string;
+    readonly actorType: "system" | "user" | "receptionist" | "provider";
+    readonly displayName: string;
+  };
+  readonly occurredAt: string;
+  readonly severity: "info" | "warning" | "critical";
+  readonly metadata: Record<string, unknown>;
+};
+
+export type TelephonyControlPlaneResult = {
+  readonly accepted: boolean;
+  readonly status: "queued" | "blocked" | "requires_human_review";
+  readonly reasonCodes: readonly string[];
+  readonly auditEvents: readonly TelephonyAuditEvent[];
+  readonly usageEntries: readonly TelephonyUsageLedgerEntry[];
+};
 export type TelephonyRuntimeConfig = {
   readonly provider: TelephonyProviderName;
   readonly voiceAgentEnabled: boolean;

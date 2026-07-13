@@ -111,3 +111,17 @@ Reviewer checklist:
 - Verify identity docs match implemented behavior.
 - Verify settings authorization still derives tenant/card scope server-side.
 - Verify production calling remains disabled.
+## Phase 6 Telephony Foundation Hygiene
+
+Phase 6 branch: `feature/telephony-domain-foundation`.
+
+Git rules for this phase:
+
+- Keep all files inside `D:\bidayax-executive-system`.
+- Commit only provider-independent telephony foundation changes.
+- Do not add telephony provider SDKs or credentials.
+- Do not enable production calling.
+- Create a draft PR targeting `main`.
+- Do not merge without review and explicit approval.
+
+Validation evidence must include local checks and PostgreSQL integration status when migrations are added.

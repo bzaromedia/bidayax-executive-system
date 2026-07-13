@@ -30,3 +30,11 @@ export {
   type TelephonyProvider
 } from "./telephony-provider";
 export { prepareVoiceSession } from "./voice-session";
+export * from "./domain-repository";
+export * from "./domain-state-machines";
+export * from "./provider-interface";
+export * from "./queue-management";
+export * from "./routing-policy";
+export * from "./telephony-control-plane";
+export * from "./usage-ledger";
+export * from "./voice-profile-resolution";
