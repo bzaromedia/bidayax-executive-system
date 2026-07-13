@@ -1,41 +1,53 @@
-# Settings Authorization Model
+# Authorization Model
 
-Settings authorization is tenant-aware and least-privilege. The reusable decision engine lives in `packages/settings/src/settings-authorization.ts`; trusted claim validation lives in `packages/settings/src/settings-auth-claims.ts`.
+Settings authorization is tenant-aware, least-privilege, and deny-by-default. Phase 5 separates authentication from business authorization:
+
+- WorkOS AuthKit authenticates the user.
+- BidayaX internal records authorize tenant, role, card, and permission scope.
+
+The reusable settings decision engine remains in `packages/settings/src/settings-authorization.ts`. Phase 5 identity authorization and session resolution live in `packages/identity/src/authorization.ts`, `packages/identity/src/session.ts`, and dashboard identity runtime code.
 
 ## Roles
 
-- `administrator`: full tenant-scoped settings access, including publish and asset writes.
-- `executive`: read, update, preview, and history access for assigned cards only.
-- `viewer`: read and history access only.
-- `system`: internal read, preview, publish, and history access for audited workflows.
+Phase 5 supports these internal membership roles:
+
+- `tenant_owner`: full tenant settings, members, sessions, audit, asset, receptionist, preview, and publish access.
+- `tenant_admin`: full tenant settings operations except ownership transfer semantics.
+- `executive`: assigned-card access according to explicit card grants and role permissions.
+- `settings_editor`: draft/edit/preview access; publish requires explicit permission.
+- `receptionist_manager`: receptionist configuration and preview access where granted.
+- `viewer`: read-only settings and audit visibility where granted.
+
+Legacy Phase 4 roles remain mapped for compatibility where the settings package consumes existing test fixtures, but production dashboard settings routes resolve Phase 5 roles from internal identity records.
+
+## Permission Evaluation
+
+Authorization is computed from:
+
+1. Verified WorkOS provider identity.
+2. Internal `user_identities` record.
+3. Active `tenant_memberships` record.
+4. Active `card_access_grants` records.
+5. Deny-by-default role/permission policy.
+
+Privileged tenant roles can operate on tenant cards. Non-privileged users must have explicit card grants with the required permission.
 
 ## Tenant Isolation
 
-Every decision checks that the actor tenant matches the resource tenant. Executive users must also be assigned to the requested `cardId`. Knowing another tenant's card ID, version ID, asset ID, or slug must not grant access.
+Every authorization context is scoped to one internal `tenantId`. Card access grants are constrained by `(card_id, tenant_id)` so a card cannot be paired with a different tenant. Settings API routes do not accept tenant, role, permissions, or card IDs from browser-controlled headers as authoritative identity evidence.
 
-## Trusted Session Context
+## Session Context
 
-Settings routes no longer trust tenant, role, actor, or card assignment from plain request headers. Production settings identity is derived from trusted server-side session context using a signed settings token.
+Production settings identity is now derived from the `bidayax_identity_session` HttpOnly cookie. The cookie stores an opaque random session token only. The database stores a hash of that token and resolves internal identity, membership, role, and grants server-side.
 
-Supported token carriers:
+The previous Phase 4 signed settings-token issuance path is no longer the production identity mechanism.
 
-- `bidayax_settings_session` cookie
-- `Authorization: Bearer <signed-settings-token>`
+## Failure Modes
 
-Production requires `SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET`. Without it, settings routes fail closed. Local development may use a non-production fallback administrator context scoped to the requested source-of-truth card tenant only.
-
-## Header Override Protection
-
-The following headers are ignored for settings identity:
-
-- `x-tenant-id`
-- `x-settings-role`
-- `x-actor-id`
-- `x-actor-name`
-- `x-card-ids`
-
-Tests verify signed claims win over those headers.
+- Missing/invalid/expired/revoked session: HTTP 401 `unauthenticated`.
+- Active session without required tenant/card permission: HTTP 403 `authorization_failed`.
+- Missing identity provider configuration in production routes: HTTP 503 `identity_unavailable`.
 
 ## Audit Actor
 
-Every authorization decision produces an audit actor shape compatible with settings audit events.
+Every resolved settings context includes an audit actor derived from internal identity records. Audit metadata must be sanitized and must never include raw cookies, provider tokens, secrets, or authorization headers.

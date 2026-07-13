@@ -1,13 +1,54 @@
+import { headers } from "next/headers";
 import { createCustomerCardSettingsFromExecutiveProfile } from "@bidayax/card-customization";
 import { executiveProfiles } from "@bidayax/config/executives";
 import { CardCustomizationSettings } from "@/components/CardCustomizationSettings";
 import { DashboardShell } from "@/components/DashboardShell";
+import { IdentityAccessPanel } from "@/components/IdentityAccessPanel";
+import { resolveDashboardIdentity } from "@/lib/identity-runtime";
 
-export default function CardCustomizationSettingsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CardCustomizationSettingsPage() {
   const generatedAt = new Date().toISOString();
   const settings = executiveProfiles.map((profile) =>
     createCustomerCardSettingsFromExecutiveProfile(profile)
   );
+  const first = settings[0];
+
+  if (!first) {
+    return null;
+  }
+
+  const requestHeaders = await headers();
+  const request = new Request(
+    new URL(
+      "/settings/card-customization",
+      process.env.DASHBOARD_BASE_URL ?? "http://localhost:3001"
+    ),
+    { headers: requestHeaders }
+  );
+  const identity = await resolveDashboardIdentity({
+    request,
+    resourceCardId: first.profile.executiveSlug,
+    resourceTenantId: first.brandTheme.ownerId
+  });
+
+  if (!identity.ok) {
+    return (
+      <DashboardShell
+        description="Authenticate with the configured identity provider before accessing tenant settings."
+        generatedAt={generatedAt}
+        status="not_configured"
+        title="Card Customization Settings"
+      >
+        <IdentityAccessPanel
+          authenticated={false}
+          message={identity.reason}
+          returnTo="/settings/card-customization"
+        />
+      </DashboardShell>
+    );
+  }
 
   return (
     <DashboardShell
@@ -16,6 +57,12 @@ export default function CardCustomizationSettingsPage() {
       status="ready"
       title="Card Customization Settings"
     >
+      <IdentityAccessPanel
+        authenticated
+        message="Identity, tenant membership, role, and card scope were resolved server-side."
+        returnTo="/settings/card-customization"
+        role={identity.context.role}
+      />
       <CardCustomizationSettings
         apiIntegration={{
           cacheStrategy:

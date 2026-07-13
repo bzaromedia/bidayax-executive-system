@@ -97,3 +97,17 @@ The PR body must include:
 - Push the existing branch only; do not create a second PR.
 - Keep the PR in draft unless all mandatory local validation passes and PostgreSQL integration status is accurately documented.
 - Do not merge until reviewer approval and deployment readiness checks are complete.
+
+## Phase 5 GitHub Hygiene Addendum
+
+Phase 5 must be reviewed in a separate draft PR from `feature/production-identity-provider-integration` into `main`.
+
+Reviewer checklist:
+
+- Verify no telephony provider packages or credentials were added.
+- Verify no production WorkOS credentials are committed.
+- Verify migration `0015` applies in the full migration chain.
+- Verify PostgreSQL integration evidence is attached to the PR.
+- Verify identity docs match implemented behavior.
+- Verify settings authorization still derives tenant/card scope server-side.
+- Verify production calling remains disabled.

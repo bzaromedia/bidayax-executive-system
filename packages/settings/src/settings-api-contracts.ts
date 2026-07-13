@@ -22,6 +22,7 @@ export type SettingsApiErrorCode =
   | "unauthenticated"
   | "conflict"
   | "database_unconfigured"
+  | "identity_unavailable"
   | "invalid_payload"
   | "not_found"
   | "persistence_failed";

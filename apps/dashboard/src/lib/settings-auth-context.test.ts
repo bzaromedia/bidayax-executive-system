@@ -1,129 +1,104 @@
-import { afterEach, describe, expect, it } from "vitest";
-import {
-  createTrustedSettingsAuthToken,
-  readTrustedSettingsAuthContext,
-  settingsSessionCookieName
-} from "./settings-auth-context";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TrustedSettingsAuthorizationContext } from "@bidayax/types";
 
-const originalSecret = process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET;
+const { resolveDashboardIdentity } = vi.hoisted(() => ({
+  resolveDashboardIdentity: vi.fn()
+}));
+vi.mock("./identity-runtime", () => ({
+  getIdentityEnvironment: () => ({
+    allowedRedirectOrigins: ["https://dashboard.test"]
+  }),
+  resolveDashboardIdentity
+}));
+import { readTrustedSettingsAuthContext } from "./settings-auth-context";
+
+const context: TrustedSettingsAuthorizationContext = {
+  auditActor: {
+    actorId: "user-test",
+    actorType: "admin",
+    displayName: "Admin"
+  },
+  authenticationMethod: "Passkey",
+  expiresAt: "2026-01-01T01:00:00.000Z",
+  issuedAt: "2026-01-01T00:00:00.000Z",
+  permissions: ["settings:read", "settings:publish"],
+  permittedCardIds: [],
+  provider: "workos",
+  role: "tenant_admin",
+  sessionId: "session-test",
+  tenantId: "tenant-a",
+  userId: "user-test"
+};
+
 afterEach(() => {
-  process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = originalSecret;
+  resolveDashboardIdentity.mockReset();
 });
 
-function createValidToken() {
-  return createTrustedSettingsAuthToken({
-    claims: {
-      actorId: "admin-1",
-      displayName: "Admin",
-      role: "administrator",
-      tenantId: "tenant-a"
-    },
-    secret: "test-secret"
-  });
-}
-
-function readBearerToken(token: string) {
-  return readTrustedSettingsAuthContext({
-    request: new Request("https://dashboard.test/api/settings/card-customization/ad-garner", {
-      headers: {
-        authorization: `Bearer ${token}`
-      }
-    }),
-    resourceCardId: "ad-garner",
-    resourceTenantId: "tenant-a"
-  });
-}
-
 describe("settings auth context", () => {
-  it("derives tenant and role from signed session claims instead of override headers", () => {
-    process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = "test-secret";
-    const token = createTrustedSettingsAuthToken({
-      claims: {
-        actorId: "admin-1",
-        displayName: "Admin",
-        role: "administrator",
-        tenantId: "tenant-a"
-      },
-      secret: "test-secret"
+  it("derives tenant, role, cards, and permissions only from server identity context", async () => {
+    resolveDashboardIdentity.mockResolvedValue({
+      context,
+      ok: true,
+      repository: null
     });
-    const request = new Request("https://dashboard.test/api/settings/card-customization/ad-garner", {
-      headers: {
-        cookie: `${settingsSessionCookieName}=${token}`,
-        "x-card-ids": "card-b",
-        "x-settings-role": "viewer",
-        "x-tenant-id": "tenant-b"
+    const request = new Request(
+      "https://dashboard.test/api/settings/card-customization/ad-garner",
+      {
+        headers: {
+          "x-card-ids": "card-attacker",
+          "x-settings-role": "viewer",
+          "x-tenant-id": "tenant-attacker"
+        }
       }
-    });
-
-    const result = readTrustedSettingsAuthContext({
+    );
+    const result = await readTrustedSettingsAuthContext({
       request,
       resourceCardId: "ad-garner",
       resourceTenantId: "tenant-a"
     });
-
-    expect(result.ok).toBe(true);
-
-    if (result.ok) {
-      expect(result.context.tenantId).toBe("tenant-a");
-      expect(result.context.role).toBe("administrator");
-    }
-  });
-
-  it("rejects missing trusted tokens when a secret is configured", () => {
-    process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = "test-secret";
-
-    const result = readTrustedSettingsAuthContext({
-      request: new Request("https://dashboard.test/api/settings/card-customization/ad-garner"),
-      resourceCardId: "ad-garner",
-      resourceTenantId: "tenant-a"
-    });
-
-    expect(result).toMatchObject({ ok: false, status: 401 });
-  });
-
-  it("rejects signed claims for a different tenant", () => {
-    process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = "test-secret";
-    const token = createTrustedSettingsAuthToken({
-      claims: {
-        actorId: "admin-1",
-        displayName: "Admin",
-        role: "administrator",
-        tenantId: "tenant-b"
+    expect(result).toMatchObject({
+      context: {
+        actorId: "user-test",
+        role: "tenant_admin",
+        tenantId: "tenant-a"
       },
-      secret: "test-secret"
+      ok: true,
+      source: "identity_application_session"
     });
-
-    const result = readTrustedSettingsAuthContext({
-      request: new Request("https://dashboard.test/api/settings/card-customization/ad-garner", {
-        headers: {
-          authorization: `Bearer ${token}`
-        }
-      }),
-      resourceCardId: "ad-garner",
-      resourceTenantId: "tenant-a"
-    });
-
-    expect(result).toMatchObject({ ok: false, status: 403 });
-  });
-
-  it("accepts a valid two-part trusted token", () => {
-    process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = "test-secret";
-
-    expect(readBearerToken(createValidToken())).toMatchObject({ ok: true });
   });
 
   it.each([
-    ["missing segment", () => createValidToken().split(".")[0] ?? ""],
-    ["extra segment", () => `${createValidToken()}.extra`],
-    ["empty payload", () => `.${createValidToken().split(".")[1] ?? "signature"}`],
-    ["empty signature", () => `${createValidToken().split(".")[0] ?? "payload"}.`],
-    ["invalid signature", () => `${createValidToken().split(".")[0] ?? "payload"}.invalid-signature`]
-  ])("rejects malformed trusted tokens with %s", (_label, createMalformedToken) => {
-    process.env.SETTINGS_AUTH_TRUSTED_CONTEXT_SECRET = "test-secret";
+    [401, "Application session is required."],
+    [403, "Tenant membership is revoked."],
+    [503, "Identity configuration is unavailable."]
+  ])("preserves identity resolver status %s", async (status, reason) => {
+    resolveDashboardIdentity.mockResolvedValue({ ok: false, reason, status });
+    expect(
+      await readTrustedSettingsAuthContext({
+        request: new Request("https://dashboard.test/api/settings/card-customization/ad-garner"),
+        resourceCardId: "ad-garner",
+        resourceTenantId: "tenant-a"
+      })
+    ).toEqual({ ok: false, reason, status });
+  });
 
-    expect(readBearerToken(createMalformedToken())).toMatchObject({
-      ok: false,
-      status: 401
+  it("rejects unsafe settings requests without same-origin CSRF evidence", async () => {
+    resolveDashboardIdentity.mockResolvedValue({
+      context,
+      ok: true,
+      repository: {
+        verifySessionCsrf: vi.fn().mockResolvedValue(false)
+      }
     });
+    expect(
+      await readTrustedSettingsAuthContext({
+        request: new Request(
+          "https://dashboard.test/api/settings/card-customization/ad-garner",
+          { method: "POST" }
+        ),
+        resourceCardId: "ad-garner",
+        resourceTenantId: "tenant-a"
+      })
+    ).toMatchObject({ ok: false, status: 403 });
   });
 });
