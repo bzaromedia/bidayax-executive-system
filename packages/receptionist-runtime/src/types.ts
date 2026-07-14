@@ -53,6 +53,8 @@ export type VoiceRuntimeSession = {
   readonly updatedAt: string;
 };
 
+export type RuntimeConsentSensitiveCapability = "recording" | "transcription" | "sensitive_tool" | "live_voice";
+
 export type RuntimeConsentInput = {
   readonly automationDisclosureAccepted?: boolean;
   readonly consentDenied?: boolean;
@@ -114,6 +116,7 @@ export type VoiceRuntimeInput = {
   readonly consentPolicy?: RuntimeConsentPolicy;
   readonly redactionPolicy?: RuntimeRedactionPolicy;
   readonly retentionPolicy?: RuntimeRetentionPolicy;
+  readonly requestedCapabilities?: readonly RuntimeConsentSensitiveCapability[];
 };
 
 export type SpeechRecognitionInput = {
@@ -210,6 +213,7 @@ export type ConversationSafetyValidationInput = {
   readonly mode: VoiceRuntimeMode;
   readonly redactionPolicy?: RuntimeRedactionPolicy;
   readonly retentionPolicy?: RuntimeRetentionPolicy;
+  readonly requestedCapabilities?: readonly RuntimeConsentSensitiveCapability[];
   readonly transcript: string;
 };
 

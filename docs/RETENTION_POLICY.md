@@ -11,10 +11,14 @@ Retention policy keeps the voice runtime from storing more conversational data t
 - Recording retention: 0 days.
 - Raw audio retention: disabled.
 
-## Phase 9 Rules
+## Phase 9G Rules
 
-Raw audio retention is blocked. Recording retention is metadata-only unless a later phase adds consent, storage, deletion, and audit controls.
+Raw audio retention is blocked. Recording retention is metadata-only unless a later phase adds consent evidence, storage controls, deletion jobs, legal holds, and audit controls.
+
+## Explicit Limitations
+
+Phase 9G does not implement durable deletion, expiration workers, legal holds, erasure proof, persisted retention ledgers, or tenant-specific retention overrides. The current implementation resolves and audits policy decisions only.
 
 ## Future Work
 
-A later persistence phase must add durable retention schedules, deletion workers, export controls, tenant policy overrides, and evidence that retention jobs ran.
+A later persistence phase must add durable retention schedules, deletion workers, export controls, tenant policy overrides, legal hold handling, and evidence that retention jobs ran.

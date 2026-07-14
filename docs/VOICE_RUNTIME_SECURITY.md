@@ -30,3 +30,7 @@ Production calling remains disabled. Future live voice runtime activation must p
 ## Phase 9 Consent, Retention, And Redaction
 
 Phase 9 adds provider-neutral consent evaluation, retention policy resolution, transcript-preview redaction, and combined conversation safety validation. Missing required consent, raw-audio retention requests, prompt-injection attempts, and unsafe conversational conditions fail closed before tool execution. Production voice and production calling remain disabled.
+
+## Phase 9G Safety Enforcement Review
+
+Phase 9G fails closed for unknown consent in voice, transcription, recording, live-voice-like, and sensitive-tool contexts. Runtime validation now runs before recognition for consent-sensitive contexts and again after tool planning before any tool transition. Production voice and production calling remain disabled.

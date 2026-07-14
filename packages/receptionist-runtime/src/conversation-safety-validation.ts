@@ -9,7 +9,8 @@ export function validateConversationSafety(input: ConversationSafetyValidationIn
   const consent = evaluateRuntimeConsent({
     ...(input.consent ? { consent: input.consent } : {}),
     mode: input.mode,
-    ...(input.consentPolicy ? { policy: input.consentPolicy } : {})
+    ...(input.consentPolicy ? { policy: input.consentPolicy } : {}),
+    ...(input.requestedCapabilities ? { requestedCapabilities: input.requestedCapabilities } : {})
   });
   const retention = resolveRuntimeRetentionPolicy(input.retentionPolicy);
   const safety = assessRuntimeSafety(input.transcript, input.redactionPolicy);
@@ -30,7 +31,8 @@ export function validateConversationSafety(input: ConversationSafetyValidationIn
       safety: {
         ...safety,
         decision: "block",
-        reasonCodes: [...safety.reasonCodes, "CONSENT_POLICY_BLOCK"]
+        reasonCodes: [...safety.reasonCodes, "CONSENT_POLICY_BLOCK"],
+        sanitizedTranscriptPreview: redaction.redactedText
       }
     };
   }
@@ -45,7 +47,8 @@ export function validateConversationSafety(input: ConversationSafetyValidationIn
       safety: {
         ...safety,
         decision: "block",
-        reasonCodes: [...safety.reasonCodes, "RETENTION_POLICY_BLOCK"]
+        reasonCodes: [...safety.reasonCodes, "RETENTION_POLICY_BLOCK"],
+        sanitizedTranscriptPreview: redaction.redactedText
       }
     };
   }

@@ -173,6 +173,53 @@ describe("Phase 9 consent, retention, redaction, and safety validation", () => {
     expect(result.reasonCodes).toContain("AUTOMATION_DISCLOSURE_REQUIRED");
     expect(result.reasonCodes).toContain("RECORDING_CONSENT_REQUIRED");
   });
+  it("fails closed when voice or transcription context has no consent evidence", () => {
+    const voiceResult = validateConversationSafety({
+      mode: "voice_chat",
+      transcript: "Please schedule a meeting."
+    });
+    const transcriptResult = validateConversationSafety({
+      mode: "text_chat",
+      requestedCapabilities: ["transcription"],
+      transcript: "Please schedule a meeting."
+    });
+
+    expect(voiceResult.decision).toBe("block");
+    expect(voiceResult.reasonCodes).toContain("CONSENT_CONTEXT_REQUIRED");
+    expect(voiceResult.reasonCodes).toContain("LIVE_VOICE_CONSENT_CONTEXT_REQUIRED");
+    expect(transcriptResult.decision).toBe("block");
+    expect(transcriptResult.reasonCodes).toContain("TRANSCRIPTION_CONSENT_CONTEXT_REQUIRED");
+  });
+
+  it("fails closed before sensitive tool execution without consent evidence", () => {
+    const result = validateConversationSafety({
+      mode: "text_chat",
+      requestedCapabilities: ["sensitive_tool"],
+      transcript: "Please approve this contract."
+    });
+
+    expect(result.decision).toBe("block");
+    expect(result.reasonCodes).toContain("SENSITIVE_TOOL_CONSENT_CONTEXT_REQUIRED");
+  });
+
+  it("handles adversarial redaction and bounds transcript previews", () => {
+    const oversizedInput = `${"x".repeat(300)} person [at] example [dot] com bearer abc.def.ghi api key:\nsecret123 １２３-４５６-７８９０ https://example.com/path`;
+    const result = redactRuntimeText(oversizedInput, {
+      redactEmails: true,
+      redactLinks: true,
+      redactPhoneNumbers: true,
+      redactSecrets: true,
+      transcriptPreviewMaxLength: 120
+    });
+
+    expect(result.redactedText.length).toBeLessThanOrEqual(120);
+    expect(result.applied).toContain("EMAIL_REDACTION_APPLIED");
+    expect(result.applied).toContain("SECRET_REDACTION_APPLIED");
+    expect(result.applied).toContain("PHONE_REDACTION_APPLIED");
+    expect(result.applied).toContain("LINK_REDACTION_APPLIED");
+    expect(result.redactedText).not.toContain("secret123");
+    expect(result.redactedText).not.toContain("example.com/path");
+  });
 });
 
 describe("voice runtime orchestration", () => {
@@ -223,6 +270,11 @@ describe("voice runtime orchestration", () => {
   it("blocks prompt-injection turns", async () => {
     const result = await runVoiceRuntime({
       cardId: "card-1",
+      consent: {
+        automationDisclosureAccepted: true,
+        recordingConsentGranted: true,
+        transcriptRetentionAccepted: true
+      },
       mode: "voice_chat",
       sessionId: "session-2",
       tenantId: "tenant-1",
@@ -249,10 +301,44 @@ describe("voice runtime orchestration", () => {
     expect(result.session.providerStatus).toBe("blocked_by_policy");
     expect(result.conversationSafety.reasonCodes).toContain("RECORDING_CONSENT_REQUIRED");
   });
+  it("blocks voice turns before transcript capture when consent context is absent", async () => {
+    const result = await processVoiceRuntimeTurn({
+      cardId: "card-1",
+      mode: "voice_chat",
+      sessionId: "session-5",
+      tenantId: "tenant-1",
+      text: "My email is raw@example.com and I need a call.",
+      now: new Date("2026-07-14T00:00:00.000Z")
+    });
+
+    expect(result.session.state).toBe("blocked");
+    expect(result.transcript).toBe("");
+    expect(result.conversationSafety.reasonCodes).toContain("PRE_RECOGNITION_CONSENT_BLOCK");
+    expect(result.auditEvents.every((event) => JSON.stringify(event.metadata).includes("raw@example.com") === false)).toBe(true);
+  });
+
+  it("blocks sensitive text tool planning without consent evidence", async () => {
+    const result = await processVoiceRuntimeTurn({
+      cardId: "card-1",
+      mode: "text_chat",
+      sessionId: "session-6",
+      tenantId: "tenant-1",
+      text: "Please approve this legal contract and payment.",
+      now: new Date("2026-07-14T00:00:00.000Z")
+    });
+
+    expect(result.session.state).toBe("blocked");
+    expect(result.conversationSafety.reasonCodes).toContain("SENSITIVE_TOOL_CONSENT_CONTEXT_REQUIRED");
+  });
 
   it("escalates emergency turns without provider claims", async () => {
     const result = await runVoiceRuntime({
       cardId: "card-1",
+      consent: {
+        automationDisclosureAccepted: true,
+        recordingConsentGranted: true,
+        transcriptRetentionAccepted: true
+      },
       mode: "voice_chat",
       sessionId: "session-3",
       tenantId: "tenant-1",

@@ -6,7 +6,7 @@ The receptionist runtime must know whether it is allowed to process automation, 
 
 ## Current Implementation
 
-The Phase 9 runtime supports these consent inputs:
+The Phase 9G runtime supports these consent inputs:
 
 - `automationDisclosureAccepted`
 - `recordingConsentGranted`
@@ -14,7 +14,7 @@ The Phase 9 runtime supports these consent inputs:
 - `transcriptRetentionAccepted`
 - `consentDenied`
 
-If no consent context is supplied, the mock-only runtime treats consent as `not_required` to preserve current provider-neutral behavior. Once card or provider flows supply consent context, missing required consent fails closed.
+Absent consent context is allowed only for non-consent-sensitive text contexts. Unknown consent fails closed for voice chat, phone simulation, transcription, recording, live-voice-like paths, and sensitive tool execution.
 
 ## Blocking Conditions
 
@@ -22,6 +22,7 @@ If no consent context is supplied, the mock-only runtime treats consent as `not_
 - Missing automation disclosure acceptance when consent context is supplied.
 - Missing transcript retention acceptance when consent context is supplied.
 - Missing recording consent for phone simulation or recording-requested contexts.
+- Missing consent context for voice, transcription, recording, live voice, or sensitive tool capability.
 
 ## Not Implemented
 
