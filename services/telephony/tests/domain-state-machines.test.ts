@@ -4,6 +4,8 @@ import {
   canTransitionCallbackState,
   canTransitionDomainCallState,
   canTransitionVoicemailState,
+  evaluateDomainCallTransition,
+  telephonyDomainTransitionTables,
   transitionAppointmentState,
   transitionCallbackState,
   transitionDomainCallState,
@@ -17,7 +19,7 @@ describe("telephony domain state machines", () => {
     expect(transitionDomainCallState({ from: "in_conversation", to: "held" })).toBe("held");
   });
 
-  it("rejects impossible call lifecycle transitions", () => {
+  it("rejects invalid call lifecycle transitions", () => {
     expect(canTransitionDomainCallState({ from: "completed", to: "queued" })).toBe(false);
     expect(() =>
       transitionDomainCallState({ from: "completed", to: "queued" })
@@ -37,5 +39,60 @@ describe("telephony domain state machines", () => {
     expect(canTransitionCallbackState({ from: "completed", to: "scheduled" })).toBe(false);
     expect(canTransitionAppointmentState({ from: "cancelled", to: "pending" })).toBe(false);
     expect(canTransitionVoicemailState({ from: "archived", to: "stored" })).toBe(false);
+  });
+
+  it("documents every call state in the transition table", () => {
+    expect(Object.keys(telephonyDomainTransitionTables.call).sort()).toEqual([
+      "answered",
+      "busy",
+      "cancelled",
+      "completed",
+      "dialing",
+      "failed",
+      "held",
+      "in_conversation",
+      "no_answer",
+      "queued",
+      "requested",
+      "resumed",
+      "ringing",
+      "transferred",
+      "voicemail"
+    ]);
+  });
+
+  it("returns auditable versioned transition evidence", () => {
+    expect(
+      evaluateDomainCallTransition({
+        correlationId: "corr-1",
+        expectedVersion: 3,
+        from: "queued",
+        occurredAt: "2026-07-13T00:00:00.000Z",
+        reason: "provider sandbox accepted dial request",
+        to: "dialing"
+      })
+    ).toEqual({
+      causationId: null,
+      correlationId: "corr-1",
+      expectedVersion: 3,
+      from: "queued",
+      nextVersion: 4,
+      occurredAt: "2026-07-13T00:00:00.000Z",
+      reason: "provider sandbox accepted dial request",
+      to: "dialing"
+    });
+  });
+
+  it("rejects transition evidence without a reason", () => {
+    expect(() =>
+      evaluateDomainCallTransition({
+        correlationId: "corr-1",
+        expectedVersion: 1,
+        from: "queued",
+        occurredAt: "2026-07-13T00:00:00.000Z",
+        reason: " ",
+        to: "dialing"
+      })
+    ).toThrow("Telephony state transitions require a reason.");
   });
 });

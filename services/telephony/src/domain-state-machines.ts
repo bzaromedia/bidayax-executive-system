@@ -2,7 +2,8 @@ import type {
   TelephonyAppointmentState,
   TelephonyCallbackState,
   TelephonyDomainCallState,
-  TelephonyVoicemailState
+  TelephonyVoicemailState,
+  TelephonyStateTransitionEvidence
 } from "@bidayax/types";
 
 const callTransitions = {
@@ -148,3 +149,44 @@ export function transitionVoicemailState({
 }) {
   return transition(voicemailTransitions, "voicemail", from, to);
 }
+export function evaluateDomainCallTransition({
+  causationId = null,
+  correlationId,
+  expectedVersion,
+  from,
+  occurredAt,
+  reason,
+  to
+}: {
+  readonly causationId?: string | null;
+  readonly correlationId: string;
+  readonly expectedVersion: number;
+  readonly from: TelephonyDomainCallState;
+  readonly occurredAt: string;
+  readonly reason: string;
+  readonly to: TelephonyDomainCallState;
+}): TelephonyStateTransitionEvidence<TelephonyDomainCallState> {
+  if (!reason.trim()) {
+    throw new Error("Telephony state transitions require a reason.");
+  }
+
+  transitionDomainCallState({ from, to });
+
+  return {
+    causationId,
+    correlationId,
+    expectedVersion,
+    from,
+    nextVersion: expectedVersion + 1,
+    occurredAt,
+    reason,
+    to
+  };
+}
+
+export const telephonyDomainTransitionTables = {
+  appointment: appointmentTransitions,
+  callback: callbackTransitions,
+  call: callTransitions,
+  voicemail: voicemailTransitions
+} as const;

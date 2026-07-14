@@ -23,3 +23,7 @@ Voicemail lifecycle:
 received -> stored -> processed -> archived
 
 The implementation lives in `services/telephony/src/domain-state-machines.ts` and rejects impossible transitions.
+
+## Phase 6G Guarantees
+
+State transitions now produce auditable transition evidence containing reason, timestamp, expected version, next version, correlation ID, and optional causation ID. Stale expected-version command writes fail in the control-plane safety layer.

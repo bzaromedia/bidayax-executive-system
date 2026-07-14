@@ -2,12 +2,103 @@ import type {
   TelephonyAppointmentRequest,
   TelephonyCallbackRequest,
   CallSession,
+  TelephonyCommandContext,
   TelephonyControlPlaneResult,
   TelephonyParty
 } from "@bidayax/types";
 import type { TelephonyDomainRepository } from "./domain-repository";
 import { createUsageLedgerEntry } from "./usage-ledger";
 
+
+export type TelephonyCommandSafetyDecision = {
+  readonly accepted: boolean;
+  readonly reasonCodes: readonly string[];
+  readonly status: "accepted" | "denied" | "duplicate" | "stale_version";
+};
+
+export type TelephonyCommandIdempotencyStore = {
+  readonly has: (key: string) => boolean;
+  readonly remember: (key: string) => void;
+};
+
+export function createInMemoryTelephonyCommandIdempotencyStore(): TelephonyCommandIdempotencyStore {
+  const keys = new Set<string>();
+
+  return {
+    has: (key) => keys.has(key),
+    remember: (key) => {
+      keys.add(key);
+    }
+  };
+}
+
+export function evaluateTelephonyCommandSafety({
+  adapterRequired = true,
+  context,
+  currentVersion,
+  idempotencyStore,
+  permission
+}: {
+  readonly adapterRequired?: boolean;
+  readonly context: TelephonyCommandContext;
+  readonly currentVersion?: number;
+  readonly idempotencyStore?: TelephonyCommandIdempotencyStore;
+  readonly permission: string;
+}): TelephonyCommandSafetyDecision {
+  const reasonCodes: string[] = [];
+
+  if (!context.telephonyEnabled) {
+    reasonCodes.push("TELEPHONY_DISABLED");
+  }
+
+  if (!context.permissions.includes(permission)) {
+    reasonCodes.push("PERMISSION_DENIED");
+  }
+
+  if (adapterRequired && !context.adapterConfigured) {
+    reasonCodes.push("PROVIDER_ADAPTER_NOT_CONFIGURED");
+  }
+
+  if (context.productionCallingEnabled) {
+    reasonCodes.push("PRODUCTION_CALLING_NOT_ALLOWED_IN_PHASE_6");
+  }
+
+  if (idempotencyStore?.has(context.idempotencyKey)) {
+    return {
+      accepted: false,
+      reasonCodes: ["DUPLICATE_COMMAND"],
+      status: "duplicate"
+    };
+  }
+
+  if (
+    currentVersion !== undefined &&
+    context.expectedVersion !== undefined &&
+    context.expectedVersion !== currentVersion
+  ) {
+    return {
+      accepted: false,
+      reasonCodes: ["STALE_EXPECTED_VERSION"],
+      status: "stale_version"
+    };
+  }
+
+  if (reasonCodes.length > 0) {
+    return {
+      accepted: false,
+      reasonCodes,
+      status: "denied"
+    };
+  }
+
+  idempotencyStore?.remember(context.idempotencyKey);
+
+  return {
+    accepted: true,
+    reasonCodes: ["COMMAND_ACCEPTED"],
+    status: "accepted"
+  };
+}
 export type TelephonyControlPlaneInput = {
   readonly tenantId: string;
   readonly cardId: string;

@@ -175,11 +175,18 @@ export type TelephonyRoutingRuleType =
 
 export const telephonyUsageCategories = [
   "provider_minutes",
+  "inbound_minutes",
+  "outbound_minutes",
   "future_ai_runtime",
   "future_transcription",
   "future_tts",
   "future_stt",
   "recording_storage",
+  "transcript_storage",
+  "messaging",
+  "tax_or_fee",
+  "adjustment",
+  "credit",
   "callback_attempt",
   "appointment_request"
 ] as const;
@@ -217,6 +224,9 @@ export type CallSession = {
   readonly callee: TelephonyParty;
   readonly direction: TelephonyCallDirection;
   readonly state: TelephonyDomainCallState;
+  readonly stateVersion?: number;
+  readonly lastTransitionReason?: string | null;
+  readonly lastTransitionAt?: string | null;
   readonly startTime?: string | null;
   readonly answerTime?: string | null;
   readonly endTime?: string | null;
@@ -351,7 +361,14 @@ export type TelephonyUsageLedgerEntry = {
   readonly category: TelephonyUsageCategory;
   readonly quantity: number;
   readonly unit: "second" | "minute" | "request" | "byte" | "usd";
+  readonly unitCostCents: number;
+  readonly currency: "USD";
+  readonly amountCents: number;
   readonly estimatedCostCents: number;
+  readonly providerReference?: string | null;
+  readonly correlationId: string;
+  readonly source: "control_plane" | "provider" | "system" | "manual_adjustment";
+  readonly reversalOfLedgerEntryId?: string | null;
   readonly occurredAt: string;
   readonly metadata: Record<string, unknown>;
 };
@@ -370,6 +387,58 @@ export type TelephonyAuditEvent = {
   readonly occurredAt: string;
   readonly severity: "info" | "warning" | "critical";
   readonly metadata: Record<string, unknown>;
+};
+
+export type TelephonyStateTransitionEvidence<State extends string> = {
+  readonly from: State;
+  readonly to: State;
+  readonly reason: string;
+  readonly occurredAt: string;
+  readonly expectedVersion: number;
+  readonly nextVersion: number;
+  readonly correlationId: string;
+  readonly causationId?: string | null;
+};
+
+export type TelephonyConsentPolicyEvidence = {
+  readonly policyId: string;
+  readonly policyVersion: string;
+  readonly jurisdiction: string;
+  readonly communicationPurpose: string;
+  readonly recordingAllowed: boolean;
+  readonly transcriptionAllowed: boolean;
+  readonly aiDisclosureRequired: boolean;
+  readonly consentSource: "visitor" | "tenant_policy" | "system_default" | "manual_review";
+  readonly consentTimestamp?: string | null;
+  readonly revocationTimestamp?: string | null;
+  readonly evidenceReference?: string | null;
+};
+
+export type TelephonyEmergencyPolicySignal = {
+  readonly signalId: string;
+  readonly tenantId: string;
+  readonly cardId?: string | null;
+  readonly sessionId?: string | null;
+  readonly detectedAt: string;
+  readonly classification: "emergency_language" | "prohibited_use" | "abuse" | "unknown_sensitive";
+  readonly action: "terminate_automation" | "escalate_human" | "block" | "take_message";
+  readonly humanEscalationRequired: boolean;
+  readonly message: string;
+  readonly evidenceReference?: string | null;
+};
+
+export type TelephonyCommandContext = {
+  readonly tenantId: string;
+  readonly cardId: string;
+  readonly actorId: string;
+  readonly permissions: readonly string[];
+  readonly idempotencyKey: string;
+  readonly correlationId: string;
+  readonly causationId?: string | null;
+  readonly expectedVersion?: number;
+  readonly telephonyEnabled: boolean;
+  readonly adapterConfigured: boolean;
+  readonly productionCallingEnabled: boolean;
 };
 
 export type TelephonyControlPlaneResult = {

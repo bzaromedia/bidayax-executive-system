@@ -30,6 +30,9 @@ CREATE TABLE IF NOT EXISTS telephony_call_sessions (
       'voicemail', 'cancelled'
     )
   ),
+  state_version INTEGER NOT NULL DEFAULT 0 CHECK (state_version >= 0),
+  last_transition_reason TEXT,
+  last_transition_at TIMESTAMPTZ,
   start_time TIMESTAMPTZ,
   answer_time TIMESTAMPTZ,
   end_time TIMESTAMPTZ,
@@ -96,6 +99,9 @@ CREATE TABLE IF NOT EXISTS telephony_appointment_requests (
   requested_time TIMESTAMPTZ,
   timezone TEXT NOT NULL,
   state TEXT NOT NULL CHECK (state IN ('requested', 'pending', 'confirmed', 'cancelled', 'completed')),
+  state_version INTEGER NOT NULL DEFAULT 0 CHECK (state_version >= 0),
+  last_transition_reason TEXT,
+  last_transition_at TIMESTAMPTZ,
   purpose TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   updated_at TIMESTAMPTZ NOT NULL,
@@ -157,6 +163,9 @@ CREATE TABLE IF NOT EXISTS telephony_voicemails (
   card_id TEXT NOT NULL,
   session_id TEXT REFERENCES telephony_call_sessions(session_id) ON DELETE SET NULL,
   state TEXT NOT NULL CHECK (state IN ('received', 'stored', 'processed', 'archived')),
+  state_version INTEGER NOT NULL DEFAULT 0 CHECK (state_version >= 0),
+  last_transition_reason TEXT,
+  last_transition_at TIMESTAMPTZ,
   caller JSONB NOT NULL,
   recording_reference TEXT,
   transcript_reference TEXT,
@@ -204,6 +213,58 @@ CREATE TABLE IF NOT EXISTS telephony_escalation_policies (
     ON DELETE CASCADE
 );
 
+
+CREATE TABLE IF NOT EXISTS telephony_consent_policies (
+  consent_policy_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  card_id TEXT,
+  policy_version TEXT NOT NULL,
+  jurisdiction TEXT NOT NULL,
+  communication_purpose TEXT NOT NULL,
+  recording_allowed BOOLEAN NOT NULL DEFAULT FALSE,
+  transcription_allowed BOOLEAN NOT NULL DEFAULT FALSE,
+  ai_disclosure_required BOOLEAN NOT NULL DEFAULT TRUE,
+  consent_source TEXT NOT NULL CHECK (consent_source IN ('visitor', 'tenant_policy', 'system_default', 'manual_review')),
+  consent_timestamp TIMESTAMPTZ,
+  revocation_timestamp TIMESTAMPTZ,
+  evidence_reference TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  FOREIGN KEY (card_id, tenant_id)
+    REFERENCES executive_card_profiles(card_id, tenant_id)
+    ON DELETE CASCADE,
+  CHECK (revocation_timestamp IS NULL OR consent_timestamp IS NULL OR revocation_timestamp >= consent_timestamp)
+);
+
+CREATE TABLE IF NOT EXISTS telephony_emergency_policy_signals (
+  signal_id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
+  card_id TEXT,
+  session_id TEXT REFERENCES telephony_call_sessions(session_id) ON DELETE SET NULL,
+  detected_at TIMESTAMPTZ NOT NULL,
+  classification TEXT NOT NULL CHECK (classification IN ('emergency_language', 'prohibited_use', 'abuse', 'unknown_sensitive')),
+  action TEXT NOT NULL CHECK (action IN ('terminate_automation', 'escalate_human', 'block', 'take_message')),
+  human_escalation_required BOOLEAN NOT NULL DEFAULT TRUE,
+  message TEXT NOT NULL,
+  evidence_reference TEXT,
+  FOREIGN KEY (card_id, tenant_id)
+    REFERENCES executive_card_profiles(card_id, tenant_id)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS telephony_command_idempotency_keys (
+  tenant_id TEXT NOT NULL,
+  card_id TEXT NOT NULL,
+  operation TEXT NOT NULL,
+  idempotency_key TEXT NOT NULL,
+  request_hash TEXT NOT NULL,
+  result_session_id TEXT REFERENCES telephony_call_sessions(session_id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at TIMESTAMPTZ,
+  PRIMARY KEY (tenant_id, card_id, operation, idempotency_key),
+  FOREIGN KEY (card_id, tenant_id)
+    REFERENCES executive_card_profiles(card_id, tenant_id)
+    ON DELETE CASCADE
+);
 CREATE TABLE IF NOT EXISTS telephony_usage_ledger (
   ledger_entry_id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id) ON DELETE CASCADE,
@@ -211,13 +272,22 @@ CREATE TABLE IF NOT EXISTS telephony_usage_ledger (
   session_id TEXT REFERENCES telephony_call_sessions(session_id) ON DELETE SET NULL,
   category TEXT NOT NULL CHECK (
     category IN (
-      'provider_minutes', 'future_ai_runtime', 'future_transcription', 'future_tts',
-      'future_stt', 'recording_storage', 'callback_attempt', 'appointment_request'
+      'provider_minutes', 'inbound_minutes', 'outbound_minutes', 'future_ai_runtime',
+      'future_transcription', 'future_tts', 'future_stt', 'recording_storage',
+      'transcript_storage', 'messaging', 'tax_or_fee', 'adjustment', 'credit',
+      'callback_attempt', 'appointment_request'
     )
   ),
   quantity NUMERIC NOT NULL CHECK (quantity >= 0),
   unit TEXT NOT NULL CHECK (unit IN ('second', 'minute', 'request', 'byte', 'usd')),
+  unit_cost_cents INTEGER NOT NULL DEFAULT 0,
+  currency TEXT NOT NULL DEFAULT 'USD' CHECK (currency = 'USD'),
+  amount_cents INTEGER NOT NULL DEFAULT 0,
   estimated_cost_cents INTEGER NOT NULL CHECK (estimated_cost_cents >= 0),
+  provider_reference TEXT,
+  correlation_id TEXT NOT NULL,
+  source TEXT NOT NULL CHECK (source IN ('control_plane', 'provider', 'system', 'manual_adjustment')),
+  reversal_of_ledger_entry_id TEXT REFERENCES telephony_usage_ledger(ledger_entry_id),
   occurred_at TIMESTAMPTZ NOT NULL,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   FOREIGN KEY (card_id, tenant_id)
@@ -267,6 +337,12 @@ CREATE INDEX IF NOT EXISTS idx_telephony_appointments_tenant_card_state
   ON telephony_appointment_requests(tenant_id, card_id, state, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_telephony_routing_rules_tenant_priority
   ON telephony_routing_rules(tenant_id, card_id, enabled, priority);
+CREATE INDEX IF NOT EXISTS idx_telephony_consent_tenant_card
+  ON telephony_consent_policies(tenant_id, card_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_telephony_emergency_tenant_time
+  ON telephony_emergency_policy_signals(tenant_id, detected_at DESC);
+CREATE INDEX IF NOT EXISTS idx_telephony_command_idempotency_lookup
+  ON telephony_command_idempotency_keys(tenant_id, card_id, operation, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_telephony_usage_tenant_time
   ON telephony_usage_ledger(tenant_id, occurred_at DESC, category);
 CREATE INDEX IF NOT EXISTS idx_telephony_audit_tenant_time

@@ -17,3 +17,7 @@ Primary entities:
 - `TelephonyAuditEvent`: append-only control-plane audit evidence.
 
 All tenant-owned rows include `tenant_id`. Card-owned rows also include `card_id` and use composite foreign keys to prevent tenant/card mismatches.
+
+## Phase 6G Policy Evidence
+
+The model now includes explicit consent policy evidence and emergency policy signals. Consent is represented by policy ID, version, jurisdiction, communication purpose, recording and transcription allowances, AI disclosure requirement, source, timestamps, revocation timestamp, and evidence reference.

@@ -19,3 +19,7 @@ Tables:
 - `telephony_audit_events`
 
 The migration uses composite foreign keys for card/tenant consistency and append-only triggers for usage and audit evidence. It does not alter existing production telephony-preparation tables.
+
+## Phase 6G Migration Safety
+
+Migration `0016` includes telephony command idempotency keys, consent policy evidence, emergency policy signals, and richer usage ledger fields. Append-only audit and usage triggers remain active, and the disposable PostgreSQL harness verifies the full 16-migration chain.

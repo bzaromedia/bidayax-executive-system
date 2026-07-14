@@ -139,14 +139,17 @@ try {
           'telephony_routing_rules',
           'telephony_escalation_policies',
           'telephony_usage_ledger',
-          'telephony_audit_events'
+          'telephony_audit_events',
+          'telephony_consent_policies',
+          'telephony_emergency_policy_signals',
+          'telephony_command_idempotency_keys'
         )
       order by table_name`
   );
 
-  if (telephonyTableCheck.rowCount !== 13) {
+  if (telephonyTableCheck.rowCount !== 16) {
     throw new Error(
-      `Expected 13 telephony domain tables, found ${telephonyTableCheck.rowCount ?? 0}.`
+      `Expected 16 telephony domain tables, found ${telephonyTableCheck.rowCount ?? 0}.`
     );
   }
   await client.query(
@@ -209,10 +212,12 @@ try {
   await client.query(
     `insert into telephony_usage_ledger (
        ledger_entry_id, tenant_id, card_id, session_id, category, quantity, unit,
-       estimated_cost_cents, occurred_at, metadata
+       unit_cost_cents, currency, amount_cents, estimated_cost_cents, provider_reference,
+       correlation_id, source, reversal_of_ledger_entry_id, occurred_at, metadata
      ) values (
        'usage-telephony-test', 'tenant-test', 'card-test', 'session-telephony-test',
-       'provider_minutes', 0, 'minute', 0, now(), '{"futureProvider":true}'::jsonb
+       'provider_minutes', 0, 'minute', 0, 'USD', 0, 0, null,
+       'corr-telephony-test', 'control_plane', null, now(), '{"futureProvider":true}'::jsonb
      )`
   );
   await client.query(
@@ -227,6 +232,47 @@ try {
      )`
   );
 
+  await client.query(
+    `insert into telephony_consent_policies (
+       consent_policy_id, tenant_id, card_id, policy_version, jurisdiction,
+       communication_purpose, recording_allowed, transcription_allowed,
+       ai_disclosure_required, consent_source, consent_timestamp, evidence_reference
+     ) values (
+       'consent-telephony-test', 'tenant-test', 'card-test', 'v1', 'US',
+       'callback', false, false, true, 'system_default', null, 'policy-doc'
+     )`
+  );
+  await client.query(
+    `insert into telephony_emergency_policy_signals (
+       signal_id, tenant_id, card_id, session_id, detected_at, classification,
+       action, human_escalation_required, message, evidence_reference
+     ) values (
+       'emergency-telephony-test', 'tenant-test', 'card-test', 'session-telephony-test',
+       now(), 'emergency_language', 'escalate_human', true,
+       'If this is an emergency, contact local emergency services directly.', 'signal-fixture'
+     )`
+  );
+  await client.query(
+    `insert into telephony_command_idempotency_keys (
+       tenant_id, card_id, operation, idempotency_key, request_hash,
+       result_session_id, created_at, expires_at
+     ) values (
+       'tenant-test', 'card-test', 'telephony.call.request', 'telephony-request-test',
+       'request-hash', 'session-telephony-test', now(), null
+     )`
+  );
+
+  await expectError("telephony_command_idempotency_duplicate", async () => {
+    await client.query(
+      `insert into telephony_command_idempotency_keys (
+         tenant_id, card_id, operation, idempotency_key, request_hash,
+         result_session_id, created_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'telephony.call.request', 'telephony-request-test',
+         'other-hash', 'session-telephony-test', now(), null
+       )`
+    );
+  });
   await expectError("telephony_tenant_card_mismatch_session", async () => {
     await client.query(
       `insert into telephony_call_sessions (
@@ -542,6 +588,7 @@ try {
     "telephony tenant/card mismatch inserts rejected",
     "telephony usage ledger is append-only",
     "telephony audit events are append-only",
+    "telephony command idempotency keys reject duplicates",
     "identity provider subject uniqueness enforced",
     "cross-tenant card grants rejected",
     "membership revocation terminates application sessions",
