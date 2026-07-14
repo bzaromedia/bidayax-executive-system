@@ -1,42 +1,44 @@
-import type { VoiceRuntimeEvent, VoiceRuntimeState } from "./types";
+import type { ConversationSessionEvent, ConversationSessionState } from "./types";
 
-const transitions: Record<VoiceRuntimeState, readonly VoiceRuntimeState[]> = {
+const transitions: Record<ConversationSessionState, readonly ConversationSessionState[]> = {
   blocked: [],
   completed: [],
-  escalated: [],
+  escalating: ["completed", "failed"],
   failed: [],
-  idle: ["listening", "failed"],
-  listening: ["transcribing", "understanding", "blocked", "failed"],
-  planning: ["responding", "escalated", "blocked", "failed"],
+  greeting: ["listening", "blocked", "failed"],
+  initialized: ["greeting", "failed"],
+  listening: ["processing", "blocked", "failed"],
+  processing: ["waiting_for_tool", "responding", "escalating", "blocked", "failed"],
   responding: ["completed", "listening", "failed"],
-  transcribing: ["understanding", "blocked", "failed"],
-  understanding: ["planning", "escalated", "blocked", "failed"]
+  waiting_for_tool: ["responding", "escalating", "blocked", "failed"]
 };
 
-const eventTargets: Record<VoiceRuntimeEvent, VoiceRuntimeState> = {
-  audio_received: "transcribing",
+const eventTargets: Record<ConversationSessionEvent, ConversationSessionState> = {
   block: "blocked",
   complete: "completed",
-  escalate: "escalated",
+  escalate: "escalating",
   fail: "failed",
-  intent_classified: "planning",
-  response_synthesized: "responding",
-  start_session: "listening",
-  tool_planned: "responding",
-  transcript_received: "understanding"
+  greeting_ready: "listening",
+  request_received: "greeting",
+  response_ready: "responding",
+  response_sent: "completed",
+  safety_review_required: "escalating",
+  tool_complete: "responding",
+  tool_required: "waiting_for_tool",
+  transcript_ready: "processing"
 };
 
 export function canTransitionVoiceRuntime(
-  from: VoiceRuntimeState,
-  to: VoiceRuntimeState
+  from: ConversationSessionState,
+  to: ConversationSessionState
 ): boolean {
   return transitions[from].includes(to);
 }
 
 export function transitionVoiceRuntimeState(
-  current: VoiceRuntimeState,
-  event: VoiceRuntimeEvent
-): VoiceRuntimeState {
+  current: ConversationSessionState,
+  event: ConversationSessionEvent
+): ConversationSessionState {
   const next = eventTargets[event];
 
   if (!canTransitionVoiceRuntime(current, next)) {
@@ -47,8 +49,8 @@ export function transitionVoiceRuntimeState(
 }
 
 export function runVoiceRuntimeTransitionPath(
-  initial: VoiceRuntimeState,
-  events: readonly VoiceRuntimeEvent[]
-): VoiceRuntimeState {
+  initial: ConversationSessionState,
+  events: readonly ConversationSessionEvent[]
+): ConversationSessionState {
   return events.reduce((state, event) => transitionVoiceRuntimeState(state, event), initial);
 }

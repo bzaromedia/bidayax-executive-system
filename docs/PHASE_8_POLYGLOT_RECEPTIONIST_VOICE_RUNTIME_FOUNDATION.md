@@ -30,3 +30,6 @@ Phase 8 adds the provider-neutral voice runtime foundation for the Polyglot Rece
 ## Current Status
 
 The runtime is mock-only and provider-neutral. It is ready for architecture review as a foundation for later provider-specific voice runtime work.
+## Phase 8G Runtime Security Review
+
+Phase 8G hardened the provider-neutral receptionist runtime with audited conversation-session states, tenant/card/session scope checks, replay-key detection, prompt-injection blocking, emergency escalation, supported-language fallback, and sanitized audit metadata. Live voice providers and production calling remain disabled.

@@ -5,6 +5,7 @@ export * from "./language-engine";
 export * from "./mock-speech-recognition";
 export * from "./mock-speech-synthesis";
 export * from "./runtime-orchestrator";
+export * from "./runtime-safety";
 export * from "./tool-planner";
 export * from "./turn-manager";
 export * from "./types";

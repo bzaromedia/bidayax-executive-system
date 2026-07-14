@@ -1,6 +1,8 @@
 import type { RuntimeIntentClassification } from "./types";
 
 const intentRules = [
+  { intent: "prompt_injection", match: /\b(ignore previous instructions|system prompt|bypass policy|developer message)\b/iu },
+  { intent: "emergency", match: /\b(emergency|call 911|life threatening|self harm|immediate danger)\b/iu },
   { intent: "schedule_meeting", match: /\b(meeting|calendar|appointment|schedule|book)\b/iu },
   { intent: "request_callback", match: /\b(call me|callback|call back|return my call)\b/iu },
   { intent: "qualify_lead", match: /\b(budget|enterprise|proposal|buy|sales|pricing)\b/iu },
@@ -32,7 +34,7 @@ export function classifyRuntimeIntent(transcript: string): RuntimeIntentClassifi
   }
 
   return {
-    confidence: match.intent === "sensitive_request" ? 0.93 : 0.78,
+    confidence: ["sensitive_request", "prompt_injection", "emergency"].includes(match.intent) ? 0.93 : 0.78,
     intent: match.intent,
     reasonCodes: [`MATCHED_${match.intent.toUpperCase()}`]
   };

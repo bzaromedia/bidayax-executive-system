@@ -3,38 +3,39 @@
 ## States
 
 ```text
-idle
+initialized
+greeting
 listening
-transcribing
-understanding
-planning
+processing
+waiting_for_tool
 responding
+escalating
 completed
-escalated
 blocked
 failed
 ```
 
-## Happy Path
-
-Voice input:
+## Text Or Voice Happy Path
 
 ```text
-idle -> listening -> transcribing -> understanding -> planning -> responding -> completed
+initialized -> greeting -> listening -> processing -> waiting_for_tool -> responding -> completed
 ```
 
-Text input:
+## Sensitive Or Emergency Path
 
 ```text
-idle -> listening -> understanding -> planning -> responding -> completed
+initialized -> greeting -> listening -> processing -> escalating
 ```
 
-Sensitive request:
+## Prompt-Injection Path
 
 ```text
-idle -> listening -> understanding -> planning -> escalated
+initialized -> greeting -> listening -> processing -> blocked
 ```
 
 ## Rules
 
-Terminal states cannot transition forward. Impossible transitions throw errors in tests and runtime code.
+- `completed`, `blocked`, and `failed` are terminal states.
+- Impossible transitions throw errors.
+- Sensitive and emergency language cannot execute tools directly.
+- Prompt-injection attempts are blocked before tool planning.
