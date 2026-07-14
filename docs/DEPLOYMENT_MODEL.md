@@ -105,3 +105,7 @@ Required deployment actions:
 ## Phase 7G Telephony Deployment Note
 
 `TELEPHONY_PROVIDER_MODE=sandbox` is for non-production testing only and requires `TELEPHONY_SANDBOX_WEBHOOK_SECRET` with a strong test value. Production deployments must keep production calling disabled. `TELEPHONY_PROVIDER_MODE=production` remains blocked until a future controlled activation phase.
+
+## Phase 8 Deployment Note
+
+No production credentials are required for the Phase 8 runtime foundation. Future STT/TTS provider credentials must not be configured until a provider-specific phase defines verification, retention, redaction, and kill-switch controls.
