@@ -4,6 +4,7 @@ import type { IntentReasonCode, IntentScoringVersion, IntentTier } from "./inten
 import type {
   LiveVoiceSafetyReasonCode,
   ProviderReadinessCheck,
+  TelephonyProviderExecutionMode,
   VoiceRuntimeReadinessResult
 } from "./live-provider";
 import type {
@@ -229,6 +230,9 @@ export type DashboardReceptionistIntentBreakdown = {
 export type DashboardTelephonyReadinessSummary = {
   readonly provider: TelephonyProviderName;
   readonly providerConfigured: boolean;
+  readonly providerExecutionMode: TelephonyProviderExecutionMode;
+  readonly sandboxProviderEnabled: boolean;
+  readonly sandboxWebhookSigningSecretConfigured: boolean;
   readonly outboundCallsEnabled: boolean;
   readonly voiceAgentEnabled: boolean;
   readonly requireHumanApproval: boolean;

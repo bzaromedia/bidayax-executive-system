@@ -7,6 +7,7 @@ import {
   isTelephonyCallDirection,
   isTelephonyCallEventType,
   isTelephonyCallStatus,
+  isTelephonyProviderExecutionMode,
   isTelephonyProviderName,
   isVoiceSessionStatus,
   type DashboardOutboundCallApproval,
@@ -105,6 +106,10 @@ function parseBoolean(value: string | undefined, fallback: boolean) {
 }
 
 function getReadinessSummary(row: SummaryRow | undefined) {
+  const providerModeCandidate = process.env.TELEPHONY_PROVIDER_MODE ?? "disabled";
+  const providerExecutionMode = isTelephonyProviderExecutionMode(providerModeCandidate)
+    ? providerModeCandidate
+    : "disabled";
   const providerCandidate = process.env.TELEPHONY_PROVIDER ?? "mock";
   const provider = isTelephonyProviderName(providerCandidate)
     ? providerCandidate
@@ -115,6 +120,9 @@ function getReadinessSummary(row: SummaryRow | undefined) {
     outboundCallsEnabled: parseBoolean(process.env.OUTBOUND_CALLS_ENABLED, false),
     pendingApprovalCount: row ? parseCount(row.pending_approval_count) : 0,
     provider,
+    providerExecutionMode,
+    sandboxProviderEnabled: providerExecutionMode === "sandbox",
+    sandboxWebhookSigningSecretConfigured: Boolean(process.env.TELEPHONY_SANDBOX_WEBHOOK_SECRET),
     providerConfigured:
       provider === "mock" ||
       Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN),

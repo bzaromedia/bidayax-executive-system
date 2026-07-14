@@ -45,5 +45,36 @@ describe("provider readiness", () => {
     expect(details).not.toContain("sk-secret");
     expect(details).not.toContain("secret-token");
   });
-});
 
+  it("reports sandbox provider mode without enabling production calls", () => {
+    const checks = getProviderReadinessChecks(
+      getLiveProviderRuntimeConfig({
+        TELEPHONY_PROVIDER_MODE: "sandbox",
+        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "test-secret"
+      })
+    );
+
+    expect(
+      checks.find((check) => check.checkName === "sandbox_provider_mode")?.status
+    ).toBe("passed");
+    expect(
+      checks.find((check) => check.checkName === "sandbox_webhook_signature_policy")
+        ?.status
+    ).toBe("passed");
+    expect(
+      checks.find((check) => check.checkName === "production_provider_mode_gate")
+        ?.status
+    ).toBe("passed");
+  });
+
+  it("fails readiness when production provider mode is requested", () => {
+    const checks = getProviderReadinessChecks(
+      getLiveProviderRuntimeConfig({ TELEPHONY_PROVIDER_MODE: "production" })
+    );
+
+    expect(
+      checks.find((check) => check.checkName === "production_provider_mode_gate")
+        ?.status
+    ).toBe("failed");
+  });
+});

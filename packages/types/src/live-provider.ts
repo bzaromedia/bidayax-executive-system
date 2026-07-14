@@ -2,6 +2,16 @@ export const liveProviderNames = ["mock", "twilio", "openai_realtime"] as const;
 
 export type LiveProviderName = (typeof liveProviderNames)[number];
 
+export const telephonyProviderExecutionModes = [
+  "disabled",
+  "mock",
+  "sandbox",
+  "production"
+] as const;
+
+export type TelephonyProviderExecutionMode =
+  (typeof telephonyProviderExecutionModes)[number];
+
 export const providerReadinessStatuses = [
   "passed",
   "failed",
@@ -65,6 +75,9 @@ export type ProviderReadinessCheck = {
 
 export type LiveProviderRuntimeConfig = {
   readonly telephonyProvider: "mock" | "twilio";
+  readonly telephonyProviderExecutionMode: TelephonyProviderExecutionMode;
+  readonly sandboxProviderEnabled: boolean;
+  readonly sandboxWebhookSigningSecretConfigured: boolean;
   readonly twilioAccountSid: string | null;
   readonly twilioAuthToken: string | null;
   readonly twilioPhoneNumber: string | null;
@@ -129,6 +142,12 @@ export function isProviderReadinessStatus(
   value: string
 ): value is ProviderReadinessStatus {
   return (providerReadinessStatuses as readonly string[]).includes(value);
+}
+
+export function isTelephonyProviderExecutionMode(
+  value: string
+): value is TelephonyProviderExecutionMode {
+  return (telephonyProviderExecutionModes as readonly string[]).includes(value);
 }
 
 export function isVoiceRuntimeSessionStatus(
