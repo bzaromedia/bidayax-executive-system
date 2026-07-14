@@ -25,3 +25,10 @@ All runtime tests use mock providers only. No live provider credentials are requ
 ## Future Tests
 
 Future provider phases must add provider-specific contract tests, media-stream tests, consent tests, red-team prompt-injection tests, PII redaction tests, retention tests, and production kill-switch tests before activation.
+## Phase 9 Tests
+
+Phase 9 adds tests for explicit consent denial, missing recording consent, raw-audio retention blocking, link/email/phone/secret redaction, and combined conversation safety validation before runtime tool execution.
+
+## Phase 9G Tests
+
+Phase 9G adds adversarial tests for missing voice consent before transcript capture, sensitive tool consent gating, obfuscated email redaction, Unicode-normalized phone redaction, bearer/token/credential redaction, oversized preview bounds, and audit metadata excluding raw sensitive input.

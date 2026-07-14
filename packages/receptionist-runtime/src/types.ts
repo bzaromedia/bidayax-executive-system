@@ -53,6 +53,55 @@ export type VoiceRuntimeSession = {
   readonly updatedAt: string;
 };
 
+export type RuntimeConsentSensitiveCapability = "recording" | "transcription" | "sensitive_tool" | "live_voice";
+
+export type RuntimeConsentInput = {
+  readonly automationDisclosureAccepted?: boolean;
+  readonly consentDenied?: boolean;
+  readonly recordingConsentGranted?: boolean;
+  readonly recordingRequested?: boolean;
+  readonly transcriptRetentionAccepted?: boolean;
+};
+
+export type RuntimeConsentPolicy = {
+  readonly automationDisclosureRequired: boolean;
+  readonly recordingConsentRequired: boolean;
+  readonly transcriptRetentionNoticeRequired: boolean;
+};
+
+export type RuntimeConsentResult = {
+  readonly allowed: boolean;
+  readonly reasonCodes: readonly string[];
+  readonly status: "not_required" | "granted" | "missing" | "denied";
+};
+
+export type RuntimeRedactionPolicy = {
+  readonly redactEmails: boolean;
+  readonly redactLinks: boolean;
+  readonly redactPhoneNumbers: boolean;
+  readonly redactSecrets: boolean;
+  readonly transcriptPreviewMaxLength: number;
+};
+
+export type RuntimeRedactionResult = {
+  readonly applied: readonly string[];
+  readonly policy: RuntimeRedactionPolicy;
+  readonly redactedText: string;
+};
+
+export type RuntimeRetentionPolicy = {
+  readonly auditEventRetentionDays: number;
+  readonly rawAudioRetentionAllowed: boolean;
+  readonly recordingRetentionDays: number;
+  readonly transcriptPreviewRetentionDays: number;
+};
+
+export type RuntimeRetentionResolution = {
+  readonly allowed: boolean;
+  readonly policy: RuntimeRetentionPolicy;
+  readonly reasonCodes: readonly string[];
+};
+
 export type VoiceRuntimeInput = {
   readonly sessionId: string;
   readonly tenantId: string;
@@ -63,6 +112,11 @@ export type VoiceRuntimeInput = {
   readonly preferredLanguage?: string;
   readonly now?: Date;
   readonly replayKey?: string;
+  readonly consent?: RuntimeConsentInput;
+  readonly consentPolicy?: RuntimeConsentPolicy;
+  readonly redactionPolicy?: RuntimeRedactionPolicy;
+  readonly retentionPolicy?: RuntimeRetentionPolicy;
+  readonly requestedCapabilities?: readonly RuntimeConsentSensitiveCapability[];
 };
 
 export type SpeechRecognitionInput = {
@@ -153,6 +207,25 @@ export type RuntimeSafetyAssessment = {
   readonly sanitizedTranscriptPreview: string;
 };
 
+export type ConversationSafetyValidationInput = {
+  readonly consent?: RuntimeConsentInput;
+  readonly consentPolicy?: RuntimeConsentPolicy;
+  readonly mode: VoiceRuntimeMode;
+  readonly redactionPolicy?: RuntimeRedactionPolicy;
+  readonly retentionPolicy?: RuntimeRetentionPolicy;
+  readonly requestedCapabilities?: readonly RuntimeConsentSensitiveCapability[];
+  readonly transcript: string;
+};
+
+export type ConversationSafetyValidationResult = {
+  readonly consent: RuntimeConsentResult;
+  readonly decision: "allow" | "escalate" | "block";
+  readonly reasonCodes: readonly string[];
+  readonly redaction: RuntimeRedactionResult;
+  readonly retention: RuntimeRetentionResolution;
+  readonly safety: RuntimeSafetyAssessment;
+};
+
 export type VoiceRuntimeAuditEvent = {
   readonly eventId: string;
   readonly eventType: string;
@@ -168,6 +241,7 @@ export type VoiceRuntimeTurn = {
   readonly transcript: string;
   readonly language: RuntimeLanguageProfile;
   readonly intent: RuntimeIntentClassification;
+  readonly conversationSafety: ConversationSafetyValidationResult;
   readonly safety: RuntimeSafetyAssessment;
   readonly toolPlan: RuntimeToolPlan;
   readonly response: RuntimeDialogueResponse;
