@@ -125,3 +125,6 @@ Git rules for this phase:
 - Do not merge without review and explicit approval.
 
 Validation evidence must include local checks and PostgreSQL integration status when migrations are added.
+## Phase 7G Git Hygiene
+
+Phase 7G changes are limited to sandbox provider hardening, readiness metadata, focused tests, and documentation. No provider SDKs, generated binaries, production credentials, or telephony activation files should be committed.

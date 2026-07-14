@@ -101,3 +101,7 @@ Required deployment actions:
 - Create internal tenant memberships and card grants before user access is expected.
 - Run `pnpm test:settings-persistence:postgres` against a disposable database before merge/release.
 - Keep production calling disabled and do not configure telephony providers.
+
+## Phase 7G Telephony Deployment Note
+
+`TELEPHONY_PROVIDER_MODE=sandbox` is for non-production testing only and requires `TELEPHONY_SANDBOX_WEBHOOK_SECRET` with a strong test value. Production deployments must keep production calling disabled. `TELEPHONY_PROVIDER_MODE=production` remains blocked until a future controlled activation phase.

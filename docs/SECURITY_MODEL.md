@@ -333,3 +333,7 @@ Security controls added:
 - Development identity simulation blocked in production.
 
 Telephony providers and production calling remain disabled.
+
+## Phase 7G Telephony Security Note
+
+No telephony provider credentials are required or accepted for Phase 7G. Sandbox webhook secrets are test-only and must not be exposed to client bundles, logs, audit metadata, or readiness payloads. Production calling remains disabled.

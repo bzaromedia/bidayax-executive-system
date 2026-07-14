@@ -2,7 +2,7 @@ import type {
   LiveProviderRuntimeConfig,
   ProviderReadinessCheck
 } from "@bidayax/types";
-import { isTelephonyProviderName } from "@bidayax/types";
+import { isTelephonyProviderExecutionMode, isTelephonyProviderName } from "@bidayax/types";
 
 function readBoolean(value: string | undefined, fallback: boolean) {
   if (value === undefined) {
@@ -16,6 +16,28 @@ function readVoiceRuntimeProvider(value: string | undefined) {
   return value === "openai_realtime" ? "openai_realtime" : "none";
 }
 
+function readProviderExecutionMode(value: string | undefined) {
+  return value !== undefined && isTelephonyProviderExecutionMode(value)
+    ? value
+    : "disabled";
+}
+
+function isStrongSandboxSecret(secret: string | undefined) {
+  if (!secret || secret.trim().length < 16) {
+    return false;
+  }
+
+  const normalized = secret.trim().toLowerCase();
+  return ![
+    "change-me",
+    "changeme",
+    "placeholder",
+    "test",
+    "secret",
+    "sandbox-secret"
+  ].includes(normalized);
+}
+
 export function getLiveProviderRuntimeConfig(
   env: Record<string, string | undefined> = process.env
 ): LiveProviderRuntimeConfig {
@@ -26,13 +48,18 @@ export function getLiveProviderRuntimeConfig(
       : "mock";
 
   return {
+    nodeEnv: env.NODE_ENV ?? "development",
     allowProductionCalls: readBoolean(env.ALLOW_PRODUCTION_CALLS, false),
     liveInboundCallsEnabled: readBoolean(env.LIVE_INBOUND_CALLS_ENABLED, false),
+    sandboxProviderEnabled: readProviderExecutionMode(env.TELEPHONY_PROVIDER_MODE) === "sandbox",
+    sandboxWebhookSigningSecretConfigured: Boolean(env.TELEPHONY_SANDBOX_WEBHOOK_SECRET),
+    sandboxWebhookSigningSecretStrong: isStrongSandboxSecret(env.TELEPHONY_SANDBOX_WEBHOOK_SECRET),
     openAiApiKey: env.OPENAI_API_KEY ?? null,
     openAiRealtimeModel: env.OPENAI_REALTIME_MODEL ?? null,
     outboundCallsEnabled: readBoolean(env.OUTBOUND_CALLS_ENABLED, false),
     requireHumanApproval: readBoolean(env.REQUIRE_HUMAN_APPROVAL ?? env.HUMAN_APPROVAL_REQUIRED, true),
     telephonyProvider,
+    telephonyProviderExecutionMode: readProviderExecutionMode(env.TELEPHONY_PROVIDER_MODE),
     twilioAccountSid: env.TWILIO_ACCOUNT_SID ?? null,
     twilioAuthToken: env.TWILIO_AUTH_TOKEN ?? null,
     twilioPhoneNumber: env.TWILIO_PHONE_NUMBER ?? null,
@@ -148,10 +175,64 @@ export function validateOpenAiRealtimeReadiness(
   ];
 }
 
+export function validateSandboxProviderReadiness(
+  config: LiveProviderRuntimeConfig
+): readonly ProviderReadinessCheck[] {
+  return [
+    createCheck({
+      checkName: "sandbox_provider_mode",
+      details:
+        config.telephonyProviderExecutionMode === "sandbox"
+          ? "Sandbox provider adapter mode is enabled for deterministic local/test calls only."
+          : "Sandbox provider adapter mode is disabled by default.",
+      provider: "mock",
+      status: config.telephonyProviderExecutionMode === "sandbox" ? "passed" : "skipped"
+    }),
+    createCheck({
+      checkName: "sandbox_webhook_signature_policy",
+      details:
+        config.telephonyProviderExecutionMode !== "sandbox"
+          ? "Sandbox webhook signature verification is inactive because sandbox provider mode is disabled."
+          : config.sandboxWebhookSigningSecretConfigured
+            ? "Sandbox webhook signature verification has a test-only secret configured."
+            : "Sandbox webhook signature verification requires TELEPHONY_SANDBOX_WEBHOOK_SECRET for sandbox webhook tests.",
+      provider: "mock",
+      status:
+        config.telephonyProviderExecutionMode !== "sandbox"
+          ? "skipped"
+          : config.sandboxWebhookSigningSecretStrong
+            ? "passed"
+            : "failed"
+    }),
+    createCheck({
+      checkName: "sandbox_environment_gate",
+      details:
+        config.nodeEnv === "production" && config.telephonyProviderExecutionMode === "sandbox"
+          ? "Sandbox provider mode is not allowed in production."
+          : "Sandbox provider mode is restricted to non-production environments.",
+      provider: "mock",
+      status:
+        config.nodeEnv === "production" && config.telephonyProviderExecutionMode === "sandbox"
+          ? "failed"
+          : "passed"
+    }),
+    createCheck({
+      checkName: "production_provider_mode_gate",
+      details:
+        config.telephonyProviderExecutionMode === "production"
+          ? "Production provider mode is not permitted before a future controlled activation phase."
+          : "Production provider mode is not active.",
+      provider: "mock",
+      status: config.telephonyProviderExecutionMode === "production" ? "failed" : "passed"
+    })
+  ];
+}
+
 export function getProviderReadinessChecks(
   config: LiveProviderRuntimeConfig
 ): readonly ProviderReadinessCheck[] {
   return [
+    ...validateSandboxProviderReadiness(config),
     createCheck({
       checkName: "mock_provider_default",
       details:
@@ -165,4 +246,3 @@ export function getProviderReadinessChecks(
     ...validateOpenAiRealtimeReadiness(config)
   ];
 }
-

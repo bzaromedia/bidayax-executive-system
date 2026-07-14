@@ -17,6 +17,9 @@ export function TelephonyReadinessSummary({
   const rows = [
     ["Provider", telephonyProviderLabels[summary.provider]],
     ["Provider configured", yesNo(summary.providerConfigured)],
+    ["Provider mode", summary.providerExecutionMode],
+    ["Sandbox adapter", yesNo(summary.sandboxProviderEnabled)],
+    ["Sandbox signing", yesNo(summary.sandboxWebhookSigningSecretConfigured)],
     ["Outbound calls enabled", yesNo(summary.outboundCallsEnabled)],
     ["Voice agent enabled", yesNo(summary.voiceAgentEnabled)],
     ["Human approval required", yesNo(summary.requireHumanApproval)],
