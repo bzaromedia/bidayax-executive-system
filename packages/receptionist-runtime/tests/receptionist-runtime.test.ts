@@ -7,10 +7,14 @@ import {
   createMockSpeechRecognitionProvider,
   createMockSpeechSynthesisProvider,
   detectRuntimeLanguage,
+  evaluateRuntimeConsent,
   planRuntimeTool,
   processVoiceRuntimeTurn,
+  redactRuntimeText,
+  resolveRuntimeRetentionPolicy,
   runVoiceRuntime,
-  transitionVoiceRuntimeState
+  transitionVoiceRuntimeState,
+  validateConversationSafety
 } from "../src";
 
 describe("conversation session state machine", () => {
@@ -91,6 +95,86 @@ describe("runtime safety", () => {
   });
 });
 
+describe("Phase 9 consent, retention, redaction, and safety validation", () => {
+  it("allows absent consent context as not required for current mock runtime", () => {
+    expect(evaluateRuntimeConsent({ mode: "text_chat" })).toMatchObject({
+      allowed: true,
+      status: "not_required"
+    });
+  });
+
+  it("blocks denied or incomplete consent when consent context is supplied", () => {
+    expect(evaluateRuntimeConsent({
+      consent: { automationDisclosureAccepted: false, transcriptRetentionAccepted: false },
+      mode: "voice_chat"
+    })).toMatchObject({
+      allowed: false,
+      status: "missing"
+    });
+
+    expect(evaluateRuntimeConsent({
+      consent: {
+        automationDisclosureAccepted: true,
+        consentDenied: true,
+        transcriptRetentionAccepted: true
+      },
+      mode: "text_chat"
+    })).toMatchObject({
+      allowed: false,
+      status: "denied"
+    });
+  });
+
+  it("blocks raw audio retention in Phase 9", () => {
+    expect(resolveRuntimeRetentionPolicy({
+      auditEventRetentionDays: 365,
+      rawAudioRetentionAllowed: true,
+      recordingRetentionDays: 30,
+      transcriptPreviewRetentionDays: 30
+    })).toMatchObject({
+      allowed: false
+    });
+  });
+
+  it("redacts links, emails, phones, and secrets from transcript previews", () => {
+    const result = redactRuntimeText("Visit https://example.com, email a@b.com, call +1 555 555 5555, password=abc123");
+
+    expect(result.redactedText).toContain("[REDACTED_LINK]");
+    expect(result.redactedText).toContain("[REDACTED_EMAIL]");
+    expect(result.redactedText).toContain("[REDACTED_PHONE]");
+    expect(result.redactedText).toContain("[REDACTED_SECRET]");
+  });
+
+  it("combines consent, retention, redaction, and safety decisions", () => {
+    const result = validateConversationSafety({
+      consent: {
+        automationDisclosureAccepted: true,
+        recordingConsentGranted: true,
+        recordingRequested: true,
+        transcriptRetentionAccepted: true
+      },
+      mode: "voice_chat",
+      transcript: "Please schedule a meeting. Email me at person@example.com."
+    });
+
+    expect(result.decision).toBe("allow");
+    expect(result.consent.status).toBe("granted");
+    expect(result.redaction.redactedText).toContain("[REDACTED_EMAIL]");
+  });
+
+  it("blocks the combined validator when required consent is missing", () => {
+    const result = validateConversationSafety({
+      consent: { automationDisclosureAccepted: false },
+      mode: "phone_simulation",
+      transcript: "Please call me back."
+    });
+
+    expect(result.decision).toBe("block");
+    expect(result.reasonCodes).toContain("AUTOMATION_DISCLOSURE_REQUIRED");
+    expect(result.reasonCodes).toContain("RECORDING_CONSENT_REQUIRED");
+  });
+});
+
 describe("voice runtime orchestration", () => {
   it("runs a provider-neutral text turn end-to-end", async () => {
     const result = await processVoiceRuntimeTurn({
@@ -106,6 +190,7 @@ describe("voice runtime orchestration", () => {
     expect(result.intent.intent).toBe("schedule_meeting");
     expect(result.toolPlan.toolName).toBe("appointment_request");
     expect(result.synthesizedAudio.providerStatus).toBe("mock_only");
+    expect(result.conversationSafety.consent.status).toBe("not_required");
     expect(result.auditEvents).toHaveLength(4);
   });
 
@@ -147,6 +232,22 @@ describe("voice runtime orchestration", () => {
 
     expect(result.finalState).toBe("blocked");
     expect(result.providerStatus).toBe("blocked_by_policy");
+  });
+
+  it("blocks runtime turns when explicit consent is incomplete", async () => {
+    const result = await processVoiceRuntimeTurn({
+      cardId: "card-1",
+      consent: { automationDisclosureAccepted: false },
+      mode: "phone_simulation",
+      sessionId: "session-4",
+      tenantId: "tenant-1",
+      text: "Please call me back.",
+      now: new Date("2026-07-14T00:00:00.000Z")
+    });
+
+    expect(result.session.state).toBe("blocked");
+    expect(result.session.providerStatus).toBe("blocked_by_policy");
+    expect(result.conversationSafety.reasonCodes).toContain("RECORDING_CONSENT_REQUIRED");
   });
 
   it("escalates emergency turns without provider claims", async () => {

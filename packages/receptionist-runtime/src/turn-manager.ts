@@ -1,11 +1,11 @@
 import { transitionVoiceRuntimeState } from "./conversation-state-machine";
+import { validateConversationSafety } from "./conversation-safety-validation";
 import { createRuntimeDialogueResponse } from "./dialogue-policy";
 import { classifyRuntimeIntent } from "./intent-engine";
 import { detectRuntimeLanguage } from "./language-engine";
 import { createMockSpeechRecognitionProvider } from "./mock-speech-recognition";
 import { createMockSpeechSynthesisProvider } from "./mock-speech-synthesis";
 import {
-  assessRuntimeSafety,
   assertRuntimeScope,
   createVoiceRuntimeReplayKey
 } from "./runtime-safety";
@@ -22,13 +22,13 @@ import type {
 
 function createAuditEvent(input: {
   readonly eventType: string;
+  readonly metadata: VoiceRuntimeAuditEvent["metadata"];
   readonly occurredAt: string;
   readonly session: VoiceRuntimeSession;
-  readonly metadata: Record<string, string | number | boolean | null>;
 }): VoiceRuntimeAuditEvent {
   return {
     cardId: input.session.cardId,
-    eventId: `${input.session.sessionId}:${input.eventType}:${input.occurredAt}`,
+    eventId: `${input.eventType}:${input.session.sessionId}:${input.occurredAt}`,
     eventType: input.eventType,
     metadata: input.metadata,
     occurredAt: input.occurredAt,
@@ -68,7 +68,15 @@ export async function processVoiceRuntimeTurn(input: VoiceRuntimeInput & {
     preferredLanguage: input.preferredLanguage ?? recognition.language,
     transcript: recognition.transcript
   });
-  const safety = assessRuntimeSafety(recognition.transcript);
+  const conversationSafety = validateConversationSafety({
+    ...(input.consent ? { consent: input.consent } : {}),
+    ...(input.consentPolicy ? { consentPolicy: input.consentPolicy } : {}),
+    mode: input.mode,
+    ...(input.redactionPolicy ? { redactionPolicy: input.redactionPolicy } : {}),
+    ...(input.retentionPolicy ? { retentionPolicy: input.retentionPolicy } : {}),
+    transcript: recognition.transcript
+  });
+  const safety = conversationSafety.safety;
   const classifiedIntent = classifyRuntimeIntent(recognition.transcript);
   const intent = safety.decision === "block"
     ? {
@@ -128,8 +136,11 @@ export async function processVoiceRuntimeTurn(input: VoiceRuntimeInput & {
       createAuditEvent({
         eventType: "voice_runtime.safety.assessed",
         metadata: {
+          consentStatus: conversationSafety.consent.status,
           decision: safety.decision,
-          reasonCount: safety.reasonCodes.length,
+          reasonCount: conversationSafety.reasonCodes.length,
+          redactionApplied: conversationSafety.redaction.applied.join(","),
+          retentionDays: conversationSafety.retention.policy.transcriptPreviewRetentionDays,
           transcriptPreview: safety.sanitizedTranscriptPreview
         },
         occurredAt: timestamp,
@@ -152,6 +163,7 @@ export async function processVoiceRuntimeTurn(input: VoiceRuntimeInput & {
         session
       })
     ],
+    conversationSafety,
     intent,
     language,
     response,

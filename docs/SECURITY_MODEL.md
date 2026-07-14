@@ -341,3 +341,7 @@ No telephony provider credentials are required or accepted for Phase 7G. Sandbox
 ## Phase 8 Voice Runtime Security Note
 
 The voice runtime is mock-only in Phase 8. It escalates sensitive requests to human approval, avoids raw audio persistence, emits sanitized audit events, and keeps production calling disabled.
+
+## Phase 9 Runtime Safety Validation
+
+The receptionist runtime now validates consent, retention, redaction, prompt-injection, and emergency-language controls before tool execution. This remains provider-neutral and does not enable live voice, recording, or production calling.

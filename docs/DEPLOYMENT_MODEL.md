@@ -109,3 +109,7 @@ Required deployment actions:
 ## Phase 8 Deployment Note
 
 No production credentials are required for the Phase 8 runtime foundation. Future STT/TTS provider credentials must not be configured until a provider-specific phase defines verification, retention, redaction, and kill-switch controls.
+
+## Phase 9 Deployment Note
+
+No deployment architecture changes are required for Phase 9. The new safety validation is package-level runtime logic. Production voice remains disabled and live-provider credentials remain unconfigured.

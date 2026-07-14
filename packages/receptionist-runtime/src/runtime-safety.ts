@@ -1,5 +1,11 @@
 import { createHash } from "node:crypto";
-import type { RuntimeSafetyAssessment, VoiceRuntimeInput, VoiceRuntimeReplayStore } from "./types";
+import { redactRuntimeText } from "./redaction-policy";
+import type {
+  RuntimeRedactionPolicy,
+  RuntimeSafetyAssessment,
+  VoiceRuntimeInput,
+  VoiceRuntimeReplayStore
+} from "./types";
 
 const promptInjectionPatterns = [
   /ignore (all )?(previous|system|developer) instructions/iu,
@@ -14,26 +20,12 @@ const emergencyPatterns = [
   /\b(call 911|urgent danger|immediate danger)\b/iu
 ];
 
-const secretPatterns = [
-  /api[_-]?key\s*[:=]\s*\S+/giu,
-  /authorization:\s*bearer\s+\S+/giu,
-  /cookie:\s*\S+/giu
-];
-
-export function sanitizeRuntimeTranscriptPreview(transcript: string): string {
-  const withoutSecrets = secretPatterns.reduce(
-    (value, pattern) => value.replace(pattern, "[REDACTED_SECRET]"),
-    transcript
-  );
-
-  return withoutSecrets
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu, "[REDACTED_EMAIL]")
-    .replace(/\+?\d[\d\s().-]{7,}\d/gu, "[REDACTED_PHONE]")
-    .slice(0, 240);
+export function sanitizeRuntimeTranscriptPreview(transcript: string, policy?: RuntimeRedactionPolicy): string {
+  return redactRuntimeText(transcript, policy).redactedText;
 }
 
-export function assessRuntimeSafety(transcript: string): RuntimeSafetyAssessment {
-  const sanitizedTranscriptPreview = sanitizeRuntimeTranscriptPreview(transcript);
+export function assessRuntimeSafety(transcript: string, redactionPolicy?: RuntimeRedactionPolicy): RuntimeSafetyAssessment {
+  const sanitizedTranscriptPreview = sanitizeRuntimeTranscriptPreview(transcript, redactionPolicy);
   const reasonCodes: string[] = [];
 
   if (promptInjectionPatterns.some((pattern) => pattern.test(transcript))) {

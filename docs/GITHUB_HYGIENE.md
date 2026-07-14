@@ -132,3 +132,7 @@ Phase 7G changes are limited to sandbox provider hardening, readiness metadata, 
 ## Phase 8 Voice Runtime Note
 
 Phase 8 adds `@bidayax/receptionist-runtime` as a provider-neutral runtime foundation. It does not add live STT/TTS providers, live calls, recording, WebRTC, SIP, or production voice activation.
+
+## Phase 9 Hygiene
+
+Phase 9 changes stay inside the provider-neutral receptionist runtime package and docs. No live telephony provider, STT provider, TTS provider, SIP layer, recording service, or production calling activation is included.

@@ -27,3 +27,6 @@ Runtime audit events include metadata such as intent, confidence, tool plan, saf
 ## Production Gate
 
 Production calling remains disabled. Future live voice runtime activation must pass identity, telephony, provider, consent, retention, prompt-injection, redaction, and abuse controls before any controlled production rollout.
+## Phase 9 Consent, Retention, And Redaction
+
+Phase 9 adds provider-neutral consent evaluation, retention policy resolution, transcript-preview redaction, and combined conversation safety validation. Missing required consent, raw-audio retention requests, prompt-injection attempts, and unsafe conversational conditions fail closed before tool execution. Production voice and production calling remain disabled.
