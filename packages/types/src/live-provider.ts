@@ -74,10 +74,12 @@ export type ProviderReadinessCheck = {
 };
 
 export type LiveProviderRuntimeConfig = {
+  readonly nodeEnv: string;
   readonly telephonyProvider: "mock" | "twilio";
   readonly telephonyProviderExecutionMode: TelephonyProviderExecutionMode;
   readonly sandboxProviderEnabled: boolean;
   readonly sandboxWebhookSigningSecretConfigured: boolean;
+  readonly sandboxWebhookSigningSecretStrong: boolean;
   readonly twilioAccountSid: string | null;
   readonly twilioAuthToken: string | null;
   readonly twilioPhoneNumber: string | null;
@@ -161,4 +163,3 @@ export function isVoiceSafetyGateStatus(
 ): value is VoiceSafetyGateStatus {
   return (voiceSafetyGateStatuses as readonly string[]).includes(value);
 }
-

@@ -21,3 +21,7 @@ Emergency-language and prohibited-use signals are modeled only for safe terminat
 ## Phase 7 Sandbox Provider Boundary
 
 Sandbox provider mode is explicit and test-only. Browser input cannot enable production calling. `TELEPHONY_PROVIDER_MODE=production` is treated as a failed readiness state in Phase 7. Sandbox webhook payloads must be signed with the test-only sandbox secret, and normalized audit metadata stores hashes and references, not raw request bodies or secrets.
+
+## Phase 7G Addendum
+
+Sandbox webhook security now requires a strong test-only secret, exact HMAC signature format, timestamp tolerance, JSON content type, body-size limits, event ID replay checks, and sanitized audit metadata. This is not a live carrier security claim. Future providers must implement their own native webhook verification.

@@ -5,6 +5,16 @@ import {
 } from "../src/provider-readiness";
 
 describe("provider readiness", () => {
+  it("defaults missing, unknown, mixed-case, and padded provider modes to disabled", () => {
+    for (const mode of [undefined, "carrier", "Sandbox", " sandbox "]) {
+      const config = getLiveProviderRuntimeConfig(
+        mode === undefined ? {} : { TELEPHONY_PROVIDER_MODE: mode }
+      );
+
+      expect(config.telephonyProviderExecutionMode).toBe("disabled");
+    }
+  });
+
   it("fails Twilio readiness when configuration is missing", () => {
     const checks = getProviderReadinessChecks(
       getLiveProviderRuntimeConfig({ TELEPHONY_PROVIDER: "twilio" })
@@ -37,6 +47,7 @@ describe("provider readiness", () => {
       getLiveProviderRuntimeConfig({
         OPENAI_API_KEY: "sk-secret",
         OPENAI_REALTIME_MODEL: "gpt-realtime",
+        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "test-sandbox-secret-32-bytes",
         TWILIO_AUTH_TOKEN: "secret-token"
       })
     );
@@ -44,13 +55,14 @@ describe("provider readiness", () => {
 
     expect(details).not.toContain("sk-secret");
     expect(details).not.toContain("secret-token");
+    expect(details).not.toContain("test-sandbox-secret-32-bytes");
   });
 
   it("reports sandbox provider mode without enabling production calls", () => {
     const checks = getProviderReadinessChecks(
       getLiveProviderRuntimeConfig({
         TELEPHONY_PROVIDER_MODE: "sandbox",
-        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "test-secret"
+        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "test-sandbox-secret-32-bytes"
       })
     );
 
@@ -67,13 +79,45 @@ describe("provider readiness", () => {
     ).toBe("passed");
   });
 
-  it("fails readiness when production provider mode is requested", () => {
-    const checks = getProviderReadinessChecks(
+  it("fails sandbox readiness without a strong sandbox secret", () => {
+    const missing = getProviderReadinessChecks(
+      getLiveProviderRuntimeConfig({ TELEPHONY_PROVIDER_MODE: "sandbox" })
+    );
+    const weak = getProviderReadinessChecks(
+      getLiveProviderRuntimeConfig({
+        TELEPHONY_PROVIDER_MODE: "sandbox",
+        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "secret"
+      })
+    );
+
+    expect(
+      missing.find((check) => check.checkName === "sandbox_webhook_signature_policy")
+        ?.status
+    ).toBe("failed");
+    expect(
+      weak.find((check) => check.checkName === "sandbox_webhook_signature_policy")
+        ?.status
+    ).toBe("failed");
+  });
+
+  it("fails readiness when sandbox or production provider mode is requested in production", () => {
+    const sandboxChecks = getProviderReadinessChecks(
+      getLiveProviderRuntimeConfig({
+        NODE_ENV: "production",
+        TELEPHONY_PROVIDER_MODE: "sandbox",
+        TELEPHONY_SANDBOX_WEBHOOK_SECRET: "test-sandbox-secret-32-bytes"
+      })
+    );
+    const productionChecks = getProviderReadinessChecks(
       getLiveProviderRuntimeConfig({ TELEPHONY_PROVIDER_MODE: "production" })
     );
 
     expect(
-      checks.find((check) => check.checkName === "production_provider_mode_gate")
+      sandboxChecks.find((check) => check.checkName === "sandbox_environment_gate")
+        ?.status
+    ).toBe("failed");
+    expect(
+      productionChecks.find((check) => check.checkName === "production_provider_mode_gate")
         ?.status
     ).toBe("failed");
   });

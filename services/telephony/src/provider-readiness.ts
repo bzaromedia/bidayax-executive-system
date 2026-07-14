@@ -22,6 +22,22 @@ function readProviderExecutionMode(value: string | undefined) {
     : "disabled";
 }
 
+function isStrongSandboxSecret(secret: string | undefined) {
+  if (!secret || secret.trim().length < 16) {
+    return false;
+  }
+
+  const normalized = secret.trim().toLowerCase();
+  return ![
+    "change-me",
+    "changeme",
+    "placeholder",
+    "test",
+    "secret",
+    "sandbox-secret"
+  ].includes(normalized);
+}
+
 export function getLiveProviderRuntimeConfig(
   env: Record<string, string | undefined> = process.env
 ): LiveProviderRuntimeConfig {
@@ -32,10 +48,12 @@ export function getLiveProviderRuntimeConfig(
       : "mock";
 
   return {
+    nodeEnv: env.NODE_ENV ?? "development",
     allowProductionCalls: readBoolean(env.ALLOW_PRODUCTION_CALLS, false),
     liveInboundCallsEnabled: readBoolean(env.LIVE_INBOUND_CALLS_ENABLED, false),
     sandboxProviderEnabled: readProviderExecutionMode(env.TELEPHONY_PROVIDER_MODE) === "sandbox",
     sandboxWebhookSigningSecretConfigured: Boolean(env.TELEPHONY_SANDBOX_WEBHOOK_SECRET),
+    sandboxWebhookSigningSecretStrong: isStrongSandboxSecret(env.TELEPHONY_SANDBOX_WEBHOOK_SECRET),
     openAiApiKey: env.OPENAI_API_KEY ?? null,
     openAiRealtimeModel: env.OPENAI_REALTIME_MODEL ?? null,
     outboundCallsEnabled: readBoolean(env.OUTBOUND_CALLS_ENABLED, false),
@@ -172,11 +190,31 @@ export function validateSandboxProviderReadiness(
     }),
     createCheck({
       checkName: "sandbox_webhook_signature_policy",
-      details: config.sandboxWebhookSigningSecretConfigured
-        ? "Sandbox webhook signature verification has a test-only secret configured."
-        : "Sandbox webhook signature verification requires TELEPHONY_SANDBOX_WEBHOOK_SECRET for sandbox webhook tests.",
+      details:
+        config.telephonyProviderExecutionMode !== "sandbox"
+          ? "Sandbox webhook signature verification is inactive because sandbox provider mode is disabled."
+          : config.sandboxWebhookSigningSecretConfigured
+            ? "Sandbox webhook signature verification has a test-only secret configured."
+            : "Sandbox webhook signature verification requires TELEPHONY_SANDBOX_WEBHOOK_SECRET for sandbox webhook tests.",
       provider: "mock",
-      status: config.sandboxWebhookSigningSecretConfigured ? "passed" : "warning"
+      status:
+        config.telephonyProviderExecutionMode !== "sandbox"
+          ? "skipped"
+          : config.sandboxWebhookSigningSecretStrong
+            ? "passed"
+            : "failed"
+    }),
+    createCheck({
+      checkName: "sandbox_environment_gate",
+      details:
+        config.nodeEnv === "production" && config.telephonyProviderExecutionMode === "sandbox"
+          ? "Sandbox provider mode is not allowed in production."
+          : "Sandbox provider mode is restricted to non-production environments.",
+      provider: "mock",
+      status:
+        config.nodeEnv === "production" && config.telephonyProviderExecutionMode === "sandbox"
+          ? "failed"
+          : "passed"
     }),
     createCheck({
       checkName: "production_provider_mode_gate",
@@ -208,4 +246,3 @@ export function getProviderReadinessChecks(
     ...validateOpenAiRealtimeReadiness(config)
   ];
 }
-

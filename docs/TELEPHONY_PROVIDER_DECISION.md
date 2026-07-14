@@ -24,3 +24,7 @@ No Twilio, Telnyx, Vapi, Retell, Bland, SIP, WebRTC, or other live telephony pro
 ## Future Decision Point
 
 A future phase may select one carrier provider for a sandbox-to-live vertical slice. That decision must include webhook signature verification, account provisioning, credential management, cost controls, provider outage behavior, and production kill switches before any controlled production activation.
+
+## Phase 7G Addendum
+
+The selected Phase 7 provider remains the internal sandbox adapter. Phase 7G confirmed the adapter is a provider-boundary proof, not a carrier decision. The approved governance path is: provider-neutral telephony domain, then sandbox adapter hardening, then a future live provider decision with carrier-native webhook verification and durable replay protection.

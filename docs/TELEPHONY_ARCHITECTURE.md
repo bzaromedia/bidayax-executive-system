@@ -15,3 +15,7 @@ Core layers:
 - Future provider adapter interfaces in `services/telephony/src/provider-interface.ts`.
 
 The domain is intentionally ready for future adapters without installing any provider SDK.
+
+## Phase 7G Addendum
+
+The Telephony Control Plane continues to sit above provider adapters. Phase 7G verified that the sandbox adapter can execute provider-shaped operations and normalize provider-shaped events without allowing the adapter to bypass safety gates or production-call controls.
