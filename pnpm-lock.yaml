@@ -101,9 +101,6 @@ importers:
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry
-      '@bidayax/trust':
-        specifier: workspace:*
-        version: link:../../packages/trust
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -174,6 +171,9 @@ importers:
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
       '@bidayax/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -318,12 +318,12 @@ importers:
 
   packages/settings:
     dependencies:
-      '@bidayax/trust':
-        specifier: workspace:*
-        version: link:../trust
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../tokens
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../trust
       '@bidayax/types':
         specifier: workspace:*
         version: link:../types
@@ -542,12 +542,12 @@ importers:
 
   services/telephony:
     dependencies:
-      '@bidayax/trust':
-        specifier: workspace:*
-        version: link:../../packages/trust
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../telemetry
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
       '@bidayax/types':
         specifier: workspace:*
         version: link:../../packages/types
