@@ -1,0 +1,7 @@
+import { buildSignedSanitizedEvidence, createSanitizedEvidence, type SafeMetadata, type SignatureProvider, type TrustKey } from "@bidayax/trust";
+export type TelephonyTrustEvidenceType = "telephony.command_accepted" | "telephony.command_denied" | "telephony.state_transition" | "telephony.routing_decision" | "telephony.provider_event_normalized" | "telephony.usage_recorded" | "telephony.safety_decision";
+export async function createSignedTelephonyEvidence(input: { readonly tenantId: string; readonly cardId: string; readonly subjectId: string; readonly eventType: TelephonyTrustEvidenceType; readonly occurredAt: string; readonly outcome: "accepted" | "denied" | "failed" | "recorded"; readonly reasonCode: string; readonly attributes: SafeMetadata; readonly key: TrustKey; readonly provider: SignatureProvider; readonly signerId: string }) {
+  const evidence = createSanitizedEvidence({ attributes: input.attributes, cardId: input.cardId, eventType: input.eventType, family: "telephony", occurredAt: input.occurredAt, outcome: input.outcome, reasonCode: input.reasonCode, subjectId: input.subjectId, tenantId: input.tenantId });
+  const domain = input.eventType === "telephony.usage_recorded" ? "telephony.usage" : input.eventType === "telephony.safety_decision" ? "telephony.safety" : "telephony.audit";
+  return { envelope: await buildSignedSanitizedEvidence({ domain, evidence, key: input.key, provider: input.provider, signerId: input.signerId, signerType: "system" }), evidence };
+}

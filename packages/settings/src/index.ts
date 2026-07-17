@@ -12,3 +12,4 @@ export * from "./settings-cache";
 export * from "./settings-observability";
 export * from "./settings-asset-management";
 export * from "./settings-auth-claims";
+export * from "./settings-trust-publish";

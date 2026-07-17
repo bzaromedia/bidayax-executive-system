@@ -9,6 +9,7 @@ import {
   createSettingsPersistenceRepository,
   SettingsPersistenceConflictError
 } from "./settings-persistence";
+import { persistTrustedSettingsPublishTransactionally, type SettingsTrustSigningDependencies } from "./settings-trust-publish";
 import type {
   SettingsIdempotencyRecord,
   SettingsPersistenceRepository,
@@ -55,6 +56,12 @@ export type PersistIdempotentSettingsPublishResult =
 export type PersistSettingsPublishTransactionInput = {
   readonly executor: SettingsQueryExecutor;
   readonly publishResult: SettingsPublishResult;
+  readonly trust?: {
+    readonly evidenceRequired: boolean;
+    readonly idempotencyKey: string;
+    readonly publishedAt: string;
+    readonly signing: SettingsTrustSigningDependencies | null;
+  };
 };
 
 export async function persistSettingsSnapshot(
@@ -197,6 +204,16 @@ export async function persistIdempotentSettingsPublishResult(
 export async function persistSettingsPublishResultTransactionally(
   input: PersistSettingsPublishTransactionInput
 ): Promise<PersistSettingsPublishResult> {
+  if (input.trust) {
+    return persistTrustedSettingsPublishTransactionally({
+      evidenceRequired: input.trust.evidenceRequired,
+      executor: input.executor,
+      idempotencyKey: input.trust.idempotencyKey,
+      publishedAt: input.trust.publishedAt,
+      publishResult: input.publishResult,
+      signing: input.trust.signing
+    });
+  }
   await input.executor.query("begin");
 
   try {

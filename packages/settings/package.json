@@ -15,6 +15,7 @@
     "test": "node ../../node_modules/vitest/vitest.mjs run"
   },
   "dependencies": {
+    "@bidayax/trust": "workspace:*",
     "@bidayax/tokens": "workspace:*",
     "@bidayax/types": "workspace:*"
   },
@@ -22,4 +23,3 @@
     "typescript": "^5.7.2"
   }
 }
-

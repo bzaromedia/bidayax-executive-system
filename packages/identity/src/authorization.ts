@@ -13,16 +13,21 @@ export const rolePermissionPolicy: Readonly<
   tenant_owner: [
     "settings:read", "settings:update", "settings:preview", "settings:publish",
     "settings:history:read", "settings:asset:write", "receptionist:configure",
-    "audit:read", "members:manage", "sessions:revoke", "card-access:manage"
+    "audit:read", "members:manage", "sessions:revoke", "card-access:manage",
+    "trust.verify", "trust.keys.read", "trust.keys.manage", "trust.provenance.read",
+    "trust.audit.verify", "trust.merkle.verify", "trust.revocations.read"
   ],
   tenant_admin: [
     "settings:read", "settings:update", "settings:preview", "settings:publish",
     "settings:history:read", "settings:asset:write", "receptionist:configure",
-    "audit:read", "members:manage", "sessions:revoke", "card-access:manage"
+    "audit:read", "members:manage", "sessions:revoke", "card-access:manage",
+    "trust.verify", "trust.keys.read", "trust.keys.manage", "trust.provenance.read",
+    "trust.audit.verify", "trust.merkle.verify", "trust.revocations.read"
   ],
   executive: [
     "settings:read", "settings:update", "settings:preview",
-    "settings:history:read", "receptionist:configure", "audit:read"
+    "settings:history:read", "receptionist:configure", "audit:read", "trust.verify",
+    "trust.keys.read", "trust.provenance.read", "trust.audit.verify", "trust.merkle.verify", "trust.revocations.read"
   ],
   settings_editor: [
     "settings:read", "settings:update", "settings:preview",
@@ -31,7 +36,7 @@ export const rolePermissionPolicy: Readonly<
   receptionist_manager: [
     "settings:read", "settings:history:read", "receptionist:configure"
   ],
-  viewer: ["settings:read", "settings:history:read"]
+  viewer: ["settings:read", "settings:history:read", "trust.verify", "trust.keys.read", "trust.provenance.read", "trust.audit.verify", "trust.merkle.verify", "trust.revocations.read"]
 };
 
 export class IdentityAuthorizationError extends Error {

@@ -101,6 +101,9 @@ importers:
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../../services/telemetry
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../../packages/tokens
@@ -267,6 +270,9 @@ importers:
 
   packages/identity:
     dependencies:
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../trust
       '@bidayax/types':
         specifier: workspace:*
         version: link:../types
@@ -296,6 +302,9 @@ importers:
 
   packages/receptionist-runtime:
     dependencies:
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../trust
       '@bidayax/types':
         specifier: workspace:*
         version: link:../types
@@ -309,6 +318,9 @@ importers:
 
   packages/settings:
     dependencies:
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../trust
       '@bidayax/tokens':
         specifier: workspace:*
         version: link:../tokens
@@ -321,6 +333,12 @@ importers:
         version: 5.9.3
 
   packages/tokens:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+
+  packages/trust:
     devDependencies:
       typescript:
         specifier: ^5.7.2
@@ -524,6 +542,9 @@ importers:
 
   services/telephony:
     dependencies:
+      '@bidayax/trust':
+        specifier: workspace:*
+        version: link:../../packages/trust
       '@bidayax/telemetry':
         specifier: workspace:*
         version: link:../telemetry

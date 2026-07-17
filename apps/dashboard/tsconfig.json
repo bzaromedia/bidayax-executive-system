@@ -20,6 +20,9 @@
       "@bidayax/identity": [
         "../../packages/identity/src/index.ts"
       ],
+      "@bidayax/trust": [
+        "../../packages/trust/src/index.ts"
+      ],
       "@bidayax/types": [
         "../../packages/types/src/index.ts"
       ],
