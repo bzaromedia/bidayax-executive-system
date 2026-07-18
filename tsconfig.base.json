@@ -18,6 +18,7 @@
     "paths": {
       "@bidayax/tokens": ["packages/tokens/src/index.ts"],
       "@bidayax/settings": ["packages/settings/src/index.ts"],
+      "@bidayax/trust": ["packages/trust/src/index.ts"],
       "@bidayax/identity": ["packages/identity/src/index.ts"],
       "@bidayax/ui": ["packages/ui/src/index.ts"],
       "@bidayax/types": ["packages/types/src/index.ts"],
@@ -26,6 +27,8 @@
       "@bidayax/config/receptionist": ["packages/config/receptionist/index.ts"],
       "@bidayax/workflow-engine": ["packages/workflow-engine/src/index.ts"],
       "@bidayax/receptionist-core": ["packages/receptionist-core/src/index.ts"],
+      "@bidayax/telemetry": ["services/telemetry/src/index.ts"],
+      "@bidayax/telephony": ["services/telephony/src/index.ts"],
       "@bidayax/voice-gateway": ["services/voice-gateway/src/index.ts"],
       "@bidayax/config/tailwind": ["packages/config/tailwind/preset.ts"],
       "@bidayax/card-customization": ["services/card-customization/src/index.ts"],

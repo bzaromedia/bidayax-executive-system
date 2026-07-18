@@ -1,0 +1,7 @@
+import { buildSignedSanitizedEvidence, createSanitizedEvidence, type SafeMetadata, type SignatureProvider, type TrustKey } from "@bidayax/trust";
+export type ReceptionistTrustEvidenceType = "receptionist.consent" | "receptionist.retention" | "receptionist.redaction" | "receptionist.safety" | "receptionist.tool_authorization" | "receptionist.escalation" | "receptionist.language_policy" | "receptionist.runtime_policy";
+export async function createSignedReceptionistEvidence(input: { readonly tenantId: string; readonly cardId: string; readonly subjectId: string; readonly eventType: ReceptionistTrustEvidenceType; readonly occurredAt: string; readonly outcome: "accepted" | "denied" | "failed" | "recorded"; readonly reasonCode: string; readonly attributes: SafeMetadata; readonly key: TrustKey; readonly provider: SignatureProvider; readonly signerId: string }) {
+  const evidence = createSanitizedEvidence({ attributes: input.attributes, cardId: input.cardId, eventType: input.eventType, family: "receptionist", occurredAt: input.occurredAt, outcome: input.outcome, reasonCode: input.reasonCode, subjectId: input.subjectId, tenantId: input.tenantId });
+  const domain = input.eventType === "receptionist.escalation" || input.eventType === "receptionist.language_policy" || input.eventType === "receptionist.runtime_policy" ? "receptionist.runtime" : input.eventType;
+  return { envelope: await buildSignedSanitizedEvidence({ domain, evidence, key: input.key, provider: input.provider, signerId: input.signerId, signerType: "system" }), evidence };
+}

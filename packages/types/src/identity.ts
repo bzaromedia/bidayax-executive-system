@@ -28,7 +28,14 @@ export const identityPermissions = [
   "audit:read",
   "members:manage",
   "sessions:revoke",
-  "card-access:manage"
+  "card-access:manage",
+  "trust.verify",
+  "trust.keys.read",
+  "trust.keys.manage",
+  "trust.provenance.read",
+  "trust.audit.verify",
+  "trust.merkle.verify",
+  "trust.revocations.read"
 ] as const;
 export type IdentityPermission = (typeof identityPermissions)[number];
 

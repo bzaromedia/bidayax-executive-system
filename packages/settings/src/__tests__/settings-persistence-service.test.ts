@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { generateKeyPairSync, sign as nodeSign } from "node:crypto";
+import type { TrustKey } from "@bidayax/trust";
 import { primitiveColors } from "@bidayax/tokens";
 import type {
   BrandAsset,
@@ -14,6 +16,7 @@ import {
   persistSettingsPublishResultTransactionally,
   persistSettingsSnapshot
 } from "../settings-persistence-service";
+import { persistTrustedSettingsPublishTransactionally } from "../settings-trust-publish";
 import type {
   SettingsIdempotencyRecord,
   SettingsPersistenceRepository,
@@ -181,6 +184,16 @@ class FailingTransactionExecutor implements SettingsQueryExecutor {
     }
 
     return { rowCount: 0, rows: [] };
+  }
+}
+
+class SuccessfulTrustTransactionExecutor extends FailingTransactionExecutor {
+  override async query<Row>(text: string, values: readonly unknown[] = []): Promise<SettingsQueryResult<Row>> {
+    const normalized = text.toLowerCase();
+    if (normalized.includes("from trust_audit_chain_entries")) { this.statements.push(text); return { rowCount: 0, rows: [] }; }
+    if (normalized.includes("insert into settings_audit_events")) { this.statements.push(text); return { rowCount: 1, rows: [{ actor: values[4], card_id: values[3], event_id: values[0], event_type: values[1], metadata: values[9], occurred_at: values[5], previous_snapshot_hash: values[8], severity: values[10], snapshot_hash: values[7], source: values[6], tenant_id: values[2] } as Row] }; }
+    if (normalized.includes("insert into trust_") || normalized.includes("insert into cryptographic_envelopes")) { this.statements.push(text); return { rowCount: 1, rows: [] }; }
+    return super.query(text, values);
   }
 }
 
@@ -514,5 +527,28 @@ describe("settings persistence service", () => {
     expect(executor.statements).toContain("rollback");
     expect(executor.statements).not.toContain("commit");
   });
-});
 
+  it("fails closed and rolls back before settings persistence when required signing dependencies are absent", async () => {
+    const executor = new FailingTransactionExecutor();
+    await expect(persistTrustedSettingsPublishTransactionally({
+      evidenceRequired: true,
+      executor,
+      idempotencyKey: "publish-trust-1",
+      publishedAt: createdAt,
+      publishResult: publishResult(),
+      signing: null
+    })).rejects.toThrow("Required settings trust evidence");
+    expect(executor.statements).toEqual(["begin", "rollback"]);
+  });
+
+  it("commits settings and all required trust evidence through one transaction", async () => {
+    const executor = new SuccessfulTrustTransactionExecutor();
+    const pair = generateKeyPairSync("ed25519");
+    const key: TrustKey = { algorithm: "Ed25519", compromisedAt: null, createdAt, identityId: "owner-1", keyId: "settings-key-1", keyVersion: 1, metadata: {}, providerKeyReference: "opaque-test-reference", providerType: "remote-signer", publicKey: pair.publicKey.export({ format: "der", type: "spki" }).toString("base64url"), publicKeyEncoding: "spki-der-base64url", purpose: "settings_signing", replacesKeyId: null, replacesKeyVersion: null, revokedAt: null, scopeId: "card-ad-garner", status: "active", statusChangedAt: createdAt, structureVersion: "1", tenantId: "tenant-bidayax", validFrom: createdAt, validUntil: null };
+    const result = await persistSettingsPublishResultTransactionally({ executor, publishResult: publishResult(), trust: { evidenceRequired: true, idempotencyKey: "publish-trust-atomic-1", publishedAt: createdAt, signing: { key, provider: { async sign(input) { return nodeSign(null, input.data, pair.privateKey); } }, signerId: key.identityId, signerType: "tenant" } } });
+    expect(result.persistedVersionIds).toContain("version-published");
+    expect(executor.statements.at(0)).toBe("begin"); expect(executor.statements.at(-1)).toBe("commit");
+    for (const table of ["trust_provenance_manifests", "cryptographic_envelopes", "trust_events", "trust_audit_chain_entries"]) expect(executor.statements.some((statement) => statement.includes(`insert into ${table}`))).toBe(true);
+    expect(publishResult().snapshotHash).toBe("snapshot-hash");
+  });
+});

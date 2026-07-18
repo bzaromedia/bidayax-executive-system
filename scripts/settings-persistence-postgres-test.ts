@@ -579,6 +579,329 @@ try {
     );
   });
 
+
+  await client.query(
+    `insert into trust_crypto_identities (
+       identity_id, tenant_id, structure_version, identity_type, display_name,
+       status, metadata, created_at, updated_at
+     ) values
+       ('trust-identity-test', 'tenant-test', '1', 'service', 'Trust Test Identity', 'active', '{}'::jsonb, now(), now()),
+       ('trust-identity-other', 'tenant-other', '1', 'service', 'Trust Other Identity', 'active', '{}'::jsonb, now(), now())`
+  );
+
+  const trustKeyPrimaryKey = await client.query<{ column_name: string }>(
+    `select a.attname as column_name
+       from pg_constraint c
+       join pg_class t on t.oid = c.conrelid
+       join unnest(c.conkey) with ordinality as cols(attnum, ordinality) on true
+       join pg_attribute a on a.attrelid = t.oid and a.attnum = cols.attnum
+      where t.relname = 'trust_keys'
+        and c.contype = 'p'
+      order by cols.ordinality`
+  );
+  if (trustKeyPrimaryKey.rows.map((row) => row.column_name).join(",") !== "tenant_id,key_id,key_version") {
+    throw new Error("trust_keys primary key is not tenant-scoped.");
+  }
+
+  await client.query(
+    `insert into trust_keys (
+       key_id, key_version, tenant_id, structure_version, identity_id, algorithm,
+       public_key, public_key_encoding, purpose, scope_id, provider_type,
+       provider_key_reference, status, valid_from, valid_until, status_changed_at,
+       metadata, created_at
+     ) values
+       ('shared-logical-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+        'testPublicKeyA', 'spki-der-base64url', 'audit_chain_signing', 'card-test',
+        'kms', 'tenant-test/shared-logical-key/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('shared-logical-key', 1, 'tenant-other', '1', 'trust-identity-other', 'Ed25519',
+        'testPublicKeyB', 'spki-der-base64url', 'audit_chain_signing', 'card-test',
+        'kms', 'tenant-other/shared-logical-key/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('tenant-test-only-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+        'testPublicKeyC', 'spki-der-base64url', 'settings_signing', 'settings-scope',
+        'kms', 'tenant-test/only/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('tenant-test-audit-only-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+        'testPublicKeyAuditOnly', 'spki-der-base64url', 'audit_chain_signing', 'audit-only-scope',
+        'kms', 'tenant-test/audit-only/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('tenant-other-valid-key', 1, 'tenant-other', '1', 'trust-identity-other', 'Ed25519',
+        'testPublicKeyD', 'spki-der-base64url', 'settings_signing', 'settings-scope',
+        'kms', 'tenant-other/valid/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('shared-state-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+        'testPublicKeyF', 'spki-der-base64url', 'verification_only', 'state-scope',
+        'kms', 'tenant-test/state/1', 'active', now(), null, now(), '{}'::jsonb, now()),
+       ('shared-state-key', 1, 'tenant-other', '1', 'trust-identity-other', 'Ed25519',
+        'testPublicKeyG', 'spki-der-base64url', 'verification_only', 'state-scope',
+        'kms', 'tenant-other/state/1', 'active', now(), null, now(), '{}'::jsonb, now())`
+  );
+
+  await client.query(
+    `insert into trust_keys (
+       key_id, key_version, tenant_id, structure_version, identity_id, algorithm,
+       public_key, public_key_encoding, purpose, scope_id, provider_type,
+       provider_key_reference, status, valid_from, valid_until, status_changed_at,
+       revoked_at, metadata, created_at
+     ) values (
+       'revoked-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+       'testPublicKeyE', 'spki-der-base64url', 'settings_signing', 'revoked-scope',
+       'kms', 'tenant-test/revoked/1', 'revoked', now(), null,
+       timestamp '2026-07-17 10:00:00+00', timestamp '2026-07-17 10:00:00+00', '{}'::jsonb, now()
+     )`
+  );
+
+  await expectError("trust_key_duplicate_inside_tenant", async () => {
+    await client.query(
+      `insert into trust_keys (
+         key_id, key_version, tenant_id, structure_version, identity_id, algorithm,
+         public_key, public_key_encoding, purpose, scope_id, provider_type,
+         provider_key_reference, status, valid_from, valid_until, status_changed_at,
+         metadata, created_at
+       ) values (
+         'shared-logical-key', 1, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+         'testPublicKeyDuplicate', 'spki-der-base64url', 'audit_chain_signing', 'card-test',
+         'kms', 'tenant-test/shared-logical-key/duplicate', 'active', now(), null, now(), '{}'::jsonb, now()
+       )`
+    );
+  });
+
+  await client.query(
+    `update trust_keys
+        set status = 'retiring', valid_until = now() + interval '1 minute', status_changed_at = now() + interval '1 minute'
+      where tenant_id = 'tenant-test'
+        and key_id = 'shared-logical-key'
+        and key_version = 1`
+  );
+  await client.query(
+    `insert into trust_keys (
+       key_id, key_version, tenant_id, structure_version, identity_id, algorithm,
+       public_key, public_key_encoding, purpose, scope_id, provider_type,
+       provider_key_reference, status, valid_from, valid_until, status_changed_at,
+       replaces_key_id, replaces_key_version, metadata, created_at
+     ) values (
+       'shared-logical-key', 2, 'tenant-test', '1', 'trust-identity-test', 'Ed25519',
+       'testPublicKeyRotation', 'spki-der-base64url', 'audit_chain_signing', 'card-test',
+       'kms', 'tenant-test/shared-logical-key/2', 'pending', now(), null, now() + interval '2 minutes',
+       'shared-logical-key', 1, '{}'::jsonb, now()
+     )`
+  );
+
+  await expectError("trust_key_cross_tenant_rotation", async () => {
+    await client.query(
+      `insert into trust_keys (
+         key_id, key_version, tenant_id, structure_version, identity_id, algorithm,
+         public_key, public_key_encoding, purpose, scope_id, provider_type,
+         provider_key_reference, status, valid_from, valid_until, status_changed_at,
+         replaces_key_id, replaces_key_version, metadata, created_at
+       ) values (
+         'tenant-other-rotation', 2, 'tenant-other', '1', 'trust-identity-other', 'Ed25519',
+         'testPublicKeyCrossRotation', 'spki-der-base64url', 'settings_signing', 'settings-scope',
+         'kms', 'tenant-other/cross-rotation/2', 'pending', now(), null, now(),
+         'tenant-test-only-key', 1, '{}'::jsonb, now()
+       )`
+    );
+  });
+
+  await client.query(
+    `insert into trust_key_revocations (
+       revocation_id, tenant_id, key_id, key_version, revocation_type, reason_code,
+       effective_at, recorded_at, actor_identity_id, idempotency_key
+     ) values (
+       'revocation-valid', 'tenant-test', 'revoked-key', 1, 'revoked', 'KEY_REVOKED',
+       timestamp '2026-07-17 10:00:00+00', timestamp '2026-07-17 10:00:00+00', 'trust-identity-test', 'revocation-valid'
+     )`
+  );
+
+  await expectError("trust_key_cross_tenant_revocation", async () => {
+    await client.query(
+      `insert into trust_key_revocations (
+         revocation_id, tenant_id, key_id, key_version, revocation_type, reason_code,
+         effective_at, recorded_at, actor_identity_id, idempotency_key
+       ) values (
+         'revocation-cross-tenant', 'tenant-other', 'tenant-test-only-key', 1, 'revoked', 'KEY_REVOKED',
+         now(), now(), 'trust-identity-other', 'revocation-cross-tenant'
+       )`
+    );
+  });
+
+  await client.query(
+    `insert into trust_signed_actions (
+       action_id, tenant_id, structure_version, actor_identity_id, action_type,
+       target_id, idempotency_key, schema_version, payload, metadata, key_id,
+       key_version, key_purpose, signature_algorithm, signed_at, signature
+     ) values (
+       'action-valid', 'tenant-test', '1', 'trust-identity-test', 'settings.publish',
+       'card-test', 'action-valid', 'settings-action-1', '{}'::jsonb, '{}'::jsonb,
+       'tenant-test-only-key', 1, 'settings_signing', 'Ed25519', now(), 'testSignature'
+     )`
+  );
+
+  await expectError("trust_key_cross_tenant_signed_action", async () => {
+    await client.query(
+      `insert into trust_signed_actions (
+         action_id, tenant_id, structure_version, actor_identity_id, action_type,
+         target_id, idempotency_key, schema_version, payload, metadata, key_id,
+         key_version, key_purpose, signature_algorithm, signed_at, signature
+       ) values (
+         'action-cross-tenant', 'tenant-other', '1', 'trust-identity-other', 'settings.publish',
+         'card-test', 'action-cross-tenant', 'settings-action-1', '{}'::jsonb, '{}'::jsonb,
+         'tenant-test-only-key', 1, 'settings_signing', 'Ed25519', now(), 'testSignature'
+       )`
+    );
+  });
+
+  await client.query(
+    `insert into cryptographic_envelopes (
+       envelope_id, tenant_id, structure_version, envelope_version, card_id, artifact_type,
+       artifact_id, artifact_version, domain, schema_version, canonicalization_version,
+       algorithm_policy_version, digest_algorithm, digest, signature_algorithm, key_id,
+       key_version, key_purpose, signer_type, signer_id, signed_at, metadata, status,
+       payload, signature
+     ) values (
+       'envelope-valid', 'tenant-test', '1', '1', 'card-test', 'settings_snapshot',
+       'settings-artifact', '1', 'settings.snapshot', 'settings-schema-1', 'bidayax-c14n-1',
+       'trust-algorithm-policy-1', 'SHA-256', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+       'Ed25519', 'tenant-test-only-key', 1, 'settings_signing', 'tenant', 'trust-identity-test',
+       now(), '{}'::jsonb, 'active', '{}'::jsonb, 'testSignature'
+     )`
+  );
+
+  await expectError("trust_key_cross_tenant_envelope", async () => {
+    await client.query(
+      `insert into cryptographic_envelopes (
+         envelope_id, tenant_id, structure_version, envelope_version, card_id, artifact_type,
+         artifact_id, artifact_version, domain, schema_version, canonicalization_version,
+         algorithm_policy_version, digest_algorithm, digest, signature_algorithm, key_id,
+         key_version, key_purpose, signer_type, signer_id, signed_at, metadata, status,
+         payload, signature
+       ) values (
+         'envelope-cross-tenant', 'tenant-other', '1', '1', null, 'settings_snapshot',
+         'settings-artifact-cross', '1', 'settings.snapshot', 'settings-schema-1', 'bidayax-c14n-1',
+         'trust-algorithm-policy-1', 'SHA-256', 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'Ed25519', 'tenant-test-only-key', 1, 'settings_signing', 'tenant', 'trust-identity-other',
+         now(), '{}'::jsonb, 'active', '{}'::jsonb, 'testSignature'
+       )`
+    );
+  });
+
+  await client.query(
+    `update trust_keys
+        set status = 'compromised', compromised_at = now() + interval '3 minutes', status_changed_at = now() + interval '3 minutes'
+      where tenant_id = 'tenant-test'
+        and key_id = 'shared-state-key'
+        and key_version = 1`
+  );
+  const otherTenantState = await client.query<{ status: string }>(
+    `select status from trust_keys where tenant_id = 'tenant-other' and key_id = 'shared-state-key' and key_version = 1`
+  );
+  if (otherTenantState.rows[0]?.status !== "active") {
+    throw new Error("Compromise state leaked across tenants for same logical key.");
+  }
+
+  await expectError("trust_merkle_root_cross_tenant_key", async () => {
+    await client.query(
+      `insert into trust_merkle_batches (
+         batch_id, tenant_id, structure_version, leaf_digests, leaf_count, root_digest,
+         digest_algorithm, duplicate_policy, odd_node_policy, root_key_id, root_key_version,
+         root_key_purpose, root_signature_algorithm, root_signature_operation, root_signature,
+         root_signed_at, created_at
+       ) values (
+         'batch-cross-tenant-root-key', 'tenant-other', '1',
+         '["eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"]'::jsonb,
+         1, 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+         'SHA-256', 'reject', 'duplicate_last', 'tenant-test-audit-only-key', 1,
+         'audit_chain_signing', 'Ed25519', 'signature', 'testSignature', now(), now()
+       )`
+    );
+  });
+
+
+  await client.query(
+    `insert into trust_merkle_batches (
+       batch_id, tenant_id, structure_version, leaf_digests, leaf_count, root_digest,
+       digest_algorithm, duplicate_policy, odd_node_policy, created_at
+     ) values (
+       'batch-trust-test', 'tenant-test', '1',
+       '["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]'::jsonb,
+       2, 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+       'SHA-256', 'reject', 'duplicate_last', now()
+     )`
+  );
+
+  await client.query(
+    `insert into trust_merkle_proofs (
+       proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+       leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+     ) values (
+       'proof-trust-test', 'tenant-test', '1', '1', 'batch-trust-test', 0,
+       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+       'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+       'SHA-256',
+       '[{"position":"right","siblingDigest":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}]'::jsonb,
+       'proof-idempotency-test', now()
+     )`
+  );
+
+  await expectError("trust_merkle_duplicate_proof", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-duplicate', 'tenant-test', '1', '1', 'batch-trust-test', 0,
+         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-duplicate', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_root_mismatch", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-root-mismatch', 'tenant-test', '1', '1', 'batch-trust-test', 1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-root-mismatch', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_cross_tenant", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-cross-tenant', 'tenant-other', '1', '1', 'batch-trust-test', 1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-cross-tenant', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_negative_leaf_index", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-negative', 'tenant-test', '1', '1', 'batch-trust-test', -1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-negative', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_proof_mutation", async () => {
+    await client.query(
+      `update trust_merkle_proofs
+          set proof_steps = '[]'::jsonb
+        where proof_id = 'proof-trust-test'`
+    );
+  });
   await client.query("ROLLBACK");
   finish("passed", [
     `complete migration chain applied inside a transaction (${migrationFiles.length} files)`,
@@ -600,7 +923,9 @@ try {
     "duplicate active published version rejected",
     "published version mutation rejected",
     "audit event mutation rejected",
-    "idempotency key conflict rejected"
+    "idempotency key conflict rejected",
+    "trust keys are tenant-scoped across primary keys, rotation, revocation, signatures, envelopes, and Merkle roots",
+    "trust Merkle proofs are tenant-bound, immutable, and duplicate-safe"
   ]);
 } catch (error) {
   try {

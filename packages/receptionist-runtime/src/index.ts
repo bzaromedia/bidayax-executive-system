@@ -13,3 +13,4 @@ export * from "./runtime-safety";
 export * from "./tool-planner";
 export * from "./turn-manager";
 export * from "./types";
+export * from "./trust-evidence";

@@ -37,4 +37,5 @@ export * from "./queue-management";
 export * from "./routing-policy";
 export * from "./telephony-control-plane";
 export * from "./usage-ledger";
+export * from "./trust-evidence";
 export * from "./voice-profile-resolution";export * from "./sandbox-provider-adapter";

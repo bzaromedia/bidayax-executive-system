@@ -20,6 +20,7 @@
     "@bidayax/settings": "workspace:*",
     "@bidayax/telephony": "workspace:*",
     "@bidayax/telemetry": "workspace:*",
+    "@bidayax/trust": "workspace:*",
     "@bidayax/tokens": "workspace:*",
     "@bidayax/types": "workspace:*",
     "@bidayax/ui": "workspace:*",

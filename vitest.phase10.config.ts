@@ -1,0 +1,3 @@
+import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
+export default defineConfig({ resolve: { alias: { "@bidayax/trust": resolve(import.meta.dirname, "packages/trust/src/index.ts"), "@bidayax/settings": resolve(import.meta.dirname, "packages/settings/src/index.ts"), "@bidayax/tokens": resolve(import.meta.dirname, "packages/tokens/src/index.ts"), "@bidayax/types": resolve(import.meta.dirname, "packages/types/src/index.ts"), "@bidayax/telemetry": resolve(import.meta.dirname, "services/telemetry/src/index.ts"), "@": resolve(import.meta.dirname, "apps/dashboard/src") } }, test: { environment: "node" } });

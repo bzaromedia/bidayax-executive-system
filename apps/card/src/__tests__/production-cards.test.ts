@@ -448,6 +448,7 @@ describe("production executive cards", () => {
       resolve(process.cwd(), "src/components/ReceptionistVoiceChat.tsx"),
       "utf8"
     );
+    const css = readFileSync(resolve(process.cwd(), "src/styles/card.css"), "utf8");
 
     expect(receptionistCard).toContain("Call");
     expect(receptionistCard).toContain("Message");
@@ -456,8 +457,21 @@ describe("production executive cards", () => {
     expect(receptionistCard).toContain("Voice Chat");
     expect(receptionistCard).toContain("defaultRequestTypeOverride=\"request_callback\"");
     expect(textChat).toContain("/api/receptionist/chat");
-    expect(voiceChat).toContain("/api/receptionist/voice-chat");
-    expect(voiceChat).toContain("Live realtime providers remain disabled");
+    expect(voiceChat).not.toMatch(/placeholder/i);
+    expect(voiceChat).not.toContain("/api/receptionist/voice-chat");
+    expect(voiceChat).not.toContain("submitReceptionistRequest");
+    expect(voiceChat).not.toMatch(/navigator|mediaDevices|getUserMedia/i);
+    expect(voiceChat).not.toMatch(/connected|connecting|queued pending/i);
+    expect(voiceChat).toContain("receptionist-voice-disabled");
+    expect(voiceChat).toContain("Live voice is unavailable");
+    expect(voiceChat).toContain("Voice unavailable");
+    expect(voiceChat).toContain("disabled");
+    expect(voiceChat).toContain("Text Chat");
+    expect(voiceChat).toContain("Request Callback");
+    expect(voiceChat).toContain("role=\"status\"");
+    expect(voiceChat).toContain("aria-live=\"polite\"");
+    expect(css).toContain(".receptionist-voice-disabled");
+    expect(css).toContain("cursor: not-allowed;");
   });
   it("keeps the receptionist workflow routes available", () => {
     const routePaths = [
