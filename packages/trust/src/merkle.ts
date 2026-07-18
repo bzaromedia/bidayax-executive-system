@@ -67,7 +67,7 @@ export function createMerkleProof(batch: MerkleBatch, leafDigest: string, proofI
     steps.push({ position: right ? "left" : "right", siblingDigest: level[siblingIndex] ?? (level[index] as string) });
     index = Math.floor(index / 2);
   }
-  return Object.freeze({ batchId: batch.batchId, leafDigest, leafIndex, proofId, rootDigest: batch.rootDigest, steps: Object.freeze(steps), structureVersion: "1", tenantId: batch.tenantId });
+  return Object.freeze({ batchId: batch.batchId, digestAlgorithm: batch.digestAlgorithm, leafDigest, leafIndex, proofId, proofVersion: "1", rootDigest: batch.rootDigest, steps: Object.freeze(steps), structureVersion: "1", tenantId: batch.tenantId });
 }
 
 export type MerkleProofVerification = { readonly valid: boolean; readonly reasonCodes: readonly ("tenant_mismatch" | "batch_mismatch" | "malformed_proof" | "root_mismatch")[] };

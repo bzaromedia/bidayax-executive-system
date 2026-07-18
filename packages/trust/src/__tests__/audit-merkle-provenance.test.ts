@@ -64,6 +64,9 @@ describe("tenant-bound Merkle batches", () => {
     const batch = createMerkleBatch({ batchId: "batch-1", createdAt: signedAt, leafDigests: [leafA, leafB, leafC], tenantId: "tenant-1" });
     for (const leaf of batch.leafDigests) expect(verifyMerkleProof(createMerkleProof(batch, leaf, `proof-${leaf}`), { batch, tenantId: "tenant-1" }).valid).toBe(true);
     const proof = createMerkleProof(batch, leafA, "proof-a");
+    expect(proof).toMatchObject({ digestAlgorithm: "SHA-256", proofVersion: "1", structureVersion: "1" });
+    expect(createMerkleProof(batch, leafA, "proof-a").steps).toEqual(proof.steps);
+    expect(JSON.stringify(proof.steps)).toBe(JSON.stringify(createMerkleProof(batch, leafA, "proof-a").steps));
     expect(verifyMerkleProof({ ...proof, tenantId: "tenant-2" }, { tenantId: "tenant-1" }).reasonCodes).toContain("tenant_mismatch");
     expect(verifyMerkleProof({ ...proof, leafIndex: proof.leafIndex + 1 }, { batch, tenantId: "tenant-1" }).valid).toBe(false);
     expect(verifyMerkleProof({ ...proof, rootDigest: "0".repeat(64) }, { batch, tenantId: "tenant-1" }).valid).toBe(false);

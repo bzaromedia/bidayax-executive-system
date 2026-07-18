@@ -10,3 +10,5 @@ Legacy settings `snapshotHash` and brand-token FNV hashes remain compatibility i
 
 Append-only and immutable triggers protect revocations, actions, events, envelopes, audit entries, Merkle evidence, provenance, receipts, and proofs. Audit append serialization uses transaction-scoped advisory locks plus unique stream constraints; applications must still use database transactions and handle uniqueness conflicts as safe retries or conflicts.
 
+Approved Phase 10 schema expansion: `trust_merkle_proofs` is deliberately included as a durable Merkle inclusion-proof evidence table. It stores only tenant-scoped hashes, batch/root references, leaf indexes, deterministic proof paths, algorithms, proof versions, idempotency keys, and timestamps. It does not store private keys, raw sensitive artifact content, provider secrets, or blockchain anchoring data. Tenant-composite foreign keys bind proofs to their parent Merkle batch and root digest; uniqueness constraints prevent duplicate persisted proofs for the same batch/leaf/version; immutable triggers make records append-only after creation.
+

@@ -579,6 +579,96 @@ try {
     );
   });
 
+
+  await client.query(
+    `insert into trust_merkle_batches (
+       batch_id, tenant_id, structure_version, leaf_digests, leaf_count, root_digest,
+       digest_algorithm, duplicate_policy, odd_node_policy, created_at
+     ) values (
+       'batch-trust-test', 'tenant-test', '1',
+       '["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"]'::jsonb,
+       2, 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+       'SHA-256', 'reject', 'duplicate_last', now()
+     )`
+  );
+
+  await client.query(
+    `insert into trust_merkle_proofs (
+       proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+       leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+     ) values (
+       'proof-trust-test', 'tenant-test', '1', '1', 'batch-trust-test', 0,
+       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+       'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+       'SHA-256',
+       '[{"position":"right","siblingDigest":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}]'::jsonb,
+       'proof-idempotency-test', now()
+     )`
+  );
+
+  await expectError("trust_merkle_duplicate_proof", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-duplicate', 'tenant-test', '1', '1', 'batch-trust-test', 0,
+         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-duplicate', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_root_mismatch", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-root-mismatch', 'tenant-test', '1', '1', 'batch-trust-test', 1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-root-mismatch', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_cross_tenant", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-cross-tenant', 'tenant-other', '1', '1', 'batch-trust-test', 1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-cross-tenant', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_negative_leaf_index", async () => {
+    await client.query(
+      `insert into trust_merkle_proofs (
+         proof_id, tenant_id, structure_version, proof_version, batch_id, leaf_index,
+         leaf_digest, root_digest, digest_algorithm, proof_steps, idempotency_key, created_at
+       ) values (
+         'proof-trust-negative', 'tenant-test', '1', '1', 'batch-trust-test', -1,
+         'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+         'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+         'SHA-256', '[]'::jsonb, 'proof-idempotency-negative', now()
+       )`
+    );
+  });
+
+  await expectError("trust_merkle_proof_mutation", async () => {
+    await client.query(
+      `update trust_merkle_proofs
+          set proof_steps = '[]'::jsonb
+        where proof_id = 'proof-trust-test'`
+    );
+  });
   await client.query("ROLLBACK");
   finish("passed", [
     `complete migration chain applied inside a transaction (${migrationFiles.length} files)`,
@@ -600,7 +690,8 @@ try {
     "duplicate active published version rejected",
     "published version mutation rejected",
     "audit event mutation rejected",
-    "idempotency key conflict rejected"
+    "idempotency key conflict rejected",
+    "trust Merkle proofs are tenant-bound, immutable, and duplicate-safe"
   ]);
 } catch (error) {
   try {

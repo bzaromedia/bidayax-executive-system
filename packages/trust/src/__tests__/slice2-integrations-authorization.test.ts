@@ -23,6 +23,12 @@ describe("deny-by-default trust authorization", () => {
   const input = { authenticatedTenantId: "tenant-1", cardId: "card-1", operation: "artifact-verification", permissions: ["trust.verify"], permittedCardIds: ["card-1"], privileged: false, resourceTenantId: "tenant-1" } as const;
   it("covers every required permission", () => expect(trustPermissions).toHaveLength(7));
   it("allows exact permission and boundaries", () => expect(authorizeTrustOperation(input)).toMatchObject({ allowed: true, permission: "trust.verify" }));
+  it("allows privileged tenant administrators to request tenant-wide status", () => {
+    expect(authorizeTrustOperation({ ...input, cardId: null, operation: "trust-status", permissions: ["trust.verify"], permittedCardIds: [], privileged: true })).toMatchObject({ allowed: true, permission: "trust.verify" });
+  });
+  it.each(["executive", "viewer"])("allows %s users with trust permission and an authorized card", () => {
+    expect(authorizeTrustOperation({ ...input, cardId: "card-1", operation: "trust-status", permissions: ["trust.verify"], permittedCardIds: ["card-1"], privileged: false })).toMatchObject({ allowed: true, permission: "trust.verify" });
+  });
   it.each([
     [{ ...input, operation: "unknown" }, "unknown_operation"],
     [{ ...input, resourceTenantId: "tenant-2" }, "tenant_mismatch"],

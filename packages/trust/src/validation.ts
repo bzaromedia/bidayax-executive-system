@@ -150,7 +150,7 @@ export function validateMerkleProof(value: unknown): RuntimeValidation {
   const base = validateVersionedTenantStructure(value);
   if (!record(value)) return base;
   const errors = [...base.errors, ...requiredFields(value, ["proofId", "batchId", "leafDigest", "rootDigest"])];
-  if (!Number.isSafeInteger(value.leafIndex) || (value.leafIndex as number) < 0 || !Array.isArray(value.steps) || !isHexDigest(value.leafDigest) || !isHexDigest(value.rootDigest)) errors.push("Merkle proof fields are invalid");
+  if (value.proofVersion !== "1" || value.digestAlgorithm !== "SHA-256" || !Number.isSafeInteger(value.leafIndex) || (value.leafIndex as number) < 0 || !Array.isArray(value.steps) || !isHexDigest(value.leafDigest) || !isHexDigest(value.rootDigest)) errors.push("Merkle proof fields are invalid");
   return { valid: errors.length === 0, errors };
 }
 

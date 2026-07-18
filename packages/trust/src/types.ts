@@ -263,11 +263,13 @@ export type MerkleBatch = {
 export type MerkleProofStep = { readonly siblingDigest: HexDigest; readonly position: "left" | "right" };
 export type MerkleProof = {
   readonly structureVersion: "1";
+  readonly proofVersion: "1";
   readonly proofId: string;
   readonly batchId: string;
   readonly tenantId: string;
   readonly leafDigest: HexDigest;
   readonly leafIndex: number;
+  readonly digestAlgorithm: DigestAlgorithm;
   readonly steps: readonly MerkleProofStep[];
   readonly rootDigest: HexDigest;
 };

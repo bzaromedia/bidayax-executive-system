@@ -310,6 +310,7 @@ CREATE TABLE IF NOT EXISTS trust_merkle_batches (
   created_at TIMESTAMPTZ NOT NULL,
   immutable BOOLEAN NOT NULL DEFAULT TRUE CHECK (immutable = TRUE),
   UNIQUE (batch_id, tenant_id),
+  UNIQUE (batch_id, tenant_id, root_digest),
   UNIQUE (tenant_id, root_digest),
   FOREIGN KEY (digest_algorithm, digest_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
@@ -330,18 +331,26 @@ CREATE TABLE IF NOT EXISTS trust_merkle_proofs (
   proof_id TEXT PRIMARY KEY,
   tenant_id TEXT NOT NULL REFERENCES tenants(tenant_id) ON DELETE RESTRICT,
   structure_version TEXT NOT NULL CHECK (structure_version = '1'),
+  proof_version TEXT NOT NULL CHECK (proof_version = '1'),
   batch_id TEXT NOT NULL,
   leaf_index BIGINT NOT NULL CHECK (leaf_index >= 0),
   leaf_digest TEXT NOT NULL CHECK (leaf_digest ~ '^[0-9a-f]{64}$'),
   root_digest TEXT NOT NULL CHECK (root_digest ~ '^[0-9a-f]{64}$'),
+  digest_algorithm TEXT NOT NULL DEFAULT 'SHA-256' CHECK (digest_algorithm = 'SHA-256'),
+  digest_operation TEXT NOT NULL DEFAULT 'digest' CHECK (digest_operation = 'digest'),
   proof_steps JSONB NOT NULL CHECK (jsonb_typeof(proof_steps) = 'array'),
   idempotency_key TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL,
   UNIQUE (proof_id, tenant_id),
   UNIQUE (tenant_id, idempotency_key),
   UNIQUE (tenant_id, batch_id, leaf_index),
+  UNIQUE (tenant_id, batch_id, proof_version, leaf_index, leaf_digest),
+  FOREIGN KEY (digest_algorithm, digest_operation)
+    REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
   FOREIGN KEY (batch_id, tenant_id)
-    REFERENCES trust_merkle_batches(batch_id, tenant_id) ON DELETE RESTRICT
+    REFERENCES trust_merkle_batches(batch_id, tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (batch_id, tenant_id, root_digest)
+    REFERENCES trust_merkle_batches(batch_id, tenant_id, root_digest) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS trust_verification_receipts (
@@ -415,6 +424,8 @@ CREATE INDEX IF NOT EXISTS idx_trust_provenance_artifact
   ON trust_provenance_manifests(tenant_id, artifact_type, artifact_id, artifact_version);
 CREATE INDEX IF NOT EXISTS idx_trust_merkle_created
   ON trust_merkle_batches(tenant_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_trust_merkle_proofs_lookup
+  ON trust_merkle_proofs(tenant_id, batch_id, leaf_digest, leaf_index, proof_version);
 
 CREATE OR REPLACE FUNCTION enforce_trust_key_lifecycle_v1()
 RETURNS TRIGGER AS $$
@@ -567,4 +578,5 @@ COMMENT ON TABLE trust_keys IS 'Public keys and opaque provider references only;
 COMMENT ON TABLE cryptographic_envelopes IS 'Immutable signed artifact envelopes; corrections create a linked new envelope.';
 COMMENT ON TABLE trust_audit_chain_entries IS 'Append-only tenant streams serialized with advisory transaction locks.';
 COMMENT ON TABLE trust_merkle_batches IS 'Immutable deterministic tenant-bound batches with optional signed-root evidence.';
+COMMENT ON TABLE trust_merkle_proofs IS 'Approved Phase 10 durable Merkle inclusion-proof evidence; hash/index/path metadata only, tenant-bound and append-only.';
 COMMENT ON TABLE trust_provenance_manifests IS 'Immutable hash/reference-only provenance lifecycle manifests.';

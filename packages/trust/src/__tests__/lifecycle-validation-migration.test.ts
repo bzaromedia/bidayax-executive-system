@@ -111,7 +111,7 @@ describe("migration 0017 textual contract", () => {
     const required = [
       "trust_algorithm_registry", "trust_crypto_identities", "trust_keys", "trust_key_revocations",
       "trust_signed_actions", "trust_events", "cryptographic_envelopes", "trust_audit_chain_entries",
-      "trust_merkle_batches", "trust_provenance_manifests", "trust_verification_receipts",
+      "trust_merkle_batches", "trust_merkle_proofs", "trust_provenance_manifests", "trust_verification_receipts",
       "trust_agent_message_proofs"
     ];
     for (const table of required) expect(sql).toContain(`CREATE TABLE IF NOT EXISTS ${table}`);
@@ -132,6 +132,14 @@ describe("migration 0017 textual contract", () => {
     expect(sql).toContain("UNIQUE (tenant_id, stream_id, sequence_number)");
     expect(sql).toContain("pg_advisory_xact_lock");
     expect(sql).toContain("root_signature_algorithm TEXT");
+    expect(sql).toContain("CREATE TABLE IF NOT EXISTS trust_merkle_proofs");
+    expect(sql).toContain("proof_version TEXT NOT NULL CHECK (proof_version = '1')");
+    expect(sql).toContain("digest_algorithm TEXT NOT NULL DEFAULT 'SHA-256' CHECK (digest_algorithm = 'SHA-256')");
+    expect(sql).toContain("FOREIGN KEY (batch_id, tenant_id, root_digest)");
+    expect(sql).toContain("UNIQUE (tenant_id, batch_id, proof_version, leaf_index, leaf_digest)");
+    expect(sql).toContain("idx_trust_merkle_proofs_lookup");
+    expect(sql).toContain("trg_trust_merkle_proofs_append_only");
+    expect(sql).toContain("Approved Phase 10 durable Merkle inclusion-proof evidence");
     expect(sql).toContain("provider_type TEXT NOT NULL CHECK (provider_type IN ('kms', 'hsm', 'remote-signer'))");
     expect(sql).not.toContain("test-ephemeral");
     expect(sql).toContain("BEFORE UPDATE OR DELETE");
