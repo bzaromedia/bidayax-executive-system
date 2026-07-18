@@ -79,7 +79,17 @@ export async function handleTrustRequest(request: Request, operationValue: strin
     revocations: `select r.revocation_id,r.key_id,r.key_version,r.revocation_type,r.reason_code,r.effective_at,r.recorded_at from trust_key_revocations r join trust_keys k on k.tenant_id=r.tenant_id and k.key_id=r.key_id and k.key_version=r.key_version where r.tenant_id=$1${resource.cardId === null ? "" : " and k.scope_id in ($1,$2)"} order by r.recorded_at desc`,
     provenance: `select p.manifest_id,p.artifact_type,p.artifact_id,p.artifact_version,p.artifact_digest,p.links,p.lifecycle_events,p.manifest_digest,p.schema_version,p.metadata,p.created_at from trust_provenance_manifests p where p.tenant_id=$1${resource.cardId === null ? "" : " and exists (select 1 from cryptographic_envelopes e where e.tenant_id=p.tenant_id and e.provenance_manifest_id=p.manifest_id and e.card_id=$2)"} order by p.created_at desc`,
     "audit-chains": `select a.entry_id,a.stream_id,a.sequence_number,a.previous_digest,a.event_id,a.event_digest,a.entry_digest,a.checkpoint_sequence,a.checkpoint_digest,a.appended_at from trust_audit_chain_entries a where a.tenant_id=$1${resource.cardId === null ? "" : " and exists (select 1 from trust_events t where t.tenant_id=a.tenant_id and t.event_id=a.event_id and t.details->>'cardId'=$2)"} order by a.stream_id,a.sequence_number`,
-    merkle: "select batch_id,leaf_count,root_digest,digest_algorithm,duplicate_policy,odd_node_policy,root_key_id,root_key_version,root_signature_algorithm,root_signature,root_signed_at,created_at from trust_merkle_batches where tenant_id=$1 order by created_at desc",
+    merkle: resource.cardId === null
+      ? "select batch_id,leaf_count,root_digest,digest_algorithm,duplicate_policy,odd_node_policy,root_key_id,root_key_version,root_signature_algorithm,root_signature,root_signed_at,created_at from trust_merkle_batches where tenant_id=$1 order by created_at desc"
+      : `select distinct b.batch_id,b.leaf_count,b.root_digest,b.digest_algorithm,b.duplicate_policy,b.odd_node_policy,b.root_key_id,b.root_key_version,b.root_signature_algorithm,b.root_signature,b.root_signed_at,b.created_at
+         from trust_merkle_batches b
+        where b.tenant_id=$1
+          and (
+            exists (select 1 from cryptographic_envelopes e where e.tenant_id=b.tenant_id and e.card_id=$2 and b.leaf_digests ? e.digest)
+            or exists (select 1 from trust_audit_chain_entries a join trust_events t on t.tenant_id=a.tenant_id and t.event_id=a.event_id where a.tenant_id=b.tenant_id and t.details->>'cardId'=$2 and b.leaf_digests ? a.entry_digest)
+            or exists (select 1 from trust_provenance_manifests p join cryptographic_envelopes e on e.tenant_id=p.tenant_id and e.provenance_manifest_id=p.manifest_id where p.tenant_id=b.tenant_id and e.card_id=$2 and b.leaf_digests ? p.manifest_digest)
+          )
+        order by b.created_at desc`,
     "artifact-verification": `select envelope_id,artifact_type,artifact_id,artifact_version,domain,digest_algorithm,digest,signature_algorithm,key_id,key_version,status,signed_at,expires_at from cryptographic_envelopes where tenant_id=$1${cardClause} order by signed_at desc`
   };
   const result = await database.query(queries[operationValue] as string, filters);

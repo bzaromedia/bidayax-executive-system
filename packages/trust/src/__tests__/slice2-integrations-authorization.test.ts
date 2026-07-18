@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { authorizeTrustOperation, trustPermissions } from "../api-authorization";
 import { createSanitizedEvidence } from "../integrations";
+import { validateSafeEvidenceAttributes } from "../validation";
+import type { SafeMetadata } from "../types";
 
 describe("sanitized slice-2 evidence integration", () => {
   const base = { attributes: { decision: "allowed", policyVersion: "1" }, cardId: "card-1", occurredAt: "2026-07-17T10:00:00.000Z", outcome: "recorded" as const, reasonCode: "POLICY_APPLIED", subjectId: "subject-hash", tenantId: "tenant-1" };
@@ -14,8 +16,54 @@ describe("sanitized slice-2 evidence integration", () => {
     expect(createSanitizedEvidence({ ...base, eventType, family }).eventId).toBe(first.eventId);
   });
 
-  it.each(["rawAudio", "transcript", "accessToken", "authorizationHeader", "providerToken", "email", "phone", "privateKey", "secret"])("rejects unsafe attribute %s", (key) => {
-    expect(() => createSanitizedEvidence({ ...base, attributes: { [key]: "unsafe" }, eventType: "telephony.safety_decision", family: "telephony" })).toThrow("Unsafe evidence");
+  it.each(["rawAudio", "transcript", "accessToken", "authorizationHeader", "providerToken", "email", "phone", "privateKey", "secret"])("rejects unsafe top-level attribute %s", (key) => {
+    expect(() => createSanitizedEvidence({ ...base, attributes: { [key]: "unsafe" }, eventType: "telephony.safety_decision", family: "telephony" })).toThrow(/unsafe evidence/);
+  });
+
+  it.each([
+    "raw_audio", "raw-audio", "RawAudio", "rawAudio", "RAW AUDIO", "messageBody", "full-message-body", "Prompt", "response", "session token"
+  ])("rejects normalized unsafe attribute key %s at every depth", (key) => {
+    const attributes = { audit: [{ decision: "denied", nested: { [key]: "sensitive-value" } }] } as unknown as SafeMetadata;
+    expect(() => createSanitizedEvidence({ ...base, attributes, eventType: "receptionist.safety", family: "receptionist" })).toThrow(/unsafe evidence attribute key/);
+    try {
+      createSanitizedEvidence({ ...base, attributes, eventType: "receptionist.safety", family: "receptionist" });
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).not.toContain("sensitive-value");
+    }
+  });
+
+  it("preserves safe nested consent, retention, redaction, and authorization metadata", () => {
+    const attributes = {
+      authorizationDecision: "allowed",
+      consentStatus: "granted",
+      contentDigest: "a".repeat(64),
+      nested: { policyVersion: "1", reasonCode: "CONSENT_CONFIRMED", redactionStatus: "redacted" },
+      retention: [{ decision: "retain", timestamp: "2026-07-17T10:00:00.000Z" }],
+      safeArtifactReference: "ref:artifact-1"
+    } as const satisfies SafeMetadata;
+    expect(createSanitizedEvidence({ ...base, attributes, eventType: "receptionist.tool_authorization", family: "receptionist" }).attributes).toBe(attributes);
+  });
+
+  it("fails closed on evidence traversal and size limits", () => {
+    const deep = { a: { b: { c: { d: { e: { f: { g: "too-deep" } } } } } } };
+    expect(validateSafeEvidenceAttributes(deep, { maxArrayLength: 10, maxDepth: 3, maxObjectKeys: 10, maxSerializedSize: 1_000, maxStringLength: 50 }).errors).toContain("unsafe evidence attribute depth at attributes.a.b.c.d");
+    expect(validateSafeEvidenceAttributes({ values: [1, 2, 3] }, { maxArrayLength: 2, maxDepth: 6, maxObjectKeys: 10, maxSerializedSize: 1_000, maxStringLength: 50 }).errors).toContain("unsafe evidence array length at attributes.values");
+    expect(validateSafeEvidenceAttributes(Object.fromEntries(Array.from({ length: 4 }, (_, index) => [`k${index}`, index])), { maxArrayLength: 10, maxDepth: 6, maxObjectKeys: 3, maxSerializedSize: 1_000, maxStringLength: 50 }).errors).toContain("unsafe evidence object key count at attributes");
+    expect(validateSafeEvidenceAttributes({ reasonCode: "x".repeat(51) }, { maxArrayLength: 10, maxDepth: 6, maxObjectKeys: 10, maxSerializedSize: 1_000, maxStringLength: 50 }).errors).toContain("unsafe evidence string length at attributes.reasonCode");
+    expect(validateSafeEvidenceAttributes({ safeReference: "x".repeat(80) }, { maxArrayLength: 10, maxDepth: 6, maxObjectKeys: 10, maxSerializedSize: 30, maxStringLength: 100 }).errors).toContain("evidence attributes are not canonicalizable or exceed the serialized size limit");
+  });
+
+  it("rejects cyclic evidence and does not mutate valid input", () => {
+    const cyclic: Record<string, unknown> = { decision: "allowed" };
+    cyclic.self = cyclic;
+    const cyclicResult = validateSafeEvidenceAttributes(cyclic);
+    expect(cyclicResult.valid).toBe(false);
+    expect(cyclicResult.errors.join(";")).toMatch(/cycle/);
+    const input = { nested: { policyVersion: "1" }, outcome: "accepted" } as const;
+    const before = JSON.stringify(input);
+    expect(validateSafeEvidenceAttributes(input).valid).toBe(true);
+    expect(JSON.stringify(input)).toBe(before);
   });
 });
 

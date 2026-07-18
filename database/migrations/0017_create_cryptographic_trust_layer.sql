@@ -76,16 +76,15 @@ CREATE TABLE IF NOT EXISTS trust_keys (
   compromised_at TIMESTAMPTZ,
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(metadata) = 'object'),
   created_at TIMESTAMPTZ NOT NULL,
-  PRIMARY KEY (key_id, key_version),
-  UNIQUE (key_id, key_version, tenant_id),
-  UNIQUE (key_id, key_version, tenant_id, purpose),
+  PRIMARY KEY (tenant_id, key_id, key_version),
+  UNIQUE (tenant_id, key_id, key_version, purpose),
   UNIQUE (tenant_id, provider_type, provider_key_reference, key_version),
   FOREIGN KEY (identity_id, tenant_id)
     REFERENCES trust_crypto_identities(identity_id, tenant_id) ON DELETE RESTRICT,
   FOREIGN KEY (algorithm, operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
-  FOREIGN KEY (replaces_key_id, replaces_key_version, tenant_id)
-    REFERENCES trust_keys(key_id, key_version, tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, replaces_key_id, replaces_key_version)
+    REFERENCES trust_keys(tenant_id, key_id, key_version) ON DELETE RESTRICT,
   CHECK ((replaces_key_id IS NULL) = (replaces_key_version IS NULL)),
   CHECK (valid_until IS NULL OR valid_until >= valid_from),
   CHECK (status NOT IN ('retiring', 'retired') OR valid_until IS NOT NULL),
@@ -119,8 +118,8 @@ CREATE TABLE IF NOT EXISTS trust_key_revocations (
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(metadata) = 'object'),
   UNIQUE (tenant_id, idempotency_key),
   UNIQUE (tenant_id, key_id, key_version, revocation_type, effective_at),
-  FOREIGN KEY (key_id, key_version, tenant_id)
-    REFERENCES trust_keys(key_id, key_version, tenant_id) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, key_id, key_version)
+    REFERENCES trust_keys(tenant_id, key_id, key_version) ON DELETE RESTRICT,
   FOREIGN KEY (actor_identity_id, tenant_id)
     REFERENCES trust_crypto_identities(identity_id, tenant_id) ON DELETE RESTRICT
 );
@@ -147,8 +146,8 @@ CREATE TABLE IF NOT EXISTS trust_signed_actions (
   UNIQUE (tenant_id, idempotency_key),
   FOREIGN KEY (actor_identity_id, tenant_id)
     REFERENCES trust_crypto_identities(identity_id, tenant_id) ON DELETE RESTRICT,
-  FOREIGN KEY (key_id, key_version, tenant_id, key_purpose)
-    REFERENCES trust_keys(key_id, key_version, tenant_id, purpose) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, key_id, key_version, key_purpose)
+    REFERENCES trust_keys(tenant_id, key_id, key_version, purpose) ON DELETE RESTRICT,
   FOREIGN KEY (signature_algorithm, signature_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
   CHECK (key_purpose IN (
@@ -244,8 +243,8 @@ CREATE TABLE IF NOT EXISTS cryptographic_envelopes (
   UNIQUE (envelope_id, tenant_id),
   FOREIGN KEY (card_id, tenant_id)
     REFERENCES executive_card_profiles(card_id, tenant_id) ON DELETE RESTRICT,
-  FOREIGN KEY (key_id, key_version, tenant_id, key_purpose)
-    REFERENCES trust_keys(key_id, key_version, tenant_id, purpose) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, key_id, key_version, key_purpose)
+    REFERENCES trust_keys(tenant_id, key_id, key_version, purpose) ON DELETE RESTRICT,
   FOREIGN KEY (digest_algorithm, digest_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
   FOREIGN KEY (signature_algorithm, signature_operation)
@@ -314,8 +313,8 @@ CREATE TABLE IF NOT EXISTS trust_merkle_batches (
   UNIQUE (tenant_id, root_digest),
   FOREIGN KEY (digest_algorithm, digest_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
-  FOREIGN KEY (root_key_id, root_key_version, tenant_id, root_key_purpose)
-    REFERENCES trust_keys(key_id, key_version, tenant_id, purpose) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, root_key_id, root_key_version, root_key_purpose)
+    REFERENCES trust_keys(tenant_id, key_id, key_version, purpose) ON DELETE RESTRICT,
   FOREIGN KEY (root_signature_algorithm, root_signature_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
   CHECK ((root_key_id IS NULL) = (root_key_version IS NULL)),
@@ -400,8 +399,8 @@ CREATE TABLE IF NOT EXISTS trust_agent_message_proofs (
     REFERENCES trust_crypto_identities(identity_id, tenant_id) ON DELETE RESTRICT,
   FOREIGN KEY (recipient_identity_id, tenant_id)
     REFERENCES trust_crypto_identities(identity_id, tenant_id) ON DELETE RESTRICT,
-  FOREIGN KEY (key_id, key_version, tenant_id, key_purpose)
-    REFERENCES trust_keys(key_id, key_version, tenant_id, purpose) ON DELETE RESTRICT,
+  FOREIGN KEY (tenant_id, key_id, key_version, key_purpose)
+    REFERENCES trust_keys(tenant_id, key_id, key_version, purpose) ON DELETE RESTRICT,
   FOREIGN KEY (digest_algorithm, digest_operation)
     REFERENCES trust_algorithm_registry(algorithm_name, operation) ON DELETE RESTRICT,
   FOREIGN KEY (signature_algorithm, signature_operation)

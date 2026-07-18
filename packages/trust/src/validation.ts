@@ -15,6 +15,104 @@ import {
 export type RuntimeValidation = { readonly valid: boolean; readonly errors: readonly string[] };
 const sensitiveKey = /(private.?key|secret|password|credential|authorization|cookie|token|raw.?key|seed|mnemonic)/i;
 
+export type EvidenceSafetyLimits = {
+  readonly maxDepth: number;
+  readonly maxArrayLength: number;
+  readonly maxObjectKeys: number;
+  readonly maxStringLength: number;
+  readonly maxSerializedSize: number;
+};
+
+export const evidenceSafetyLimits: EvidenceSafetyLimits = Object.freeze({
+  maxArrayLength: 50,
+  maxDepth: 6,
+  maxObjectKeys: 80,
+  maxSerializedSize: 16_384,
+  maxStringLength: 2_048
+});
+
+const prohibitedEvidenceKeyConcepts = [
+  "accessToken", "address", "audio", "audioPayload", "authorization", "authorizationHeader",
+  "bankAccount", "biometric", "cookie", "creditCard", "email", "fullMessageBody",
+  "csrf", "governmentId", "messageBody", "password", "paymentCard", "phone", "pkce",
+  "privateKey", "prompt", "providerToken", "rawAudio", "rawContent", "rawPayload", "recording", "recoveryCode",
+  "refreshToken", "response", "secret", "sessionToken", "socialSecurityNumber", "ssn", "token",
+  "transcript", "unredactedUserContent", "userContent"
+] as const;
+
+export function normalizeEvidenceKey(key: string): string {
+  return key.normalize("NFKC").replace(/[^\p{Letter}\p{Number}]/gu, "").toLowerCase();
+}
+
+const prohibitedEvidenceKeys = new Set(prohibitedEvidenceKeyConcepts.map(normalizeEvidenceKey));
+
+function pathWithKey(path: string, key: string): string {
+  return `${path}.${key.replace(/[\r\n\t]/g, " ").slice(0, 80)}`;
+}
+
+function collectEvidenceSafetyErrors(input: {
+  readonly errors: string[];
+  readonly limits: EvidenceSafetyLimits;
+  readonly node: unknown;
+  readonly path: string;
+  readonly depth: number;
+  readonly seen: WeakSet<object>;
+}): void {
+  const { depth, errors, limits, node, path, seen } = input;
+  if (depth > limits.maxDepth) {
+    errors.push(`unsafe evidence attribute depth at ${path}`);
+    return;
+  }
+  if (typeof node === "string") {
+    if (node.length > limits.maxStringLength) errors.push(`unsafe evidence string length at ${path}`);
+    return;
+  }
+  if (node === null || typeof node === "boolean" || typeof node === "number") return;
+  if (typeof node !== "object") return;
+  if (seen.has(node)) {
+    errors.push(`unsafe evidence cycle at ${path}`);
+    return;
+  }
+  seen.add(node);
+  try {
+    if (Array.isArray(node)) {
+      if (node.length > limits.maxArrayLength) errors.push(`unsafe evidence array length at ${path}`);
+      for (const [index, child] of node.entries()) {
+        collectEvidenceSafetyErrors({ depth: depth + 1, errors, limits, node: child, path: `${path}[${index}]`, seen });
+      }
+      return;
+    }
+    if (!record(node)) return;
+    const entries = Object.entries(node);
+    if (entries.length > limits.maxObjectKeys) errors.push(`unsafe evidence object key count at ${path}`);
+    for (const [key, child] of entries) {
+      const childPath = pathWithKey(path, key);
+      if (prohibitedEvidenceKeys.has(normalizeEvidenceKey(key))) errors.push(`unsafe evidence attribute key at ${childPath}`);
+      collectEvidenceSafetyErrors({ depth: depth + 1, errors, limits, node: child, path: childPath, seen });
+    }
+  } finally {
+    seen.delete(node);
+  }
+}
+
+export function validateSafeEvidenceAttributes(value: unknown, limits: EvidenceSafetyLimits = evidenceSafetyLimits): RuntimeValidation {
+  const errors: string[] = [];
+  if (!record(value)) return { valid: false, errors: ["evidence attributes must be an object"] };
+  collectEvidenceSafetyErrors({ depth: 0, errors, limits, node: value, path: "attributes", seen: new WeakSet<object>() });
+  try {
+    canonicalize(value, { maxBytes: limits.maxSerializedSize, schemaVersion: "safe-evidence-attributes-1" });
+  } catch {
+    errors.push("evidence attributes are not canonicalizable or exceed the serialized size limit");
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+export function assertSafeEvidenceAttributes(value: unknown): asserts value is SafeMetadata {
+  const validation = validateSafeEvidenceAttributes(value);
+  if (!validation.valid) throw new Error(validation.errors.join("; "));
+}
+
+
 function record(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }

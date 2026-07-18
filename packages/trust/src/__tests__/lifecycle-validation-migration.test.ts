@@ -127,7 +127,10 @@ describe("migration 0017 textual contract", () => {
     for (const purpose of keyPurposes) expect(sql).toContain(`'${purpose}'`);
     expect(sql).toContain("key_version INTEGER NOT NULL");
     expect(sql).toContain("WHERE status = 'active'");
-    expect(sql).toContain("FOREIGN KEY (key_id, key_version, tenant_id)");
+    expect(sql).toContain("PRIMARY KEY (tenant_id, key_id, key_version)");
+    expect(sql).toContain("UNIQUE (tenant_id, key_id, key_version, purpose)");
+    expect(sql).toContain("FOREIGN KEY (tenant_id, key_id, key_version)");
+    expect(sql).toContain("FOREIGN KEY (tenant_id, key_id, key_version, key_purpose)");
     expect(sql).toContain("idempotency_key TEXT NOT NULL");
     expect(sql).toContain("UNIQUE (tenant_id, stream_id, sequence_number)");
     expect(sql).toContain("pg_advisory_xact_lock");

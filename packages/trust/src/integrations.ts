@@ -1,7 +1,7 @@
 import { canonicalUtcTimestamp, type CanonicalValue } from "./canonicalization";
 import { internalDigest } from "./hashing";
 import type { SafeMetadata } from "./types";
-import { assertSafeMetadata } from "./validation";
+import { assertSafeEvidenceAttributes } from "./validation";
 import { buildCryptographicEnvelope } from "./envelope";
 import type { SecurityDomain } from "./domains";
 import type { SignatureProvider } from "./providers";
@@ -22,7 +22,6 @@ export type SanitizedEvidence = {
   readonly attributes: SafeMetadata;
 };
 
-const forbiddenEvidenceKey = /(authorization|access.?token|refresh.?token|cookie|pkce|csrf|private.?key|secret|provider.?token|audio|recording|transcript|utterance|email|phone|address|name|raw.?payload)/i;
 
 const identityEvents = new Set([
   "identity.created", "identity.provider_linked", "identity.membership_changed",
@@ -47,8 +46,7 @@ function allowedEvent(family: EvidenceFamily, eventType: string): boolean {
 export function createSanitizedEvidence(input: Omit<SanitizedEvidence, "structureVersion" | "eventId" | "occurredAt"> & { readonly occurredAt: string }): SanitizedEvidence {
   if (!allowedEvent(input.family, input.eventType)) throw new Error(`Unsupported ${input.family} evidence event`);
   if (!input.tenantId || !input.subjectId || !input.reasonCode) throw new Error("Evidence identity fields are required");
-  for (const key of Object.keys(input.attributes)) if (forbiddenEvidenceKey.test(key)) throw new Error(`Unsafe evidence attribute: ${key}`);
-  assertSafeMetadata(input.attributes);
+  assertSafeEvidenceAttributes(input.attributes);
   const occurredAt = canonicalUtcTimestamp(input.occurredAt);
   const base = { ...input, occurredAt, structureVersion: "1" as const };
   const eventId = `evidence_${internalDigest(`trust-${input.family}-evidence/v1`, `${input.family}-evidence-1`, base)}`;

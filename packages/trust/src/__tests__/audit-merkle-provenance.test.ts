@@ -15,6 +15,20 @@ function chain(): readonly AuditChainEntry[] {
   return [first, appendAuditChainEntry({ appendedAt: "2026-07-17T10:01:01.000Z", chain: [first], event: event("event-2", "2026-07-17T10:01:00.000Z"), streamId: "stream-1", tenantId: "tenant-1" })];
 }
 
+function chainOf(length: number): readonly AuditChainEntry[] {
+  const entries: AuditChainEntry[] = [];
+  for (let index = 0; index < length; index += 1) {
+    entries.push(appendAuditChainEntry({
+      appendedAt: `2026-07-17T10:${String(index).padStart(2, "0")}:01.000Z`,
+      chain: entries,
+      event: event(`event-${index + 1}`, `2026-07-17T10:${String(index).padStart(2, "0")}:00.000Z`),
+      streamId: "stream-1",
+      tenantId: "tenant-1"
+    }));
+  }
+  return entries;
+}
+
 describe("audit streams", () => {
   it("verifies deterministic genesis ordering and previous-digest linkage", () => {
     const entries = chain();
@@ -42,6 +56,40 @@ describe("audit streams", () => {
     const entry = appendAuditChainEntry({ appendedAt: signedAt, chain: [], event: event("event-51", signedAt), startingCheckpoint: checkpoint, streamId: "stream-1", tenantId: "tenant-1" });
     expect(verifyAuditChain([entry], { trustedCheckpoint: checkpoint })).toMatchObject({ valid: true, verifiedFromCheckpoint: true });
     expect(verifyAuditChain([entry], { trustedCheckpoint: { ...checkpoint, trustedDigest: "b".repeat(64) } }).reasonCodes).toContain("invalid_checkpoint");
+  });
+
+
+  it("defines intentional empty and single-entry verification behavior", () => {
+    expect(verifyAuditChain([])).toMatchObject({ lastEntryId: null, reasonCodes: ["valid"], valid: true });
+    const [single] = chainOf(1);
+    expect(verifyAuditChain([single!], { expectedHeadDigest: single!.entryDigest, expectedStreamId: "stream-1", expectedTenantId: "tenant-1" })).toMatchObject({ reasonCodes: ["valid"], valid: true });
+  });
+
+  it("detects tampering at the first, middle, and final entries plus final head mismatch", () => {
+    const entries = chainOf(3) as readonly [AuditChainEntry, AuditChainEntry, AuditChainEntry];
+    expect(verifyAuditChain([{ ...entries[0], event: { ...entries[0].event, subjectId: "tampered" } }, entries[1], entries[2]]).reasonCodes).toContain("event_digest_mismatch");
+    expect(verifyAuditChain([entries[0], { ...entries[1], previousDigest: "0".repeat(64) }, entries[2]]).reasonCodes).toContain("chain_gap");
+    expect(verifyAuditChain([entries[0], entries[1], { ...entries[2], entryDigest: "0".repeat(64) }]).reasonCodes).toContain("entry_digest_mismatch");
+    expect(verifyAuditChain(entries, { expectedHeadDigest: "0".repeat(64) }).reasonCodes).toContain("head_mismatch");
+  });
+
+  it("enforces duplicate sequence, unsupported algorithm, and bounded request size", () => {
+    const [first, second] = chain() as readonly [AuditChainEntry, AuditChainEntry];
+    expect(verifyAuditChain([first, { ...second, sequence: first.sequence }]).reasonCodes).toContain("chain_fork");
+    expect(verifyAuditChain([{ ...first, digestAlgorithm: "MD5" } as AuditChainEntry & { digestAlgorithm: string }]).reasonCodes).toContain("unsupported_algorithm");
+    expect(verifyAuditChain([first, second], { maxEntries: 1 }).reasonCodes).toContain("chain_too_large");
+    expect(verifyAuditChain([first], { maxSerializedBytes: 1 }).reasonCodes).toContain("chain_too_large");
+    expect(verifyAuditChain([first], { maxEntrySerializedBytes: 1 }).reasonCodes).toContain("entry_too_large");
+  });
+
+  it("does not mutate input and verifies entries with linear operation counts", () => {
+    const entries = chainOf(8);
+    const before = JSON.stringify(entries);
+    const counts = { entry: 0, entry_digest: 0, event_digest: 0 };
+    const result = verifyAuditChain(entries, { operationCounter: { record: (operation) => { counts[operation] += 1; } } });
+    expect(result.valid).toBe(true);
+    expect(JSON.stringify(entries)).toBe(before);
+    expect(counts).toEqual({ entry: entries.length, entry_digest: entries.length, event_digest: entries.length });
   });
 });
 

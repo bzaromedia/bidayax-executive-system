@@ -3,9 +3,34 @@ import { internalDigest } from "./hashing";
 import type { AuditChainEntry, AuditCheckpoint, TrustEvent } from "./types";
 import { validateTrustEvent } from "./validation";
 
-export const auditChainReasonCodes = ["valid", "chain_gap", "chain_fork", "event_replay", "event_digest_mismatch", "entry_digest_mismatch", "tenant_mismatch", "stream_mismatch", "invalid_genesis", "invalid_checkpoint", "non_deterministic_order"] as const;
+export const auditChainReasonCodes = ["valid", "chain_gap", "chain_fork", "event_replay", "event_digest_mismatch", "entry_digest_mismatch", "tenant_mismatch", "stream_mismatch", "invalid_genesis", "invalid_checkpoint", "non_deterministic_order", "chain_too_large", "entry_too_large", "unsupported_algorithm", "head_mismatch"] as const;
 export type AuditChainReasonCode = (typeof auditChainReasonCodes)[number];
 export type AuditChainVerification = { readonly valid: boolean; readonly reasonCodes: readonly AuditChainReasonCode[]; readonly lastEntryId: string | null; readonly verifiedFromCheckpoint: boolean };
+
+export const auditChainVerificationLimits = Object.freeze({
+  maxEntries: 1_000,
+  maxEntrySerializedBytes: 16_384,
+  maxSerializedBytes: 1_048_576
+});
+
+type VerifyAuditChainOptions = {
+  readonly expectedTenantId?: string;
+  readonly expectedStreamId?: string;
+  readonly trustedCheckpoint?: AuditCheckpoint;
+  readonly expectedHeadDigest?: string;
+  readonly maxEntries?: number;
+  readonly maxEntrySerializedBytes?: number;
+  readonly maxSerializedBytes?: number;
+  readonly operationCounter?: { readonly record: (operation: "entry" | "event_digest" | "entry_digest") => void };
+};
+
+function serializedBytes(value: unknown): number | null {
+  try {
+    return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+  } catch {
+    return null;
+  }
+}
 
 function eventDigest(event: TrustEvent): string { return internalDigest("trust-audit-event/v1", "trust-event-1", event); }
 function entryDigest(entry: Omit<AuditChainEntry, "entryId" | "entryDigest">): string { return internalDigest("trust-audit-entry/v1", "trust-audit-entry-1", entry); }
@@ -30,28 +55,45 @@ export function appendAuditChainEntry(input: { readonly appendedAt: string; read
   return Object.freeze({ ...base, entryDigest: digest, entryId: `audit_${digest}` });
 }
 
-export function verifyAuditChain(entries: readonly AuditChainEntry[], options: { readonly expectedTenantId?: string; readonly expectedStreamId?: string; readonly trustedCheckpoint?: AuditCheckpoint } = {}): AuditChainVerification {
+export function verifyAuditChain(entries: readonly AuditChainEntry[], options: VerifyAuditChainOptions = {}): AuditChainVerification {
   const reasons: AuditChainReasonCode[] = [];
+  const limits = {
+    maxEntries: options.maxEntries ?? auditChainVerificationLimits.maxEntries,
+    maxEntrySerializedBytes: options.maxEntrySerializedBytes ?? auditChainVerificationLimits.maxEntrySerializedBytes,
+    maxSerializedBytes: options.maxSerializedBytes ?? auditChainVerificationLimits.maxSerializedBytes
+  };
+  const chainBytes = serializedBytes(entries);
+  if (entries.length > limits.maxEntries || chainBytes === null || chainBytes > limits.maxSerializedBytes) reasons.push("chain_too_large");
+
   const sequences = new Map<number, string>();
   const previousDigests = new Map<string, string>();
-  const events = new Set<string>();
+  const eventIds = new Set<string>();
   const idempotencyKeys = new Set<string>();
+  const eventDigests = new Set<string>();
   let previous: AuditChainEntry | null = null;
+  let lastEntryDigest: string | null = null;
+
   for (const entry of entries) {
+    options.operationCounter?.record("entry");
+    const entryBytes = serializedBytes(entry);
+    if (entryBytes === null || entryBytes > limits.maxEntrySerializedBytes) reasons.push("entry_too_large");
+    const runtimeEntry = entry as AuditChainEntry & { readonly digestAlgorithm?: unknown };
+    if (runtimeEntry.digestAlgorithm !== undefined && runtimeEntry.digestAlgorithm !== "SHA-256") reasons.push("unsupported_algorithm");
     if (options.expectedTenantId !== undefined && entry.tenantId !== options.expectedTenantId) reasons.push("tenant_mismatch");
     if (options.expectedStreamId !== undefined && entry.streamId !== options.expectedStreamId) reasons.push("stream_mismatch");
     if (previous && entry.sequence <= previous.sequence) reasons.push("non_deterministic_order");
     const existingSequence = sequences.get(entry.sequence);
-    if (existingSequence !== undefined && existingSequence !== entry.entryDigest) reasons.push("chain_fork");
+    if (existingSequence !== undefined) reasons.push("chain_fork");
     sequences.set(entry.sequence, entry.entryDigest);
     if (entry.previousDigest !== null) {
       const child = previousDigests.get(entry.previousDigest);
       if (child !== undefined && child !== entry.entryDigest) reasons.push("chain_fork");
       previousDigests.set(entry.previousDigest, entry.entryDigest);
     }
-    if (events.has(entry.event.eventId) || idempotencyKeys.has(entry.event.idempotencyKey) || [...entries].filter((candidate) => candidate.eventDigest === entry.eventDigest).length > 1) reasons.push("event_replay");
-    events.add(entry.event.eventId);
+    if (eventIds.has(entry.event.eventId) || idempotencyKeys.has(entry.event.idempotencyKey) || eventDigests.has(entry.eventDigest)) reasons.push("event_replay");
+    eventIds.add(entry.event.eventId);
     idempotencyKeys.add(entry.event.idempotencyKey);
+    eventDigests.add(entry.eventDigest);
     if (previous === null) {
       if (options.trustedCheckpoint) {
         if (entry.checkpoint?.trustedSequence !== options.trustedCheckpoint.trustedSequence || entry.checkpoint.trustedDigest !== options.trustedCheckpoint.trustedDigest || entry.sequence !== options.trustedCheckpoint.trustedSequence + 1 || entry.previousDigest !== options.trustedCheckpoint.trustedDigest) reasons.push("invalid_checkpoint");
@@ -61,11 +103,15 @@ export function verifyAuditChain(entries: readonly AuditChainEntry[], options: {
     if (previous && entry.streamId !== previous.streamId) reasons.push("stream_mismatch");
     if (entry.event.tenantId !== entry.tenantId) reasons.push("tenant_mismatch");
     if (entry.event.streamId !== entry.streamId) reasons.push("stream_mismatch");
+    options.operationCounter?.record("event_digest");
     if (eventDigest(entry.event) !== entry.eventDigest) reasons.push("event_digest_mismatch");
+    options.operationCounter?.record("entry_digest");
     const expected = entryDigest({ appendedAt: entry.appendedAt, checkpoint: entry.checkpoint, event: entry.event, eventDigest: entry.eventDigest, previousDigest: entry.previousDigest, sequence: entry.sequence, streamId: entry.streamId, structureVersion: entry.structureVersion, tenantId: entry.tenantId });
     if (expected !== entry.entryDigest || entry.entryId !== `audit_${expected}`) reasons.push("entry_digest_mismatch");
+    lastEntryDigest = entry.entryDigest;
     previous = entry;
   }
+  if (options.expectedHeadDigest !== undefined && lastEntryDigest !== options.expectedHeadDigest) reasons.push("head_mismatch");
   const unique = [...new Set(reasons)];
   return { lastEntryId: entries.at(-1)?.entryId ?? null, reasonCodes: unique.length === 0 ? ["valid"] : unique, valid: unique.length === 0, verifiedFromCheckpoint: options.trustedCheckpoint !== undefined };
 }
