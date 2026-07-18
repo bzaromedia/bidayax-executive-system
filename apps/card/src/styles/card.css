@@ -483,7 +483,7 @@ body {
   outline: 0;
 }
 
-.receptionist-voice-placeholder {
+.receptionist-voice-disabled {
   display: grid;
   gap: var(--bx-space-3);
   width: 100%;
@@ -491,19 +491,25 @@ body {
   padding-inline: 0.125rem;
 }
 
-.receptionist-voice-placeholder > div {
+.receptionist-voice-disabled > div {
   display: inline-flex;
   align-items: center;
   gap: var(--bx-space-2);
   color: var(--bx-color-content-accent);
 }
 
-.receptionist-voice-placeholder h3 {
+.receptionist-voice-disabled h3 {
   margin: 0;
   color: var(--bx-color-content-primary);
   font-family: var(--bx-font-heading);
   font-size: 1.125rem;
   line-height: 1.2;
+}
+
+.receptionist-voice-disabled .receptionist-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+  transform: none;
 }
 .receptionist-form {
   display: grid;
