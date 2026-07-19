@@ -55,6 +55,20 @@ Deferred service ideas are documented privately in `docs/roadmap/DEFERRED_RELEAS
 pnpm install
 ```
 
+## Local development
+
+```powershell
+pnpm dev
+```
+
+The root development command starts the two local application surfaces:
+
+- card: `http://localhost:3000`
+- dashboard: `http://localhost:3001`
+
+If `DATABASE_URL` is not configured locally, the dashboard remains styled and shows
+an honest unavailable state instead of invented interaction data.
+
 ## Verification
 
 ```powershell

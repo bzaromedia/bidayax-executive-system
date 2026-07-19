@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 @config "../tailwind.config.ts";
+@source "../app";
+@source "../src";
+@source "../../../packages/ui/src";
 
 :root {
   color-scheme: dark;
@@ -13,6 +16,9 @@ html {
 body {
   min-height: 100%;
   margin: 0;
+  background: var(--bx-color-surface-canvas);
+  color: var(--bx-color-content-primary);
+  font-family: var(--bx-font-body);
 }
 
 a {
