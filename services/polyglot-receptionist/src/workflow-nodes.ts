@@ -17,7 +17,7 @@ export const receptionistWorkflowStages = [
   "create_event_ledger_record",
   "create_callback_or_meeting_request",
   "prepare_email_notification",
-  "provider_dispatch_if_configured",
+  "submit_communications_command",
   "dashboard_visibility",
   "audit_log"
 ] as const;
@@ -128,11 +128,10 @@ export const receptionistWorkflowDefinition: ReceptionistWorkflow = {
       .split("_")
       .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
       .join(" "),
-    requiresHumanApproval: stage === "provider_dispatch_if_configured"
+    requiresHumanApproval: stage === "submit_communications_command"
   })),
   edges: receptionistWorkflowStages.slice(0, -1).map((stage, index) => ({
     from: stage,
     to: receptionistWorkflowStages[index + 1] ?? "audit_log"
   }))
 };
-

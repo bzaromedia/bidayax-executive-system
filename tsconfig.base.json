@@ -22,6 +22,8 @@
       "@bidayax/identity": ["packages/identity/src/index.ts"],
       "@bidayax/ui": ["packages/ui/src/index.ts"],
       "@bidayax/types": ["packages/types/src/index.ts"],
+      "@bidayax/communications-domain": ["packages/communications-domain/src/index.ts"],
+      "@bidayax/communications": ["services/communications/src/index.ts"],
       "@bidayax/config": ["packages/config/src/index.ts"],
       "@bidayax/config/executives": ["packages/config/executives/index.ts"],
       "@bidayax/config/receptionist": ["packages/config/receptionist/index.ts"],

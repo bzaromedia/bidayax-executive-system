@@ -1,7 +1,6 @@
 import { Pool } from "pg";
 import type { PoolConfig } from "pg";
 import {
-  evaluateProductionVoiceSafety,
   getLiveProviderRuntimeConfig,
   getProviderReadinessChecks,
   prepareVoiceRuntimeReadiness
@@ -66,18 +65,18 @@ function logLiveProviderDashboardEvent(
 
 function createSummary(): DashboardLiveProviderSummary {
   const config = getLiveProviderRuntimeConfig();
-  const safety = evaluateProductionVoiceSafety(config);
+  const voiceRuntime = prepareVoiceRuntimeReadiness(config);
 
   return {
     allowProductionCalls: config.allowProductionCalls,
-    blockedReasonCodes: safety.reasonCodes,
+    blockedReasonCodes: voiceRuntime.reasonCodes,
     lastCheckedAt: new Date().toISOString(),
     liveInboundCallsEnabled: config.liveInboundCallsEnabled,
     openAiRealtimeConfigured: Boolean(
       config.openAiApiKey && config.openAiRealtimeModel
     ),
     outboundCallsEnabled: config.outboundCallsEnabled,
-    productionVoiceAllowed: safety.allowed,
+    productionVoiceAllowed: voiceRuntime.status === "configured",
     providerMode: config.telephonyProvider,
     requireHumanApproval: config.requireHumanApproval,
     twilioConfigured: Boolean(
@@ -182,4 +181,3 @@ export async function getLiveProviderDashboardData(): Promise<DashboardLiveProvi
     );
   }
 }
-

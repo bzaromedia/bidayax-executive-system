@@ -2,10 +2,7 @@ import type { ReceptionistPriority } from "@bidayax/types";
 import { createReceptionistAuditEvent } from "./audit-log";
 import { createCalendarRequest } from "./calendar-request-handler";
 import { createCallbackRequest } from "./callback-scheduler";
-import {
-  createReceptionistEmailNotification,
-  resolveReceptionistProviderConfigFromEnv
-} from "./email-dispatcher";
+import { createReceptionistEmailNotification } from "./email-dispatcher";
 import { qualifyReceptionistLead } from "./lead-qualification";
 import { calculateVoiceTrustScore } from "./voice-trust-score";
 import { classifyReceptionistLanguage } from "./language-router";
@@ -14,6 +11,7 @@ import { routeReceptionistRequestToExecutive } from "./receptionist-router";
 import { evaluateReceptionistSafety } from "./receptionist-safety";
 import {
   receptionistWorkflowDefinition,
+  type ReceptionistProviderConfig,
   type ReceptionistProviderStatus,
   type ReceptionistRun,
   type ReceptionistRunStep,
@@ -53,7 +51,7 @@ function requestTypeToCallIntent(requestType: ReceptionistWorkflowInput["request
   return mapping[requestType];
 }
 
-function statusForDispatch(input: {
+function statusForCommandSubmission(input: {
   readonly emailConfigured: boolean;
   readonly emailDispatchEnabled: boolean;
   readonly requiresHumanReview: boolean;
@@ -69,15 +67,25 @@ function statusForDispatch(input: {
   return input.emailDispatchEnabled ? "queued" : "configured";
 }
 
+function getProviderConfig(
+  input: ReceptionistWorkflowInput["providerConfig"]
+): ReceptionistProviderConfig {
+  return {
+    calendarConfigured: input?.calendarConfigured ?? false,
+    calendarDispatchEnabled: input?.calendarDispatchEnabled ?? false,
+    emailConfigured: input?.emailConfigured ?? false,
+    emailDispatchEnabled: input?.emailDispatchEnabled ?? false,
+    telephonyConfigured: input?.telephonyConfigured ?? false,
+    telephonyDispatchEnabled: input?.telephonyDispatchEnabled ?? false
+  };
+}
+
 export function runReceptionistWorkflow(
   input: ReceptionistWorkflowInput
 ): ReceptionistRun {
   const now = input.now ?? Date.now();
   const runId = createRunId(now);
-  const providerConfig = {
-    ...resolveReceptionistProviderConfigFromEnv(),
-    ...input.providerConfig
-  };
+  const providerConfig = getProviderConfig(input.providerConfig);
   const steps: ReceptionistRunStep[] = [];
   const rateLimit = input.rateLimitKey
     ? evaluateReceptionistRateLimit({ key: input.rateLimitKey, now })
@@ -181,15 +189,15 @@ export function runReceptionistWorkflow(
       callbackRequested: Boolean(callbackRequest),
       meetingRequested: Boolean(calendarRequest)
     }),
-    step("prepare_email_notification", blocked ? "blocked_by_policy" : "queued", "Email notification payload prepared for handoff.", {
-      providerConfigured: providerConfig.emailConfigured,
+    step("prepare_email_notification", blocked ? "blocked_by_policy" : "queued", "Email notification payload prepared for communications handoff.", {
+      handoffConfigured: providerConfig.emailConfigured,
       to: notificationPayload.to
     })
   );
 
   const providerStatus = blocked
     ? "blocked_by_policy"
-    : statusForDispatch({
+    : statusForCommandSubmission({
         emailConfigured: providerConfig.emailConfigured,
         emailDispatchEnabled: providerConfig.emailDispatchEnabled,
         requiresHumanReview
@@ -197,11 +205,11 @@ export function runReceptionistWorkflow(
 
   steps.push(
     step(
-      "provider_dispatch_if_configured",
+      "submit_communications_command",
       providerStatus === "configured" ? "queued" : providerStatus,
       providerConfig.emailConfigured
-        ? "Provider dispatch is configured but remains human-review safe."
-        : "Provider dispatch is not configured; request remains queued internally.",
+        ? "Communications handoff is configured and remains policy-gated."
+        : "Communications handoff is not configured; request remains queued internally.",
       {
         calendarConfigured: providerConfig.calendarConfigured,
         emailConfigured: providerConfig.emailConfigured,
@@ -246,4 +254,3 @@ export function runReceptionistWorkflow(
     workflow: receptionistWorkflowDefinition
   };
 }
-

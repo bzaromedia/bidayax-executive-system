@@ -8,8 +8,8 @@ import {
   validateEnvironmentConfig
 } from "@bidayax/config";
 import {
-  evaluateProductionVoiceSafety,
   getLiveProviderRuntimeConfig,
+  prepareVoiceRuntimeReadiness,
   getProviderReadinessChecks
 } from "@bidayax/telephony";
 import {
@@ -134,7 +134,13 @@ export async function GET(request: Request) {
   const envValidation = validateEnvironmentConfig();
   const providerConfig = getLiveProviderRuntimeConfig();
   const providerChecks = getProviderReadinessChecks(providerConfig);
-  const voiceSafety = evaluateProductionVoiceSafety(providerConfig);
+  const voiceRuntime = prepareVoiceRuntimeReadiness(providerConfig);
+  const voiceSafety = {
+    allowed: voiceRuntime.status === "configured",
+    reasonCodes: voiceRuntime.reasonCodes,
+    safetyGateStatus: voiceRuntime.safetyGateStatus,
+    status: voiceRuntime.status
+  };
 
   try {
     const database = await checkDatabaseReadiness();

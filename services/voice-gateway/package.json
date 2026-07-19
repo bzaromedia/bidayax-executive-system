@@ -15,7 +15,6 @@
     "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@bidayax/polyglot-receptionist": "workspace:*",
     "@bidayax/types": "workspace:*"
   },
   "devDependencies": {
