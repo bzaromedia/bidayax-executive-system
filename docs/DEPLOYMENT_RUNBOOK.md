@@ -1,31 +1,28 @@
 # Deployment Runbook
 
+Canonical source of truth:
+
+- `docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
+- `docs/deployment/HOSTINGER_DEPLOYMENT_CHECKLIST.md`
+- `docs/deployment/RESTORE_REHEARSAL_PLAN.md`
+- `docs/deployment/MONITORING_AND_ALERTING.md`
+
 ## Local Verification
 
 ```bash
-pnpm install
-pnpm verify
+pnpm install --frozen-lockfile
+pnpm verify:deployment-artifacts
 pnpm verify:production
+pnpm verify:public-claims
+pnpm verify:no-placeholders
 ```
 
-## VPS Deployment
+## Production Note
 
-1. Prepare the server with Docker, Git, Node, and pnpm.
-2. Create `.env.production` from `.env.production.example`.
-3. Set DNS for card and dashboard domains.
-4. Run `pwsh infrastructure/hostinger-vps/DEPLOY.ps1`.
-5. Check `/api/system/health`.
-6. Check `/api/system/readiness`.
-7. Inspect Docker logs.
+The canonical production model no longer uses a mutable live repository checkout or a repository-root `.env.production` file.
 
-## Logs
+Use immutable releases and the external server-only environment path:
 
-```powershell
-docker compose -f infrastructure/docker/docker-compose.production.yml logs dashboard
-docker compose -f infrastructure/docker/docker-compose.production.yml logs card
+```text
+/opt/the-executive-card/shared/env/production.env
 ```
-
-## Traffic
-
-Only route public traffic after health, readiness, and logs are reviewed.
-

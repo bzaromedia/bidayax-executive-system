@@ -1,148 +1,97 @@
 # Hostinger Deployment Checklist
 
 Project: The Executive Card™  
-Deployment target: Hostinger VPS  
-DNS and email provider: Namecheap
+Deployment target: Dedicated Hostinger VPS
 
-## 1. Owner Inputs
+This checklist is the launch gate for the dedicated-VPS production model.
 
-- [x] Hostinger VPS IPv4 address supplied: `187.124.251.190`.
-- [ ] Hostinger VPS IPv6 address supplied if available.
-- [x] Hostinger OS version supplied: Ubuntu 24.04 with Docker.
-- [ ] SSH access method confirmed.
-- [ ] Namecheap DNS access confirmed.
-- [x] Namecheap Email plan and DNS records confirmed for MX/SPF; DKIM must be copied exactly after mailbox setup.
-- [x] Production dashboard exposure decision confirmed: password-protected dashboard subdomain.
+## 1. Hosting And Access
 
-## 2. Server Preparation
+- [ ] Dedicated VPS purchased and provisioned.
+- [ ] Ubuntu 24.04 confirmed.
+- [ ] Approved SSH key attached.
+- [ ] Hostname assigned.
+- [ ] No unrelated workloads installed on the host.
 
-- [ ] Connect to the Hostinger VPS over SSH or the approved management shell.
-- [x] Confirm OS version: Ubuntu 24.04 with Docker.
-- [ ] Create dedicated project directory `/opt/the-executive-card`.
-- [ ] Do not place this project inside another project's deployment directory.
-- [ ] Install or verify `git`.
-- [ ] Install or verify Docker.
-- [ ] Install or verify Docker Compose plugin.
-- [ ] Install or verify Node.js compatible with the Docker/build workflow.
-- [ ] Install or verify `pnpm`.
-- [ ] Install or verify PostgreSQL client tools if using `pg_dump` and `pg_restore` on the host.
-- [ ] Run `pwsh infrastructure/hostinger-vps/SERVER_PREP.ps1` if PowerShell is available.
+## 2. Directory Layout
 
-## 3. Firewall
+- [ ] `/opt/the-executive-card/releases` created.
+- [ ] `/opt/the-executive-card/current` managed as a symlink only.
+- [ ] `/opt/the-executive-card/shared/env` created.
+- [ ] `/opt/the-executive-card/shared/logs` created.
+- [ ] `/opt/the-executive-card/shared/backups` created.
+- [ ] `/opt/the-executive-card/shared/postgres` created if host-managed storage is used.
 
-- [ ] Open inbound TCP `80`.
-- [ ] Open inbound TCP `443`.
-- [ ] Keep PostgreSQL `5432` closed to the public internet unless a specific secure external database plan is chosen.
-- [ ] Restrict SSH to approved access methods.
+## 3. External Environment File
 
-## 4. DNS In Namecheap
+- [ ] `/opt/the-executive-card/shared/env/production.env` created.
+- [ ] owner is `root`.
+- [ ] mode is `0600`.
+- [ ] real values were not committed.
+- [ ] communications safety values remain disabled.
 
-- [ ] Add Namecheap A record `@ -> 187.124.251.190`.
-- [ ] Add Namecheap A record `dashboard -> 187.124.251.190`.
-- [ ] Add optional Namecheap CNAME `www -> @` only if the host-level Caddyfile includes the `www` redirect host.
-- [ ] Do not add `api` or `docs` records unless the routing plan is updated.
-- [ ] Wait for DNS propagation.
+## 4. Runtime Alignment
 
-## 5. Email In Namecheap
+- [ ] Dockerfiles use Node.js 22.17.0.
+- [ ] Dockerfiles activate pnpm 11.7.0 deterministically.
+- [ ] `pnpm install --frozen-lockfile` succeeds.
+- [ ] Docker builds succeed for card and dashboard.
 
-- [ ] Create or alias `contact@theexecutivecard.online`.
-- [ ] Create or alias `support@theexecutivecard.online`.
-- [ ] Create or alias `sales@theexecutivecard.online`.
-- [ ] Create or alias `hello@theexecutivecard.online`.
-- [ ] Create or alias `notifications@theexecutivecard.online`.
-- [ ] Create or alias `noreply@theexecutivecard.online`.
-- [ ] Add MX `@`, priority `10`, value `mx1.privateemail.com`.
-- [ ] Add MX `@`, priority `10`, value `mx2.privateemail.com`.
-- [ ] Add TXT `@`, value `v=spf1 include:spf.privateemail.com ~all`.
-- [ ] Copy DKIM TXT record from Namecheap Email exactly.
-- [ ] Add TXT `_dmarc`, value `v=DMARC1; p=none`.
-- [ ] Send and receive test messages.
+## 5. Compose And Database
 
-## 6. Environment Variables
+- [ ] `docker-compose.hostinger.yml` config validates.
+- [ ] `docker-compose.production.yml` config validates.
+- [ ] card binds only to `127.0.0.1:3100`.
+- [ ] dashboard binds only to `127.0.0.1:3101`.
+- [ ] PostgreSQL is not publicly published.
+- [ ] one-shot `migrate` profile remains opt-in only.
+- [ ] PostgreSQL 17 health check passes.
 
-- [ ] Create `.env.production` on the VPS from `.env.production.example`.
-- [ ] Set `NODE_ENV=production`.
-- [ ] Set `DATABASE_URL`.
-- [ ] Set `DATABASE_SSL` according to database topology.
-- [ ] Set `PG_POOL_MAX`.
-- [ ] Set `BIDAYAX_IP_HASH_SECRET` to the owner-supplied production secret.
-- [ ] Set `APP_BASE_URL=https://theexecutivecard.online`.
-- [ ] Set `CARD_BASE_URL=https://theexecutivecard.online`.
-- [ ] Set `DASHBOARD_BASE_URL` to the approved dashboard URL.
-- [ ] Keep telephony and voice safety flags disabled for RC1 unless a later release changes scope.
-- [ ] Set `POSTGRES_PASSWORD` to the owner-supplied production secret in the VPS `.env.production` or deployment shell.
-- [ ] Set Caddy admin email to `support@theexecutivecard.online` or another owner-approved mailbox.
-- [ ] Set `CARD_DOMAIN=theexecutivecard.online`.
-- [ ] Set `DASHBOARD_DOMAIN=dashboard.theexecutivecard.online`.
+## 6. Reverse Proxy And TLS
 
-## 7. Docker And Database
+- [ ] host-level Caddy installed.
+- [ ] `infrastructure/caddy/the-executive-card.caddy` reviewed.
+- [ ] main Caddyfile imports site files safely.
+- [ ] apex routes to `127.0.0.1:3100`.
+- [ ] `www` redirects permanently to apex.
+- [ ] dashboard routes to `127.0.0.1:3101`.
+- [ ] WorkOS callback is not blocked.
+- [ ] WorkOS webhook is not blocked.
+- [ ] TLS validates for apex, `www`, and dashboard.
 
-- [ ] Use Docker Compose project name `the-executive-card`.
-- [ ] Use project-specific loopback ports `127.0.0.1:3100:3000` and `127.0.0.1:3101:3001`.
-- [ ] Confirm no other process uses ports `3100` or `3101`.
-- [ ] Confirm `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml config` succeeds.
-- [ ] Build containers with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml build`.
-- [ ] Start Postgres, card, and dashboard with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml up -d`.
-- [ ] Confirm containers are healthy/running with `docker compose -p the-executive-card -f infrastructure/docker/docker-compose.hostinger.yml ps`.
-- [ ] Run migration verification with `pnpm db:migrations:verify`.
-- [ ] Run database connection check with production `DATABASE_URL`.
-- [ ] Run service smoke checks that require `DATABASE_URL` after migrations are applied.
+## 7. Health, Readiness, And Smoke
 
-## 8. Caddy And SSL
+- [ ] dashboard `/api/system/health` succeeds.
+- [ ] dashboard `/api/system/readiness` succeeds after database readiness.
+- [ ] card smoke route `/card/ad-garner` succeeds.
+- [ ] CSS/static asset checks succeed.
+- [ ] no hydration or runtime startup regression is present.
 
-- [x] Caddy runtime decision: host-level Caddy.
-- [ ] Install Caddy on Ubuntu 24.04.
-- [ ] Configure Caddy environment variables.
-- [ ] Do not overwrite Caddy configuration for other VPS projects.
-- [ ] Create `/etc/caddy/sites-enabled/the-executive-card.caddy`.
-- [ ] Ensure the main `/etc/caddy/Caddyfile` imports `/etc/caddy/sites-enabled/*.caddy`.
-- [ ] Use the host-level Caddyfile from `docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`, which proxies to `127.0.0.1:3100` and `127.0.0.1:3101`.
-- [ ] Generate dashboard basic-auth hash with `caddy hash-password`.
-- [ ] Confirm dashboard requires basic auth before showing any page or API response.
-- [ ] Confirm Caddy obtains HTTPS certificates.
-- [ ] Confirm HTTPS works for card and dashboard domains.
-- [ ] Confirm HSTS header is present in production responses.
+## 8. Backup And Restore
 
-## 9. Health And Readiness
+- [ ] daily backup plan approved.
+- [ ] mandatory pre-deployment backup plan approved.
+- [ ] checksum generation and verification documented.
+- [ ] non-production restore rehearsal completed.
+- [ ] restore rehearsal evidence recorded.
 
-- [ ] Verify `https://dashboard.theexecutivecard.online/api/system/health`.
-- [ ] Verify `https://dashboard.theexecutivecard.online/api/system/readiness`.
-- [ ] Confirm readiness reports database ready after migrations.
-- [ ] Confirm voice safety remains blocked/default safe.
+## 9. Monitoring And Alerting
 
-## 10. Production Card Validation
+- [ ] uptime checks defined for apex and dashboard.
+- [ ] health/readiness checks defined.
+- [ ] container health and restart monitoring defined.
+- [ ] PostgreSQL monitoring defined.
+- [ ] TLS expiry monitoring defined.
+- [ ] communications-gate drift monitoring defined.
+- [ ] alert destination approved by owner.
 
-- [ ] Verify `https://theexecutivecard.online/card/ad-garner`.
-- [ ] Verify `https://theexecutivecard.online/card/naimah-barnes`.
-- [ ] Verify `https://theexecutivecard.online/card/sean-hall`.
-- [ ] Verify QR image routes for all three.
-- [ ] Verify vCard routes for all three.
-- [ ] Verify call links.
-- [ ] Verify email links.
-- [ ] Verify website links.
-- [ ] Verify share actions on iPhone and Android.
-- [ ] Verify OpenGraph metadata.
-- [ ] Verify event ingestion persists to PostgreSQL.
+## 10. Final Safety Gates
 
-## 11. Backups And Restore
-
-- [ ] Confirm backup directory location.
-- [ ] Run `pwsh infrastructure/hostinger-vps/BACKUP.ps1 -OutputPath /opt/the-executive-card/backups/the-executive-card-YYYYMMDD-HHMMSS.dump` with production `DATABASE_URL`.
-- [ ] Store backup under `/opt/the-executive-card/backups` or another owner-approved path outside the Postgres volume.
-- [ ] Perform a restore drill in a non-production environment before launch.
-- [ ] Document backup retention.
-
-## 12. Monitoring And Logs
-
-- [ ] Confirm Docker logs for `card`, `dashboard`, and `postgres`.
-- [ ] Confirm Caddy access/error logs.
-- [ ] Confirm dashboard observability routes work after database connection.
-- [ ] Define alerting outside the repository if needed; no alert provider is configured in the current codebase.
-
-## 13. Stop Condition
-
-Stop deployment work if any of these are unknown:
-
-- Production `DATABASE_URL`.
-- Full Namecheap DKIM value.
-- Dashboard basic-auth username/password hash.
+- [ ] no real secrets in the repository.
+- [ ] no production telephony activation.
+- [ ] no production voice activation.
+- [ ] no production calling activation.
+- [ ] no external provider activation.
+- [ ] rollback plan approved.
+- [ ] DNS cutover plan approved.
+- [ ] final deployment approval issued separately.

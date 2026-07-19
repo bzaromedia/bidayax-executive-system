@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+**/node_modules
+.pnpm-store
+.turbo
+**/.next
+**/dist
+**/coverage
+**/.cache

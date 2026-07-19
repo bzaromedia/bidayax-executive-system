@@ -1,317 +1,175 @@
 # Production Deployment Runbook
 
-Project: The Executive Card™  
-Deployment target: Hostinger VPS  
-VPS IPv4: `187.124.251.190`  
-VPS OS/version: Ubuntu 24.04 with Docker  
-DNS/email provider: Namecheap  
-Caddy runtime: host-level Caddy  
-PostgreSQL plan: Compose-managed Postgres
+Project: The Executive Card™
+Deployment target: Dedicated Hostinger VPS
+Runtime baseline: Node.js 22.17.0 + pnpm 11.7.0
+Database baseline: PostgreSQL 17
+Proxy baseline: host-level Caddy
 
 ## Stop Conditions
 
-Do not execute live deployment until:
+Do not execute a live deployment until all of the following are satisfied:
 
-- Namecheap DNS A records are configured.
-- Namecheap Private Email MX/SPF records are configured.
-- Exact full Namecheap DKIM TXT value is copied and configured.
-- `POSTGRES_PASSWORD` is available on the VPS without committing it.
-- `BIDAYAX_IP_HASH_SECRET` is available on the VPS without committing it.
-- Dashboard basic-auth username and password are selected.
+- dedicated VPS exists and is approved
+- DNS cutover plan is approved
+- backup and restore rehearsal evidence exists
+- production environment file exists outside the repository
+- release artifact is built from an approved commit
+- rollback plan is confirmed
+- separate deployment approval is issued
 
-## Isolation Rules
-
-This VPS may host other projects. Keep The Executive Card isolated:
-
-- Use project directory `/opt/the-executive-card`.
-- Use Docker Compose project name `the-executive-card`.
-- Use localhost-only host ports `127.0.0.1:3100` for card and `127.0.0.1:3101` for dashboard.
-- Use a dedicated Caddy site file: `/etc/caddy/sites-enabled/the-executive-card.caddy`.
-- Do not overwrite another project's Caddyfile.
-- Do not reuse another project's Docker network, volume, ports, backup directory, or environment file.
-- Keep PostgreSQL private to the Docker network.
-
-## Namecheap DNS Records
-
-Enter these records in Namecheap:
-
-| Type | Host | Value | TTL | Notes |
-| --- | --- | --- | --- | --- |
-| A | `@` | `187.124.251.190` | Automatic | Apex production card app |
-| A | `dashboard` | `187.124.251.190` | Automatic | Password-protected dashboard |
-| CNAME | `www` | `@` | Automatic | Optional; only if using the `www` redirect block below |
-| MX | `@` | `mx1.privateemail.com` | Automatic | Priority `10` |
-| MX | `@` | `mx2.privateemail.com` | Automatic | Priority `10` |
-| TXT | `@` | `v=spf1 include:spf.privateemail.com ~all` | Automatic | Namecheap Private Email SPF |
-| TXT | `privateemail._domainkey` | Copy exact full DKIM value from Namecheap | Automatic | Screenshot is truncated; do not retype from screenshot |
-| TXT | `_dmarc` | `v=DMARC1; p=none` | Automatic | Launch monitoring policy |
-
-## Namecheap Mailboxes
-
-Create these inboxes or aliases in Namecheap Private Email:
-
-- `contact@theexecutivecard.online`
-- `support@theexecutivecard.online`
-- `sales@theexecutivecard.online`
-- `hello@theexecutivecard.online`
-- `notifications@theexecutivecard.online`
-- `noreply@theexecutivecard.online`
-
-The current app uses `contact@theexecutivecard.com` in card profile data. Configure or alias this mailbox before public operational use.
-
-## VPS Directory Layout
-
-Use:
-
-```bash
-sudo mkdir -p /opt/the-executive-card
-sudo mkdir -p /opt/the-executive-card/backups
-sudo chown -R "$USER":"$USER" /opt/the-executive-card
-```
-
-Clone or copy the repository into:
+## Canonical Layout
 
 ```text
-/opt/the-executive-card/repo
+/opt/the-executive-card/
+  releases/
+    <git-sha>/
+  current -> releases/<git-sha>
+  shared/
+    env/
+      production.env
+    logs/
+    backups/
+    postgres/
+  infrastructure/
 ```
 
-## Production Environment File
+## External Environment File
 
-Create this on the VPS only:
+Use only:
 
 ```text
-/opt/the-executive-card/repo/.env.production
+/opt/the-executive-card/shared/env/production.env
 ```
 
-Template:
+Rules:
 
-```dotenv
-NODE_ENV=production
+- owner `root`
+- mode `0600`
+- outside the repository
+- never copied into release directories
+- never committed
+- never printed by deployment scripts
 
-POSTGRES_DB=bidayax
-POSTGRES_USER=bidayax
-POSTGRES_PASSWORD=<OWNER_SUPPLIED_POSTGRES_PASSWORD>
+## Release Preparation
 
-DATABASE_URL=postgres://bidayax:<OWNER_SUPPLIED_POSTGRES_PASSWORD>@postgres:5432/bidayax
-DATABASE_SSL=false
-PG_POOL_MAX=10
-BIDAYAX_IP_HASH_SECRET=<OWNER_SUPPLIED_BIDAYAX_IP_HASH_SECRET>
+1. build the release from an approved git SHA
+2. place release payload under `/opt/the-executive-card/releases/<git-sha>`
+3. verify `docker compose config` with the external environment file
+4. record release metadata:
+   - git SHA
+   - timestamp
+   - image tags or digests
+   - checksum evidence
+5. keep at least three known-good releases
+6. never delete the current release automatically
 
-APP_BASE_URL=https://theexecutivecard.online
-CARD_BASE_URL=https://theexecutivecard.online
-DASHBOARD_BASE_URL=https://dashboard.theexecutivecard.online
+## Compose Stack
 
-TELEPHONY_PROVIDER=mock
-TWILIO_ACCOUNT_SID=
-TWILIO_AUTH_TOKEN=
-TWILIO_PHONE_NUMBER=
-TWILIO_WEBHOOK_SIGNING_ENABLED=false
+Canonical compose files:
 
-OPENAI_API_KEY=
-OPENAI_REALTIME_MODEL=
-VOICE_AGENT_ENABLED=false
-VOICE_RUNTIME_PROVIDER=none
-VOICE_TEST_MODE=true
-LIVE_INBOUND_CALLS_ENABLED=false
-OUTBOUND_CALLS_ENABLED=false
-REQUIRE_HUMAN_APPROVAL=true
-ALLOW_PRODUCTION_CALLS=false
-```
+- `infrastructure/docker/docker-compose.hostinger.yml`
+- `infrastructure/docker/docker-compose.production.yml`
 
-The owner supplied the real `POSTGRES_PASSWORD` and `BIDAYAX_IP_HASH_SECRET` out-of-band. Do not commit them.
+Services:
 
-## Hostinger Docker Compose File
+- `postgres`
+- `migrate` (profile-gated one-shot verification service)
+- `card`
+- `dashboard`
 
-Use the repository Hostinger Compose file:
+## Migration Sequence
 
-```text
-/opt/the-executive-card/repo/infrastructure/docker/docker-compose.hostinger.yml
-```
+The repository currently provides migration verification but not an automated production SQL-apply workflow.
 
-This file is intentionally standalone. Do not combine it with `docker-compose.production.yml`, because the base production file publishes `3000:3000` and `3001:3001`. The Hostinger file binds only project-specific loopback ports:
+Approved order:
 
-- `127.0.0.1:3100:3000` for the card app.
-- `127.0.0.1:3101:3001` for the dashboard.
+1. take a fresh backup
+2. verify migration inventory with `pnpm db:migrations:verify`
+3. run the profile-gated `migrate` service only when approved as a preflight verification step
+4. execute SQL migration application through the approved PostgreSQL operator method
+5. verify database readiness
+6. start or reload the application stack
 
-Validate it with:
+## Caddy
 
-```bash
-docker compose \
-  -p the-executive-card \
-  -f infrastructure/docker/docker-compose.hostinger.yml \
-  config
-```
+Canonical site artifact:
 
-## Host-Level Caddy Plan
+- `infrastructure/caddy/the-executive-card.caddy`
 
-Install Caddy on Ubuntu 24.04 using the host-level package method approved for the VPS.
+Routing:
 
-Create:
+- apex → `127.0.0.1:3100`
+- `www` → permanent redirect to apex
+- dashboard → `127.0.0.1:3101`
 
-```text
-/etc/caddy/sites-enabled/the-executive-card.caddy
-```
+Requirements:
 
-Use this site file:
+- automatic TLS
+- HSTS in the production artifact
+- zstd + gzip
+- explicit log files
+- safe request limits
+- WorkOS callback and webhook paths must not be blocked
+- application-level authentication remains primary
 
-```caddy
-theexecutivecard.online {
-	encode zstd gzip
-	reverse_proxy 127.0.0.1:3100
-}
-
-www.theexecutivecard.online {
-	redir https://theexecutivecard.online{uri} permanent
-}
-
-dashboard.theexecutivecard.online {
-	encode zstd gzip
-
-	basicauth {
-		<OWNER_SELECTED_DASHBOARD_USERNAME> <CADDY_HASHED_DASHBOARD_PASSWORD>
-	}
-
-	reverse_proxy 127.0.0.1:3101
-}
-```
-
-Ensure the main Caddyfile imports site files without replacing other projects:
-
-```caddy
-{
-	email support@theexecutivecard.online
-}
-
-import /etc/caddy/sites-enabled/*.caddy
-```
-
-If the VPS already has a main Caddyfile for other projects, add only the `import` line if it is missing. Do not delete existing site blocks.
-
-Generate the dashboard password hash on the VPS:
-
-```bash
-caddy hash-password
-```
-
-Paste the generated hash into the dashboard `basicauth` block. Do not commit the dashboard password or hash.
-
-Validate and reload Caddy:
+Validation commands:
 
 ```bash
 sudo caddy validate --config /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 ```
 
-## Build And Start Commands
+Rollback:
 
-From:
+- restore the prior site file
+- validate configuration
+- reload Caddy
 
-```bash
-cd /opt/the-executive-card/repo
-```
+## systemd
 
-Run:
+Canonical wrapper artifact:
 
-```bash
-pnpm install
-pnpm db:migrations:verify
-pnpm verify:production
+- `infrastructure/systemd/the-executive-card.service`
 
-docker compose \
-  -p the-executive-card \
-  -f infrastructure/docker/docker-compose.hostinger.yml \
-  build
+It starts the compose stack from `/opt/the-executive-card/current` and references the external environment file.
 
-docker compose \
-  -p the-executive-card \
-  -f infrastructure/docker/docker-compose.hostinger.yml \
-  up -d
+Installation and enablement are operator actions and are not executed by this repository phase.
 
-docker compose \
-  -p the-executive-card \
-  -f infrastructure/docker/docker-compose.hostinger.yml \
-  ps
-```
+## Health And Smoke Checks
 
-## Migration And Database Commands
+Supported operational checks:
 
-The repository currently verifies migration ordering with:
+- dashboard health: `https://dashboard.theexecutivecard.online/api/system/health`
+- dashboard readiness: `https://dashboard.theexecutivecard.online/api/system/readiness`
+- card smoke route: `https://theexecutivecard.online/card/ad-garner`
+- CSS/static asset verification from the card and dashboard routes
 
-```bash
-pnpm db:migrations:verify
-```
+## Backup And Restore
 
-Database-backed checks require `DATABASE_URL` in the environment:
+- daily backups required
+- mandatory pre-deployment backup required
+- checksum generation and verification required
+- non-production restore rehearsal required
+- never test restore on production
 
-```bash
-pnpm db:check
-pnpm telemetry:verify
-pnpm improvement:verify
-```
+Canonical restore procedure:
 
-The current repository does not include an automated migration-apply command. Apply SQL files in `database/migrations` to the production database using the approved PostgreSQL migration method before public launch, then run readiness checks.
+- `docs/deployment/RESTORE_REHEARSAL_PLAN.md`
 
-## Backup Command
+## Communications Safety
 
-With production `DATABASE_URL` available:
+The following production values must remain unchanged in this phase:
 
-```bash
-pwsh infrastructure/hostinger-vps/BACKUP.ps1 \
-  -OutputPath /opt/the-executive-card/backups/the-executive-card-$(date +%Y%m%d-%H%M%S).dump
-```
+- `TELEPHONY_PROVIDER=mock`
+- `TELEPHONY_PROVIDER_MODE=disabled`
+- `VOICE_RUNTIME_PROVIDER=none`
+- `VOICE_AGENT_ENABLED=false`
+- `LIVE_INBOUND_CALLS_ENABLED=false`
+- `OUTBOUND_CALLS_ENABLED=false`
+- `ALLOW_PRODUCTION_CALLS=false`
+- `REQUIRE_HUMAN_APPROVAL=true`
 
-## Restore Command
+## Historical Note
 
-Restore is destructive. Use only after taking a fresh backup and confirming the target:
-
-```bash
-pwsh scripts/restore-database.ps1 \
-  -BackupPath /opt/the-executive-card/backups/<backup-file>.dump \
-  -ConfirmRestore
-```
-
-## Health Checks
-
-After Docker and Caddy are running:
-
-```bash
-curl -I https://theexecutivecard.online/card/ad-garner
-curl -I https://theexecutivecard.online/card/naimah-barnes
-curl -I https://theexecutivecard.online/card/sean-hall
-curl -I https://theexecutivecard.online/card/ad-garner/qr
-curl -I https://theexecutivecard.online/card/ad-garner/vcard
-curl -I https://dashboard.theexecutivecard.online/api/system/health
-```
-
-The dashboard health request must require basic auth.
-
-## Public Card Acceptance
-
-Validate all three cards on the public internet:
-
-- `https://theexecutivecard.online/card/ad-garner`
-- `https://theexecutivecard.online/card/naimah-barnes`
-- `https://theexecutivecard.online/card/sean-hall`
-
-Check:
-
-- HTTPS certificate.
-- HSTS/security headers.
-- QR image route.
-- vCard route.
-- Call link.
-- Email link.
-- Website link.
-- Share action.
-- OpenGraph metadata.
-- Event ingestion persisted to PostgreSQL.
-
-## Deployment Readiness Status
-
-READY FOR HOSTINGER CONFIGURATION
-
-B4 may proceed to live deployment execution only after:
-
-- The full Namecheap DKIM TXT value is copied into DNS.
-- Dashboard basic-auth username/password hash is generated.
-- The owner confirms it is acceptable to execute deployment commands on the VPS.
+The July 2026 shared-host / Nginx deployment reports are historical records only. They are not the source of truth for the dedicated-VPS launch model.

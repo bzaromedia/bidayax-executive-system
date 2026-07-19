@@ -24,6 +24,7 @@
     "test:integration": "pnpm db:migrations:verify",
     "test:unit": "pnpm test",
     "telemetry:retention": "node --experimental-strip-types scripts/telemetry-retention-check.ts",
+    "verify:deployment-artifacts": "node --experimental-strip-types scripts/verify-deployment-artifacts.ts",
     "telemetry:smoke": "node --experimental-strip-types scripts/telemetry-smoke-test.ts",
     "telemetry:verify": "node --experimental-strip-types scripts/verify-telemetry.ts",
     "typecheck": "pnpm -r --if-present typecheck",

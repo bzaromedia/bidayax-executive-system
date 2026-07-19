@@ -1,0 +1,21 @@
+[Unit]
+Description=The Executive Card immutable Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/the-executive-card/current
+EnvironmentFile=/opt/the-executive-card/shared/env/production.env
+ExecStartPre=/usr/bin/test -L /opt/the-executive-card/current
+ExecStartPre=/usr/bin/docker compose --env-file /opt/the-executive-card/shared/env/production.env -f /opt/the-executive-card/current/infrastructure/docker/docker-compose.hostinger.yml config
+ExecStart=/usr/bin/docker compose --env-file /opt/the-executive-card/shared/env/production.env -p the-executive-card -f /opt/the-executive-card/current/infrastructure/docker/docker-compose.hostinger.yml up -d postgres card dashboard
+ExecStop=/usr/bin/docker compose --env-file /opt/the-executive-card/shared/env/production.env -p the-executive-card -f /opt/the-executive-card/current/infrastructure/docker/docker-compose.hostinger.yml down
+TimeoutStartSec=300
+TimeoutStopSec=120
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

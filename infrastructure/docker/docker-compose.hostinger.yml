@@ -2,6 +2,8 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    env_file:
+      - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-bidayax}
       POSTGRES_USER: ${POSTGRES_USER:-bidayax}
@@ -13,6 +15,44 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: "10m"
+    mem_limit: 2g
+    cpus: 2
+    networks:
+      - executive_card_internal
+
+  migrate:
+    profiles:
+      - migrate
+    build:
+      context: ../..
+      dockerfile: infrastructure/docker/Dockerfile.dashboard
+    env_file:
+      - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command:
+      - sh
+      - -lc
+      - |
+        if [ -n "${MIGRATION_DATABASE_URL:-}" ]; then export DATABASE_URL="${MIGRATION_DATABASE_URL}"; fi
+        pnpm db:migrations:verify
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-file: "3"
+        max-size: "10m"
+    mem_limit: 512m
+    cpus: 0.5
+    networks:
+      - executive_card_internal
 
   card:
     build:
@@ -20,12 +60,33 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.card
     restart: unless-stopped
     env_file:
-      - ../../.env.production
+      - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "127.0.0.1:3100:3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/card/ad-garner',{cache:'no-store'}).then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: "10m"
+    mem_limit: 768m
+    cpus: 1
+    networks:
+      - executive_card_internal
 
   dashboard:
     build:
@@ -33,12 +94,37 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.dashboard
     restart: unless-stopped
     env_file:
-      - ../../.env.production
+      - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "127.0.0.1:3101:3001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/system/health',{cache:'no-store'}).then((response)=>process.exit(response.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-file: "5"
+        max-size: "10m"
+    mem_limit: 768m
+    cpus: 1
+    networks:
+      - executive_card_internal
 
 volumes:
   the_executive_card_postgres:
+
+networks:
+  executive_card_internal:
+    name: the-executive-card-internal

@@ -1,29 +1,67 @@
 # Docker Production Setup
 
-Phase 11 adds a minimal Docker setup for Hostinger VPS deployment.
+Canonical production runtime:
+
+- dedicated Hostinger VPS
+- Ubuntu 24.04
+- Node.js 22.17.0 Alpine build images
+- pnpm 11.7.0 via deterministic Corepack activation
+- host-level Caddy
+- PostgreSQL 17 on the internal Docker network
+- immutable releases under `/opt/the-executive-card/releases/<git-sha>`
+- external secrets at `/opt/the-executive-card/shared/env/production.env`
 
 ## Files
 
-- `Dockerfile.card`: builds and runs `apps/card`.
-- `Dockerfile.dashboard`: builds and runs `apps/dashboard`.
-- `docker-compose.production.yml`: runs Postgres, card, and dashboard.
+- `Dockerfile.card`: builds and runs `apps/card` under Node.js 22.
+- `Dockerfile.dashboard`: builds and runs `apps/dashboard` under Node.js 22.
+- `docker-compose.production.yml`: canonical production stack definition.
+- `docker-compose.hostinger.yml`: dedicated Hostinger VPS stack definition.
 
-## Required File
+## Production Secret Contract
 
-Create `.env.production` from `.env.production.example` before deployment.
-Do not commit real secrets.
+Do not store real production secrets in the repository.
 
-## Commands
+Use:
+
+```text
+/opt/the-executive-card/shared/env/production.env
+```
+
+Properties:
+
+- owner: `root`
+- mode: `0600`
+- outside the repository
+- not copied into immutable release directories
+- not printed by deployment scripts
+
+## Compose Model
+
+The production compose files define:
+
+- `postgres`
+- `migrate` (profile-gated one-shot verification job)
+- `card`
+- `dashboard`
+
+Application ports are loopback only:
+
+- `127.0.0.1:3100 -> 3000`
+- `127.0.0.1:3101 -> 3001`
+
+PostgreSQL is internal only and is not published to the host.
+
+## Validation Commands
 
 ```powershell
-docker compose -f infrastructure/docker/docker-compose.production.yml build
-docker compose -f infrastructure/docker/docker-compose.production.yml up -d
-docker compose -f infrastructure/docker/docker-compose.production.yml ps
+docker compose --env-file /opt/the-executive-card/shared/env/production.env -f infrastructure/docker/docker-compose.production.yml config
+docker compose --env-file /opt/the-executive-card/shared/env/production.env -f infrastructure/docker/docker-compose.hostinger.yml config
+pnpm verify:deployment-artifacts
 ```
 
 ## Notes
 
-- This compose file does not enable live voice by default.
-- `POSTGRES_PASSWORD` must be supplied through the environment.
-- Database migrations are verified separately by `pnpm db:migrations:verify`.
-
+- The repository does not authorize live provider activation in this phase.
+- Production telephony, voice, and calling remain disabled.
+- The dedicated production Caddy site artifact is `infrastructure/caddy/the-executive-card.caddy`.
