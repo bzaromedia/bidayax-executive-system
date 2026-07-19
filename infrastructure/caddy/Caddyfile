@@ -2,13 +2,14 @@
 	email {$CADDY_ADMIN_EMAIL}
 }
 
+# Deprecated generic reference. Use `infrastructure/caddy/the-executive-card.caddy`
+# for the dedicated VPS production deployment artifact.
 {$CARD_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy card:3000
+	reverse_proxy 127.0.0.1:3100
 }
 
 {$DASHBOARD_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy dashboard:3001
+	reverse_proxy 127.0.0.1:3101
 }
-

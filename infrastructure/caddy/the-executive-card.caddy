@@ -1,0 +1,89 @@
+{
+	email support@theexecutivecard.online
+}
+
+theexecutivecard.online {
+	encode zstd gzip
+
+	log {
+		output file /opt/the-executive-card/shared/logs/caddy-card-access.log
+		format json
+	}
+
+	header {
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+	}
+
+	request_body {
+		max_size 10MB
+	}
+
+	reverse_proxy 127.0.0.1:3100 {
+		header_up X-Forwarded-Host {host}
+		header_up X-Forwarded-Proto {scheme}
+
+		transport http {
+			dial_timeout 10s
+			read_timeout 30s
+			response_header_timeout 30s
+			write_timeout 30s
+		}
+	}
+}
+
+www.theexecutivecard.online {
+	redir https://theexecutivecard.online{uri} permanent
+}
+
+dashboard.theexecutivecard.online {
+	encode zstd gzip
+
+	log {
+		output file /opt/the-executive-card/shared/logs/caddy-dashboard-access.log
+		format json
+	}
+
+	header {
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+	}
+
+	request_body {
+		max_size 5MB
+	}
+
+	@workos_callback path /auth/callback
+	@workos_webhook path /api/auth/webhooks/workos
+	@dashboard_health path /api/system/health /api/system/readiness
+
+	handle @workos_callback {
+		reverse_proxy 127.0.0.1:3101
+	}
+
+	handle @workos_webhook {
+		reverse_proxy 127.0.0.1:3101
+	}
+
+	handle @dashboard_health {
+		reverse_proxy 127.0.0.1:3101
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3101 {
+			header_up X-Forwarded-Host {host}
+			header_up X-Forwarded-Proto {scheme}
+
+			transport http {
+				dial_timeout 10s
+				read_timeout 30s
+				response_header_timeout 30s
+				write_timeout 30s
+			}
+		}
+	}
+}

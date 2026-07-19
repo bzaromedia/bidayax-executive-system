@@ -1,23 +1,17 @@
-param(
-  [string]$ComposeFile = "infrastructure/docker/docker-compose.production.yml"
-)
-
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-if (-not (Test-Path -LiteralPath ".env.production")) {
-  Write-Error ".env.production is required. Create it from .env.production.example."
-}
+param(
+  [Parameter(Mandatory = $true)]
+  [string]$GitSha,
+  [switch]$Execute,
+  [switch]$RunMigrateVerification,
+  [switch]$ConfirmActivation
+)
 
-Write-Host "Running production verification..."
-pnpm db:migrations:verify
-pnpm verify:production
-
-Write-Host "Building production containers..."
-docker compose -f $ComposeFile build
-
-Write-Host "Starting production containers..."
-docker compose -f $ComposeFile up -d
-
-Write-Host "Deployment started. Inspect logs before routing traffic."
-docker compose -f $ComposeFile ps
-
+Write-Warning "DEPLOY.ps1 now delegates to the immutable release workflow."
+& (Join-Path $PSScriptRoot "DEPLOY-RELEASE.ps1") `
+  -GitSha $GitSha `
+  -Execute:$Execute `
+  -RunMigrateVerification:$RunMigrateVerification `
+  -ConfirmActivation:$ConfirmActivation

@@ -1,22 +1,43 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string]$GitRef,
-  [string]$ComposeFile = "infrastructure/docker/docker-compose.production.yml"
+  [string]$GitSha,
+  [string]$ReleaseRoot = "/opt/the-executive-card/releases",
+  [string]$CurrentLink = "/opt/the-executive-card/current",
+  [string]$ServiceName = "the-executive-card.service",
+  [switch]$Execute,
+  [switch]$ConfirmRollback
 )
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-Write-Warning "Rollback changes application code. Take a database backup first."
-Write-Host "Target Git ref: $GitRef"
-Write-Host "Stopping containers..."
-docker compose -f $ComposeFile down
+$targetRelease = Join-Path $ReleaseRoot $GitSha
 
-Write-Host "Checking out requested ref..."
-git fetch --all --prune
-git checkout $GitRef
+if (-not (Test-Path -LiteralPath $targetRelease)) {
+  Write-Error "Requested release does not exist: $targetRelease"
+}
 
-Write-Host "Rebuilding and starting containers..."
-docker compose -f $ComposeFile build
-docker compose -f $ComposeFile up -d
-docker compose -f $ComposeFile ps
+Write-Warning "Rollback may require a database restore if schema or data changed after the target release."
+Write-Host "Target immutable release: $targetRelease"
+Write-Host "Current symlink path: $CurrentLink"
+Write-Host "Service wrapper: $ServiceName"
 
+if (-not $Execute) {
+  Write-Host "Planning only. Re-run with -Execute -ConfirmRollback to switch the current release symlink and restart the wrapper service."
+  return
+}
+
+if (-not $ConfirmRollback) {
+  Write-Error "Rollback is blocked. Re-run with -ConfirmRollback after taking a fresh backup and confirming the database rollback plan."
+}
+
+if (-not (Get-Command ln -ErrorAction SilentlyContinue)) {
+  Write-Error "ln is required to update the current release symlink atomically."
+}
+
+Write-Host "Switching current release symlink..."
+& ln -sfn $targetRelease $CurrentLink
+
+Write-Host "Restarting systemd wrapper..."
+& systemctl restart $ServiceName
+& systemctl status $ServiceName --no-pager
