@@ -14,6 +14,9 @@ pnpm --filter @bidayax/dashboard dev
 
 The dashboard runs on port `3001`.
 
+From the repository root, `pnpm dev` starts both the public card on port `3000`
+and the dashboard on port `3001` with package-prefixed streamed output.
+
 ## Validate
 
 ```bash
@@ -44,6 +47,7 @@ The dashboard reads real `interaction_events` data and displays:
 - simple conversion ratios.
 
 If the database is not configured, unavailable, or empty, the dashboard shows an honest empty state.
+The route remains fully styled in this state and does not fabricate interaction records.
 
 ## Phase 6 Intent Signals
 

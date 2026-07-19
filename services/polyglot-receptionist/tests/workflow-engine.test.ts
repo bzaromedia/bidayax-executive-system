@@ -59,7 +59,7 @@ describe("polyglot receptionist workflow", () => {
       "create_event_ledger_record",
       "create_callback_or_meeting_request",
       "prepare_email_notification",
-      "provider_dispatch_if_configured",
+      "submit_communications_command",
       "dashboard_visibility",
       "audit_log"
     ]);
@@ -137,5 +137,3 @@ describe("polyglot receptionist workflow", () => {
     expect(payload.subject).toContain("Sean Hall");
   });
 });
-
-

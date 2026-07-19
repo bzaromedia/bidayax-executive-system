@@ -1,5 +1,3 @@
-import { resolveVoiceProviderStatus } from "@bidayax/polyglot-receptionist";
-
 export type VoiceGatewayProviderEnvironment = {
   readonly twilioAccountSid?: string;
   readonly twilioAuthToken?: string;
@@ -16,8 +14,30 @@ export type VoiceChatSessionPlaceholder = {
   readonly safeMessage: string;
 };
 
+export type VoiceGatewayAvailabilityInput = {
+  readonly telephonyConfigured: boolean;
+  readonly speechToTextConfigured: boolean;
+  readonly realtimeAgentConfigured: boolean;
+  readonly textToSpeechConfigured: boolean;
+  readonly translationConfigured: boolean;
+};
+
+function resolveVoiceGatewayProviderStatus(input: VoiceGatewayAvailabilityInput) {
+  const configured = Object.values(input).filter(Boolean).length;
+
+  return {
+    configuredCount: configured,
+    status: configured === 5 ? "configured" : ("provider_unconfigured" as const),
+    telephony: input.telephonyConfigured ? "configured" : "provider_unconfigured",
+    speechToText: input.speechToTextConfigured ? "configured" : "provider_unconfigured",
+    realtimeAgent: input.realtimeAgentConfigured ? "configured" : "provider_unconfigured",
+    textToSpeech: input.textToSpeechConfigured ? "configured" : "provider_unconfigured",
+    translation: input.translationConfigured ? "configured" : "provider_unconfigured"
+  };
+}
+
 export function resolveVoiceGatewayStatus(env: VoiceGatewayProviderEnvironment) {
-  return resolveVoiceProviderStatus({
+  return resolveVoiceGatewayProviderStatus({
     realtimeAgentConfigured: Boolean(env.openAiApiKey || env.elevenLabsApiKey),
     speechToTextConfigured: Boolean(env.deepgramApiKey || env.openAiApiKey),
     telephonyConfigured: Boolean(

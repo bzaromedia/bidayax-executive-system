@@ -9,7 +9,7 @@
     "start": "node ../../node_modules/next/dist/bin/next start -p 3000",
     "lint": "node ../../node_modules/eslint/bin/eslint.js app src --ext .ts,.tsx",
     "test": "node ../../node_modules/vitest/vitest.mjs run --config vitest.config.ts",
-    "typecheck": "node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
+    "typecheck": "node ../../node_modules/next/dist/bin/next typegen && node ../../node_modules/typescript/bin/tsc --project tsconfig.json --noEmit"
   },
   "dependencies": {
     "@bidayax/card-customization": "workspace:*",

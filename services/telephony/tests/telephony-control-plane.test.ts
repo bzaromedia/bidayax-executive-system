@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { createInMemoryTelephonyDomainRepository } from "../src/domain-repository";
+import { assertProviderImplementationDisabled } from "../src/provider-interface";
 import {
-  assertProviderImplementationDisabled,
   createInMemoryTelephonyCommandIdempotencyStore,
   evaluateTelephonyCommandSafety,
-  createInMemoryTelephonyDomainRepository,
   requestCallSession
-} from "../src";
+} from "../src/telephony-control-plane";
 
 describe("telephony control plane", () => {
   it("creates provider-independent call session records without enabling calls", async () => {
