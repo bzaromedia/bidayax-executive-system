@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 
 import { definitionHash, sha256 } from "./hash.js";
-import type { CanonicalManifestObject, CanonicalMigrationManifest } from "./types.js";
+import { normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.js";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
+import type { CanonicalManifestObject, CanonicalMigrationManifest, SchemaDefinitionObjectType } from "./types.js";
 
 const manualMetadata: Record<
   string,
@@ -40,13 +42,207 @@ const manualMetadata: Record<
   }
 };
 
-function extractMatches(sql: string, expression: RegExp): string[] {
-  return Array.from(sql.matchAll(expression), (match) => match[1]).filter((value): value is string => Boolean(value)).sort();
+function stripWrappingQuotes(value: string): string {
+  return value.trim().replace(/^"(.*)"$/, "$1");
+}
+
+function normalizeName(value: string): string {
+  return normalizeSchemaIdentifier(stripWrappingQuotes(value.trim().replace(/^public\./i, "")));
+}
+
+function splitTopLevelCsv(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? "";
+
+    if (character === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      current += character;
+      continue;
+    }
+
+    if (character === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      current += character;
+      continue;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote) {
+      if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth = Math.max(0, depth - 1);
+      } else if (character === "," && depth === 0) {
+        if (current.trim().length > 0) {
+          parts.push(current.trim());
+        }
+        current = "";
+        continue;
+      }
+    }
+
+    current += character;
+  }
+
+  if (current.trim().length > 0) {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function normalizeListEntry(value: string): string {
+  const trimmed = stripWrappingQuotes(value.trim());
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed) ? normalizeName(trimmed) : trimmed.replace(/\s+/g, " ").trim();
+}
+
+function parseColumnList(fragment: string): string[] {
+  return splitTopLevelCsv(fragment).map((entry) => normalizeListEntry(entry));
+}
+
+function createObject(
+  objectType: SchemaDefinitionObjectType,
+  schemaName: string,
+  objectName: string,
+  metadata: Record<string, unknown>,
+  parentObject?: string
+): CanonicalManifestObject {
+  const object: CanonicalManifestObject = {
+    objectType,
+    schemaName,
+    objectName,
+    ...(parentObject ? { parentObject } : {}),
+    definitionHash: "",
+    metadata
+  };
+
+  object.definitionHash = buildSchemaDefinitionHash(object);
+  return object;
+}
+
+function buildConstraintObjectName(
+  tableName: string,
+  objectType: Extract<SchemaDefinitionObjectType, "primary_key" | "foreign_key" | "unique_constraint" | "check_constraint">,
+  metadata: Record<string, unknown>
+): string {
+  if (objectType === "primary_key") {
+    return `${normalizeName(tableName)}#primary_key`;
+  }
+
+  if (objectType === "unique_constraint") {
+    return `${normalizeName(tableName)}#unique#${(metadata.columns as string[]).join(",")}`;
+  }
+
+  if (objectType === "foreign_key") {
+    return `${normalizeName(tableName)}#foreign_key#${(metadata.columns as string[]).join(",")}#${String(metadata.referencedTable)}#${(metadata.referencedColumns as string[]).join(",")}`;
+  }
+
+  return `${normalizeName(tableName)}#check#${definitionHash(normalizeSchemaExpression(metadata.expression) ?? "").slice(0, 12)}`;
+}
+
+function extractDataType(fragment: string): string {
+  const tokens = fragment.trim().split(/\s+/);
+  const collected: string[] = [];
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]?.toUpperCase() ?? "";
+    if (["DEFAULT", "NOT", "NULL", "CHECK", "CONSTRAINT", "REFERENCES", "UNIQUE", "PRIMARY", "GENERATED"].includes(token)) {
+      break;
+    }
+    collected.push(tokens[index] ?? "");
+  }
+
+  return collected.join(" ");
+}
+
+function parseInlineConstraintObjects(tableName: string, columnName: string, fragment: string): CanonicalManifestObject[] {
+  const constraints: CanonicalManifestObject[] = [];
+
+  if (/PRIMARY\s+KEY/i.test(fragment)) {
+    const metadata = { columns: [normalizeName(columnName)] };
+    constraints.push(
+      createObject("primary_key", "public", buildConstraintObjectName(tableName, "primary_key", metadata), metadata, tableName)
+    );
+  }
+
+  if (/\bUNIQUE\b/i.test(fragment)) {
+    const metadata = { columns: [normalizeName(columnName)] };
+    constraints.push(
+      createObject("unique_constraint", "public", buildConstraintObjectName(tableName, "unique_constraint", metadata), metadata, tableName)
+    );
+  }
+
+  const foreignKeyMatch = fragment.match(/REFERENCES\s+([^\s(]+)\s*\((.+)\)/i);
+  if (foreignKeyMatch) {
+    const metadata = {
+      columns: [normalizeName(columnName)],
+      referencedTable: normalizeName(foreignKeyMatch[1] ?? ""),
+      referencedColumns: parseColumnList(foreignKeyMatch[2] ?? ""),
+      onDelete: fragment.match(/ON DELETE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null,
+      onUpdate: fragment.match(/ON UPDATE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null
+    };
+    constraints.push(
+      createObject("foreign_key", "public", buildConstraintObjectName(tableName, "foreign_key", metadata), metadata, tableName)
+    );
+  }
+
+  const checkMatch = fragment.match(/CHECK\s*\(([\s\S]+)\)/i);
+  if (checkMatch?.[1]) {
+    const metadata = { expression: checkMatch[1] };
+    constraints.push(
+      createObject("check_constraint", "public", buildConstraintObjectName(tableName, "check_constraint", metadata), metadata, tableName)
+    );
+  }
+
+  return constraints;
+}
+
+function parseTableConstraintObject(tableName: string, entry: string): CanonicalManifestObject | null {
+  const normalizedEntry = entry.trim();
+
+  if (/^PRIMARY\s+KEY/i.test(normalizedEntry)) {
+    const metadata = { columns: parseColumnList(normalizedEntry.match(/PRIMARY KEY\s*\((.+)\)/i)?.[1] ?? "") };
+    return createObject("primary_key", "public", buildConstraintObjectName(tableName, "primary_key", metadata), metadata, tableName);
+  }
+
+  if (/^UNIQUE\b/i.test(normalizedEntry)) {
+    const metadata = { columns: parseColumnList(normalizedEntry.match(/UNIQUE\s*\((.+)\)/i)?.[1] ?? "") };
+    return createObject("unique_constraint", "public", buildConstraintObjectName(tableName, "unique_constraint", metadata), metadata, tableName);
+  }
+
+  if (/^FOREIGN\s+KEY/i.test(normalizedEntry)) {
+    const match = normalizedEntry.match(/FOREIGN KEY\s*\((.+)\)\s+REFERENCES\s+([^\s(]+)\s*\((.+)\)/i);
+    if (!match) {
+      return null;
+    }
+
+    const metadata = {
+      columns: parseColumnList(match[1] ?? ""),
+      referencedTable: normalizeName(match[2] ?? ""),
+      referencedColumns: parseColumnList(match[3] ?? ""),
+      onDelete: normalizedEntry.match(/ON DELETE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null,
+      onUpdate: normalizedEntry.match(/ON UPDATE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null
+    };
+
+    return createObject("foreign_key", "public", buildConstraintObjectName(tableName, "foreign_key", metadata), metadata, tableName);
+  }
+
+  if (/^CHECK\s*\(/i.test(normalizedEntry)) {
+    const metadata = { expression: normalizedEntry.match(/^CHECK\s*\(([\s\S]+)\)$/i)?.[1] ?? normalizedEntry.replace(/^CHECK\s*/i, "") };
+    return createObject("check_constraint", "public", buildConstraintObjectName(tableName, "check_constraint", metadata), metadata, tableName);
+  }
+
+  return null;
 }
 
 function extractTables(sql: string): CanonicalManifestObject[] {
   const matches = Array.from(
-    sql.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-zA-Z0-9_]+)\s*\(([\s\S]*?)\);\n?/g)
+    sql.matchAll(/CREATE TABLE IF NOT EXISTS\s+([a-zA-Z0-9_]+)\s*\(([\s\S]*?)\);/g)
   );
 
   return matches.flatMap((match) => {
@@ -56,109 +252,171 @@ function extractTables(sql: string): CanonicalManifestObject[] {
       return [];
     }
 
-    const lines = body
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean);
+    const entries = splitTopLevelCsv(body);
+    const columnObjects: CanonicalManifestObject[] = [];
+    const constraintObjects: CanonicalManifestObject[] = [];
 
-    const columns = lines
-      .filter(
-        (line) =>
-          !/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)\b/i.test(line) &&
-          /^[a-zA-Z0-9_]+/.test(line)
-      )
-      .map((line) => line.match(/^([a-zA-Z0-9_]+)/)?.[1])
-      .filter((value): value is string => Boolean(value));
+    for (const entry of entries) {
+      if (/^(PRIMARY|FOREIGN|UNIQUE|CHECK|CONSTRAINT)\b/i.test(entry)) {
+        const constraintObject = parseTableConstraintObject(tableName, entry.replace(/^CONSTRAINT\s+[A-Za-z0-9_]+\s+/i, ""));
+        if (constraintObject) {
+          constraintObjects.push(constraintObject);
+        }
+        continue;
+      }
 
-    const tableObject: CanonicalManifestObject = {
-      objectType: "table",
-      schemaName: "public",
-      objectName: tableName,
-      definitionHash: definitionHash({ tableName, columns, sql: body }),
-      metadata: { columns }
-    };
+      const columnName = entry.match(/^([a-zA-Z0-9_]+)/)?.[1];
+      if (!columnName) {
+        continue;
+      }
 
-    const columnObjects: CanonicalManifestObject[] = columns.map((columnName) => ({
-      objectType: "column",
-      schemaName: "public",
-      objectName: columnName,
-      parentObject: tableName,
-      definitionHash: definitionHash({ tableName, columnName }),
-      metadata: {}
-    }));
+      const definition = entry.slice(columnName.length).trim();
+      columnObjects.push(
+        createObject(
+          "column",
+          "public",
+          normalizeName(columnName),
+          {
+            dataType: extractDataType(definition),
+            isNullable: !/NOT\s+NULL|PRIMARY\s+KEY/i.test(definition),
+            default:
+              definition.match(/\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|NULL|CHECK|CONSTRAINT|REFERENCES|UNIQUE|PRIMARY\s+KEY|GENERATED)\b|$)/i)?.[1] ?? null,
+            isGenerated: /GENERATED\s+ALWAYS\s+AS/i.test(definition),
+            generationExpression:
+              definition.match(/GENERATED\s+ALWAYS\s+AS\s*\((.+)\)\s+STORED/i)?.[1] ?? null
+          },
+          tableName
+        )
+      );
+      constraintObjects.push(...parseInlineConstraintObjects(tableName, columnName, definition));
+    }
 
-    return [tableObject, ...columnObjects];
+    const tableObject = createObject("table", "public", normalizeName(tableName), {
+      columns: columnObjects.map((object) => object.objectName)
+    });
+
+    return [tableObject, ...columnObjects, ...constraintObjects];
   });
 }
 
 function extractIndexes(sql: string): CanonicalManifestObject[] {
-  return Array.from(
-    sql.matchAll(/CREATE (?:UNIQUE )?INDEX IF NOT EXISTS\s+([a-zA-Z0-9_]+)\s+ON\s+([a-zA-Z0-9_]+)/g)
-  ).flatMap((match) => {
-    const indexName = match[1];
-    const tableName = match[2];
+  return Array.from(sql.matchAll(/CREATE\s+(?:UNIQUE\s+)?INDEX IF NOT EXISTS[\s\S]*?;/gi)).flatMap((match) => {
+    const statement = match[0];
+    if (!statement) {
+      return [];
+    }
+
+    const parsed = statement.match(
+      /CREATE\s+(UNIQUE\s+)?INDEX IF NOT EXISTS\s+([a-zA-Z0-9_]+)\s+ON\s+([a-zA-Z0-9_".]+)\s*(?:USING\s+([a-zA-Z0-9_]+)\s*)?\((.+)\)(?:\s+WHERE\s+([\s\S]*?))?;/i
+    );
+    if (!parsed) {
+      return [];
+    }
+
+    const indexName = parsed[2];
+    const tableName = parsed[3];
     if (!indexName || !tableName) {
       return [];
     }
 
-    return [{
-      objectType: "index" as const,
-      schemaName: "public",
-      objectName: indexName,
-      parentObject: tableName,
-      definitionHash: definitionHash({ indexName, tableName }),
-      metadata: {}
-    }];
+    return [
+      createObject(
+        "index",
+        "public",
+        normalizeName(indexName),
+        {
+          columns: parseColumnList(parsed[5] ?? ""),
+          method: (parsed[4] ?? "btree").toLowerCase(),
+          predicate: parsed[6]?.trim() ?? null,
+          unique: Boolean(parsed[1])
+        },
+        normalizeName(tableName)
+      )
+    ];
   });
 }
 
 function extractTriggers(sql: string): CanonicalManifestObject[] {
-  return Array.from(sql.matchAll(/CREATE TRIGGER\s+([a-zA-Z0-9_]+)[\s\S]*?\s+ON\s+([a-zA-Z0-9_]+)/g)).flatMap((match) => {
+  return Array.from(
+    sql.matchAll(/CREATE TRIGGER\s+([a-zA-Z0-9_]+)\s+(BEFORE|AFTER|INSTEAD OF)\s+([\s\S]*?)\s+ON\s+([a-zA-Z0-9_]+)\s+FOR EACH\s+(ROW|STATEMENT)\s+EXECUTE FUNCTION\s+([a-zA-Z0-9_]+)\s*\(/gi)
+  ).flatMap((match) => {
     const triggerName = match[1];
-    const tableName = match[2];
-    if (!triggerName || !tableName) {
+    const actionTiming = match[2];
+    const eventManipulation = match[3];
+    const tableName = match[4];
+    const level = match[5];
+    const functionName = match[6];
+    if (!triggerName || !tableName || !functionName) {
       return [];
     }
 
-    return [{
-      objectType: "trigger" as const,
-      schemaName: "public",
-      objectName: triggerName,
-      parentObject: tableName,
-      definitionHash: definitionHash({ triggerName, tableName }),
-      metadata: {}
-    }];
+    return [
+      createObject(
+        "trigger",
+        "public",
+        normalizeName(triggerName),
+        {
+          actionTiming,
+          eventManipulation: (eventManipulation ?? "").split(/\s+OR\s+/i).map((value) => value.trim()).filter(Boolean),
+          functionName,
+          level
+        },
+        tableName
+      )
+    ];
   });
 }
 
 function extractFunctions(sql: string): CanonicalManifestObject[] {
-  return extractMatches(sql, /CREATE OR REPLACE FUNCTION\s+([a-zA-Z0-9_]+)/g).map((functionName) => ({
-    objectType: "function",
-    schemaName: "public",
-    objectName: functionName,
-    definitionHash: definitionHash(functionName),
-    metadata: {}
-  }));
+  return Array.from(
+    sql.matchAll(/CREATE OR REPLACE FUNCTION\s+([a-zA-Z0-9_]+)\s*\((.*?)\)\s*RETURNS\s+([a-zA-Z0-9_ ]+?)\s+AS\s+\$\$([\s\S]*?)\$\$\s+LANGUAGE\s+([a-zA-Z0-9_]+)/gi)
+  ).flatMap((match) => {
+    const functionName = match[1];
+    const functionArguments = match[2] ?? "";
+    const returnType = match[3];
+    const body = match[4];
+    const language = match[5];
+    if (!functionName || !returnType || !language) {
+      return [];
+    }
+
+    return [
+      createObject("function", "public", normalizeName(functionName), {
+        arguments: functionArguments,
+        body,
+        language,
+        returnType
+      })
+    ];
+  });
 }
 
 function extractComments(sql: string): CanonicalManifestObject[] {
-  return extractMatches(sql, /COMMENT ON TABLE\s+([a-zA-Z0-9_]+)/g).map((tableName) => ({
-    objectType: "comment",
-    schemaName: "public",
-    objectName: tableName,
-    definitionHash: definitionHash(tableName),
-    metadata: { targetType: "table" }
-  }));
+  return Array.from(sql.matchAll(/COMMENT ON TABLE\s+([a-zA-Z0-9_"]+)\s+IS\s+'([\s\S]*?)';/gi)).flatMap((match) => {
+    const tableName = match[1];
+    const commentText = match[2];
+    if (!tableName) {
+      return [];
+    }
+
+    return [
+      createObject("comment", "public", normalizeName(tableName), {
+        targetType: "table",
+        commentText: commentText ?? ""
+      })
+    ];
+  });
 }
 
 function extractExtensions(sql: string): CanonicalManifestObject[] {
-  return extractMatches(sql, /CREATE EXTENSION IF NOT EXISTS\s+([a-zA-Z0-9_]+)/g).map((extensionName) => ({
-    objectType: "extension",
-    schemaName: "public",
-    objectName: extensionName,
-    definitionHash: definitionHash(extensionName),
-    metadata: {}
-  }));
+  return Array.from(sql.matchAll(/CREATE EXTENSION IF NOT EXISTS\s+([a-zA-Z0-9_]+)/gi)).flatMap((match) => {
+    const extensionName = match[1];
+    if (!extensionName) {
+      return [];
+    }
+
+    return [createObject("extension", "public", normalizeName(extensionName), { name: extensionName })];
+  });
 }
 
 export function buildCanonicalMigrationManifest(migrationId: string, filePath: string): CanonicalMigrationManifest {

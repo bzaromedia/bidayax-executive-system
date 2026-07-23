@@ -1,9 +1,12 @@
 import { Client } from "pg";
 
 import { definitionHash } from "./hash.js";
+import { normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.js";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
 import type {
   MigrationLedgerRow,
   MigrationLedgerTable,
+  SchemaDefinitionObjectType,
   SchemaInventoryObject,
   SchemaInventoryReport
 } from "./types.js";
@@ -42,7 +45,8 @@ const schemaInventoryQueries = {
       is_nullable,
       column_default,
       is_generated,
-      generation_expression
+      generation_expression,
+      ordinal_position
     FROM information_schema.columns
     WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
     ORDER BY table_schema, table_name, ordinal_position;
@@ -51,20 +55,13 @@ const schemaInventoryQueries = {
     SELECT
       n.nspname AS table_schema,
       c.relname AS table_name,
-      con.conname AS constraint_name,
-      CASE con.contype
-        WHEN 'p' THEN 'PRIMARY KEY'
-        WHEN 'f' THEN 'FOREIGN KEY'
-        WHEN 'u' THEN 'UNIQUE'
-        WHEN 'c' THEN 'CHECK'
-        ELSE con.contype::text
-      END AS constraint_type,
-      pg_get_constraintdef(con.oid) AS constraint_definition
+      con.contype AS constraint_type,
+      pg_get_constraintdef(con.oid, true) AS constraint_definition
     FROM pg_constraint con
     JOIN pg_class c ON c.oid = con.conrelid
     JOIN pg_namespace n ON n.oid = c.relnamespace
     WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
-    ORDER BY n.nspname, c.relname, con.conname;
+    ORDER BY n.nspname, c.relname, con.oid;
   `,
   indexes: `
     SELECT schemaname AS table_schema, tablename AS table_name, indexname, indexdef
@@ -78,10 +75,12 @@ const schemaInventoryQueries = {
       event_object_table AS table_name,
       trigger_name,
       action_timing,
-      event_manipulation,
+      action_orientation,
+      array_agg(DISTINCT event_manipulation ORDER BY event_manipulation) AS event_manipulations,
       action_statement
     FROM information_schema.triggers
     WHERE trigger_schema NOT IN ('pg_catalog', 'information_schema')
+    GROUP BY trigger_schema, event_object_table, trigger_name, action_timing, action_orientation, action_statement
     ORDER BY trigger_schema, event_object_table, trigger_name;
   `,
   functions: `
@@ -89,9 +88,12 @@ const schemaInventoryQueries = {
       n.nspname AS function_schema,
       p.proname AS function_name,
       pg_get_function_identity_arguments(p.oid) AS function_arguments,
-      pg_get_functiondef(p.oid) AS function_definition
+      pg_get_functiondef(p.oid) AS function_definition,
+      pg_get_function_result(p.oid) AS return_type,
+      l.lanname AS language
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
+    JOIN pg_language l ON l.oid = p.prolang
     WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
     ORDER BY n.nspname, p.proname, pg_get_function_identity_arguments(p.oid);
   `,
@@ -112,6 +114,7 @@ const schemaInventoryQueries = {
   policies: `
     SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual, with_check
     FROM pg_policies
+    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
     ORDER BY schemaname, tablename, policyname;
   `
 } as const;
@@ -120,21 +123,24 @@ export function createSchemaInventorySql() {
   return schemaInventoryQueries;
 }
 
-function inventoryObject(
-  objectType: string,
+function createObject(
+  objectType: SchemaDefinitionObjectType,
   schemaName: string,
   objectName: string,
   metadata: Record<string, unknown>,
   parentObject?: string
 ): SchemaInventoryObject {
-  return {
+  const object: SchemaInventoryObject = {
     objectType,
     schemaName,
     objectName,
     ...(parentObject ? { parentObject } : {}),
-    definitionHash: definitionHash({ objectType, schemaName, objectName, parentObject, metadata }),
+    definitionHash: "",
     metadata
   };
+
+  object.definitionHash = buildSchemaDefinitionHash(object);
+  return object;
 }
 
 function toSafeScalar(value: unknown): string | number | boolean | null {
@@ -159,35 +165,249 @@ function extractSafeRecord(row: Record<string, unknown>): Record<string, string 
   );
 }
 
+function stripWrappingQuotes(value: string): string {
+  return value.trim().replace(/^"(.*)"$/, "$1");
+}
+
+function normalizeName(value: string): string {
+  return normalizeSchemaIdentifier(stripWrappingQuotes(value.replace(/^ONLY\s+/i, "").replace(/^public\./i, "")));
+}
+
+function splitTopLevelCsv(value: string): string[] {
+  const parts: string[] = [];
+  let current = "";
+  let depth = 0;
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? "";
+
+    if (character === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+      current += character;
+      continue;
+    }
+
+    if (character === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+      current += character;
+      continue;
+    }
+
+    if (!inSingleQuote && !inDoubleQuote) {
+      if (character === "(") {
+        depth += 1;
+      } else if (character === ")") {
+        depth = Math.max(0, depth - 1);
+      } else if (character === "," && depth === 0) {
+        if (current.trim().length > 0) {
+          parts.push(current.trim());
+        }
+        current = "";
+        continue;
+      }
+    }
+
+    current += character;
+  }
+
+  if (current.trim().length > 0) {
+    parts.push(current.trim());
+  }
+
+  return parts;
+}
+
+function normalizeListEntry(value: string): string {
+  const trimmed = stripWrappingQuotes(value.trim());
+  return /^[A-Za-z_][A-Za-z0-9_]*$/.test(trimmed) ? normalizeName(trimmed) : trimmed.replace(/\s+/g, " ").trim();
+}
+
+function parseColumnList(fragment: string): string[] {
+  return splitTopLevelCsv(fragment).map((entry) => normalizeListEntry(entry));
+}
+
+function toStringArray(value: string[] | string | null | undefined): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((entry): entry is string => typeof entry === "string");
+  }
+
+  if (typeof value !== "string") {
+    return [];
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return trimmed.length > 0 ? [trimmed] : [];
+  }
+
+  return trimmed
+    .slice(1, -1)
+    .split(",")
+    .map((entry) => entry.replace(/^"|"$/g, "").trim())
+    .filter((entry) => entry.length > 0);
+}
+
+function extractIndexComponents(
+  indexDefinition: string
+): { columns: string[]; method: string; predicate: string | null; unique: boolean } | null {
+  const headerMatch = indexDefinition.match(
+    /CREATE\s+(UNIQUE\s+)?INDEX\s+[^\s]+\s+ON\s+[^\s]+\s+USING\s+([a-z0-9_]+)\s*\(/i
+  );
+  if (!headerMatch || headerMatch.index === undefined) {
+    return null;
+  }
+
+  const openParenIndex = headerMatch.index + headerMatch[0].length - 1;
+  let depth = 0;
+  let closeParenIndex = -1;
+
+  for (let index = openParenIndex; index < indexDefinition.length; index += 1) {
+    const character = indexDefinition[index] ?? "";
+    if (character === "(") {
+      depth += 1;
+    } else if (character === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        closeParenIndex = index;
+        break;
+      }
+    }
+  }
+
+  if (closeParenIndex === -1) {
+    return null;
+  }
+
+  const columnsFragment = indexDefinition.slice(openParenIndex + 1, closeParenIndex);
+  const remainder = indexDefinition.slice(closeParenIndex + 1);
+  const predicateMatch = remainder.match(/\bWHERE\s+([\s\S]+)$/i);
+
+  return {
+    columns: parseColumnList(columnsFragment),
+    method: (headerMatch[2] ?? "btree").toLowerCase(),
+    predicate: predicateMatch?.[1]?.trim() ?? null,
+    unique: Boolean(headerMatch[1])
+  };
+}
+
+function buildConstraintObjectName(
+  tableName: string,
+  objectType: Extract<SchemaDefinitionObjectType, "primary_key" | "foreign_key" | "unique_constraint" | "check_constraint">,
+  metadata: Record<string, unknown>
+): string {
+  if (objectType === "primary_key") {
+    return `${normalizeName(tableName)}#primary_key`;
+  }
+
+  if (objectType === "unique_constraint") {
+    return `${normalizeName(tableName)}#unique#${(metadata.columns as string[]).join(",")}`;
+  }
+
+  if (objectType === "foreign_key") {
+    return `${normalizeName(tableName)}#foreign_key#${(metadata.columns as string[]).join(",")}#${String(metadata.referencedTable)}#${(metadata.referencedColumns as string[]).join(",")}`;
+  }
+
+  return `${normalizeName(tableName)}#check#${definitionHash(normalizeSchemaExpression(metadata.expression) ?? "").slice(0, 12)}`;
+}
+
+function parseConstraintObject(
+  tableSchema: string,
+  tableName: string,
+  constraintType: string,
+  constraintDefinition: string
+): SchemaInventoryObject | null {
+  const normalizedType = constraintType.trim().toLowerCase();
+  const definition = constraintDefinition.trim();
+
+  if (normalizedType === "p" || definition.startsWith("PRIMARY KEY")) {
+    const columns = parseColumnList(definition.match(/PRIMARY KEY\s*\((.+)\)/i)?.[1] ?? "");
+    const metadata = { columns };
+    return createObject("primary_key", tableSchema, buildConstraintObjectName(tableName, "primary_key", metadata), metadata, tableName);
+  }
+
+  if (normalizedType === "u" || definition.startsWith("UNIQUE")) {
+    const columns = parseColumnList(definition.match(/UNIQUE\s*\((.+)\)/i)?.[1] ?? "");
+    const metadata = { columns };
+    return createObject("unique_constraint", tableSchema, buildConstraintObjectName(tableName, "unique_constraint", metadata), metadata, tableName);
+  }
+
+  if (normalizedType === "f" || definition.startsWith("FOREIGN KEY")) {
+    const match = definition.match(/FOREIGN KEY\s*\((.+)\)\s+REFERENCES\s+([^\s(]+)\s*\((.+)\)/i);
+    if (!match) {
+      return null;
+    }
+
+    const metadata = {
+      columns: parseColumnList(match[1] ?? ""),
+      referencedTable: normalizeName(match[2] ?? ""),
+      referencedColumns: parseColumnList(match[3] ?? ""),
+      onDelete: definition.match(/ON DELETE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null,
+      onUpdate: definition.match(/ON UPDATE\s+([A-Z ]+)/i)?.[1]?.trim() ?? null
+    };
+
+    return createObject("foreign_key", tableSchema, buildConstraintObjectName(tableName, "foreign_key", metadata), metadata, tableName);
+  }
+
+  if (normalizedType === "c" || definition.startsWith("CHECK")) {
+    const metadata = {
+      expression: definition.replace(/^CHECK\s*/i, "")
+    };
+
+    return createObject("check_constraint", tableSchema, buildConstraintObjectName(tableName, "check_constraint", metadata), metadata, tableName);
+  }
+
+  return null;
+}
+
+function parseIndexObject(
+  tableSchema: string,
+  tableName: string,
+  indexName: string,
+  indexDefinition: string
+): SchemaInventoryObject {
+  const parsed = extractIndexComponents(indexDefinition);
+
+  const metadata = parsed
+    ? {
+        columns: parsed.columns,
+        method: parsed.method,
+        predicate: parsed.predicate,
+        unique: parsed.unique
+      }
+    : {
+        definition: indexDefinition
+      };
+
+  return createObject("index", tableSchema, normalizeName(indexName), metadata, tableName);
+}
+
+function extractFunctionBody(definition: string): string {
+  const dollarQuoted = definition.match(/AS\s+\$[^$]*\$([\s\S]*?)\$[^$]*\$/i);
+  if (dollarQuoted?.[1]) {
+    return dollarQuoted[1].trim();
+  }
+
+  const singleQuoted = definition.match(/AS\s+'([\s\S]*?)'/i);
+  if (singleQuoted?.[1]) {
+    return singleQuoted[1].trim();
+  }
+
+  return definition.trim();
+}
+
 export async function collectSchemaInventory(connectionString: string): Promise<SchemaInventoryReport> {
   const client = new Client({ connectionString });
   await client.connect();
 
   try {
     const objects: SchemaInventoryObject[] = [];
+    const tableColumnsByKey = new Map<string, string[]>();
 
     const extensions = await client.query<{ object_name: string }>(schemaInventoryQueries.extensions);
     for (const row of extensions.rows) {
-      objects.push(inventoryObject("extension", "public", row.object_name, {}));
-    }
-
-    const tables = await client.query<{ table_schema: string; table_name: string }>(schemaInventoryQueries.tables);
-    for (const row of tables.rows) {
-      objects.push(inventoryObject("table", row.table_schema, row.table_name, {}));
-    }
-
-    const comments = await client.query<{
-      table_schema: string;
-      table_name: string;
-      comment_text: string;
-    }>(schemaInventoryQueries.comments);
-    for (const row of comments.rows) {
-      objects.push(
-        inventoryObject("comment", row.table_schema, row.table_name, {
-          targetType: "table",
-          commentText: row.comment_text
-        })
-      );
+      objects.push(createObject("extension", "public", normalizeName(row.object_name), { name: row.object_name }));
     }
 
     const columns = await client.query<{
@@ -199,13 +419,20 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       column_default: string | null;
       is_generated: string;
       generation_expression: string | null;
+      ordinal_position: number;
     }>(schemaInventoryQueries.columns);
+
     for (const row of columns.rows) {
+      const tableKey = `${row.table_schema}:${row.table_name}`;
+      const tableColumns = tableColumnsByKey.get(tableKey) ?? [];
+      tableColumns.push(normalizeName(row.column_name));
+      tableColumnsByKey.set(tableKey, tableColumns);
+
       objects.push(
-        inventoryObject(
+        createObject(
           "column",
           row.table_schema,
-          row.column_name,
+          normalizeName(row.column_name),
           {
             dataType: row.data_type,
             isNullable: row.is_nullable,
@@ -218,26 +445,46 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       );
     }
 
+    const tables = await client.query<{ table_schema: string; table_name: string }>(schemaInventoryQueries.tables);
+    for (const row of tables.rows) {
+      const tableKey = `${row.table_schema}:${row.table_name}`;
+      objects.push(
+        createObject("table", row.table_schema, normalizeName(row.table_name), {
+          columns: tableColumnsByKey.get(tableKey) ?? []
+        })
+      );
+    }
+
+    const comments = await client.query<{
+      table_schema: string;
+      table_name: string;
+      comment_text: string;
+    }>(schemaInventoryQueries.comments);
+    for (const row of comments.rows) {
+      objects.push(
+        createObject("comment", row.table_schema, normalizeName(row.table_name), {
+          targetType: "table",
+          commentText: row.comment_text
+        })
+      );
+    }
+
     const constraints = await client.query<{
       table_schema: string;
       table_name: string;
-      constraint_name: string;
       constraint_type: string;
       constraint_definition: string;
     }>(schemaInventoryQueries.constraints);
     for (const row of constraints.rows) {
-      objects.push(
-        inventoryObject(
-          "constraint",
-          row.table_schema,
-          row.constraint_name,
-          {
-            type: row.constraint_type,
-            definition: row.constraint_definition
-          },
-          row.table_name
-        )
+      const constraintObject = parseConstraintObject(
+        row.table_schema,
+        row.table_name,
+        row.constraint_type,
+        row.constraint_definition
       );
+      if (constraintObject) {
+        objects.push(constraintObject);
+      }
     }
 
     const indexes = await client.query<{
@@ -247,9 +494,10 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       indexdef: string;
     }>(schemaInventoryQueries.indexes);
     for (const row of indexes.rows) {
-      objects.push(
-        inventoryObject("index", row.table_schema, row.indexname, { definition: row.indexdef }, row.table_name)
-      );
+      if (normalizeName(row.indexname).endsWith("_pkey")) {
+        continue;
+      }
+      objects.push(parseIndexObject(row.table_schema, row.table_name, row.indexname, row.indexdef));
     }
 
     const triggers = await client.query<{
@@ -257,19 +505,21 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       table_name: string;
       trigger_name: string;
       action_timing: string;
-      event_manipulation: string;
+      action_orientation: string;
+      event_manipulations: string[] | string;
       action_statement: string;
     }>(schemaInventoryQueries.triggers);
     for (const row of triggers.rows) {
       objects.push(
-        inventoryObject(
+        createObject(
           "trigger",
           row.table_schema,
-          row.trigger_name,
+          normalizeName(row.trigger_name),
           {
             actionTiming: row.action_timing,
-            eventManipulation: row.event_manipulation,
-            actionStatement: row.action_statement
+            eventManipulation: toStringArray(row.event_manipulations),
+            functionName: row.action_statement.match(/EXECUTE FUNCTION\s+([a-zA-Z0-9_]+)/i)?.[1] ?? null,
+            level: row.action_orientation
           },
           row.table_name
         )
@@ -281,12 +531,16 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       function_name: string;
       function_arguments: string;
       function_definition: string;
+      return_type: string;
+      language: string;
     }>(schemaInventoryQueries.functions);
     for (const row of functions.rows) {
       objects.push(
-        inventoryObject("function", row.function_schema, row.function_name, {
+        createObject("function", row.function_schema, normalizeName(row.function_name), {
           arguments: row.function_arguments,
-          definition: row.function_definition
+          body: extractFunctionBody(row.function_definition),
+          language: row.language,
+          returnType: row.return_type
         })
       );
     }
@@ -302,7 +556,7 @@ export async function collectSchemaInventory(connectionString: string): Promise<
     }>(schemaInventoryQueries.sequences);
     for (const row of sequences.rows) {
       objects.push(
-        inventoryObject("sequence", row.sequence_schema, row.sequence_name, {
+        createObject("sequence", row.sequence_schema, normalizeName(row.sequence_name), {
           dataType: row.data_type,
           startValue: row.start_value,
           minimumValue: row.minimum_value,
@@ -319,8 +573,12 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       relforcerowsecurity: boolean;
     }>(schemaInventoryQueries.rowLevelSecurity);
     for (const row of rls.rows) {
+      if (!row.relrowsecurity && !row.relforcerowsecurity) {
+        continue;
+      }
+
       objects.push(
-        inventoryObject("row_level_security", row.table_schema, row.table_name, {
+        createObject("row_level_security", row.table_schema, normalizeName(row.table_name), {
           rowSecurity: row.relrowsecurity,
           forceRowSecurity: row.relforcerowsecurity
         })
@@ -339,10 +597,10 @@ export async function collectSchemaInventory(connectionString: string): Promise<
     }>(schemaInventoryQueries.policies);
     for (const row of policies.rows) {
       objects.push(
-        inventoryObject(
+        createObject(
           "policy",
           row.schemaname,
-          row.policyname,
+          normalizeName(row.policyname),
           {
             permissive: row.permissive,
             roles: row.roles,

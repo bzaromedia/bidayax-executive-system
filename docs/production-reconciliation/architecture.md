@@ -8,3 +8,12 @@ The reconciliation package has four layers:
 4. guarded PowerShell operator entrypoints and runbooks
 
 The package is provider-neutral. It compares evidence; it never executes a migration decision automatically.
+
+Post-review hardening:
+
+- definition equality is required for exact schema classification
+- missing definition evidence blocks baseline-only repair
+- compose project identity must be supplied explicitly and validated directly
+- rollback image preservation requires approved expected and observed image digests
+- operator scripts require explicit target scope rather than implicit production defaults
+- these corrections were added after final PR #11 safety review while the branch remained repository-only and undeployed

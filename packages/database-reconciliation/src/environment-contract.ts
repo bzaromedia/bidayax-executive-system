@@ -25,6 +25,15 @@ function parseEnvironmentFile(content: string): ParsedEnvironment {
   return parsed;
 }
 
+function normalizeText(value: string | undefined): string | null {
+  if (value === undefined) {
+    return null;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized.toLowerCase() : null;
+}
+
 function classifyExpectedValue(value: string, expected: typeof canonicalEnvironmentDefinitions[number]["expectedValue"]) {
   if (expected === undefined) {
     return { valid: value.length > 0, evidence: value.length > 0 ? "present" : "empty" };
@@ -50,11 +59,86 @@ function classifyExpectedValue(value: string, expected: typeof canonicalEnvironm
   };
 }
 
+function isFalseLike(value: string | undefined): boolean {
+  return ["0", "false", "no", "off", "disabled"].includes(normalizeText(value) ?? "");
+}
+
+function isTrueLike(value: string | undefined): boolean {
+  return ["1", "true", "yes", "on", "enabled"].includes(normalizeText(value) ?? "");
+}
+
+function classifyTelephonyProvider(environment: ParsedEnvironment): EnvironmentValidationResult {
+  const provider = normalizeText(environment.get("TELEPHONY_PROVIDER"));
+  const mode = normalizeText(environment.get("TELEPHONY_PROVIDER_MODE"));
+  const safeGuardrails =
+    isFalseLike(environment.get("LIVE_INBOUND_CALLS_ENABLED")) &&
+    isFalseLike(environment.get("OUTBOUND_CALLS_ENABLED")) &&
+    isFalseLike(environment.get("ALLOW_PRODUCTION_CALLS")) &&
+    isFalseLike(environment.get("CALL_TRANSFER_ENABLED")) &&
+    isTrueLike(environment.get("REQUIRE_HUMAN_APPROVAL"));
+
+  if (mode !== "disabled" && mode !== "sandbox") {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "PRESENT_INVALID",
+      evidence: ["telephony provider mode must be disabled or sandbox before provider evaluation"]
+    };
+  }
+
+  if (!safeGuardrails) {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "PRESENT_INVALID",
+      evidence: ["telephony safety guardrails are not fully fail-closed"]
+    };
+  }
+
+  if (provider === null || (provider === "mock" && mode === "disabled")) {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "SAFE_DISABLED",
+      evidence: ["telephony remains disabled and no live provider activation path is enabled"]
+    };
+  }
+
+  if (provider === "mock" && mode === "sandbox") {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "SAFE_SANDBOX",
+      evidence: ["sandbox provider is isolated behind disabled production call controls"]
+    };
+  }
+
+  if (mode === "disabled") {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "SAFE_CONFIGURED_INACTIVE",
+      evidence: ["live provider may be configured, but the runtime remains fail-closed and inactive"]
+    };
+  }
+
+  return {
+    variable: "TELEPHONY_PROVIDER",
+    group: "TELEPHONY",
+    classification: "REQUIRES_OPERATOR_DECISION",
+    evidence: ["sandbox mode with a non-mock provider requires explicit operator review"]
+  };
+}
+
 export function validateEnvironmentVariables(environment: ParsedEnvironment): EnvironmentValidationResult[] {
   const results: EnvironmentValidationResult[] = [];
   const knownNames = new Set(canonicalEnvironmentDefinitions.map((definition) => definition.name));
 
   for (const definition of canonicalEnvironmentDefinitions) {
+    if (definition.name === "TELEPHONY_PROVIDER") {
+      continue;
+    }
+
     const value = environment.get(definition.name);
 
     if (value === undefined) {
@@ -95,6 +179,8 @@ export function validateEnvironmentVariables(environment: ParsedEnvironment): En
       evidence: [expectation.evidence]
     });
   }
+
+  results.push(classifyTelephonyProvider(environment));
 
   for (const [name] of environment.entries()) {
     if (knownNames.has(name)) {

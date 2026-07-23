@@ -1,8 +1,46 @@
 import { describe, expect, it } from "vitest";
 
-import { definitionHash } from "../src/hash.js";
+import { buildSchemaDefinitionHash } from "../src/schema-definition-hash.js";
 import { reconcileMigration } from "../src/reconciliation-engine.js";
-import type { CanonicalMigrationManifest, SchemaInventoryObject } from "../src/types.js";
+import type { CanonicalManifestObject, CanonicalMigrationManifest, SchemaInventoryObject } from "../src/types.js";
+
+function makeObject(
+  objectType: CanonicalManifestObject["objectType"],
+  objectName: string,
+  metadata: Record<string, unknown>,
+  parentObject?: string
+): CanonicalManifestObject {
+  const object: CanonicalManifestObject = {
+    objectType,
+    schemaName: "public",
+    objectName,
+    ...(parentObject ? { parentObject } : {}),
+    definitionHash: "",
+    metadata
+  };
+
+  object.definitionHash = buildSchemaDefinitionHash(object);
+  return object;
+}
+
+function makeInventoryObject(
+  objectType: SchemaInventoryObject["objectType"],
+  objectName: string,
+  metadata: Record<string, unknown>,
+  parentObject?: string
+): SchemaInventoryObject {
+  const object: SchemaInventoryObject = {
+    objectType,
+    schemaName: "public",
+    objectName,
+    ...(parentObject ? { parentObject } : {}),
+    definitionHash: "",
+    metadata
+  };
+
+  object.definitionHash = buildSchemaDefinitionHash(object);
+  return object;
+}
 
 const manifest: CanonicalMigrationManifest = {
   migrationId: "0014_create_settings_persistence_layer.sql",
@@ -13,29 +51,21 @@ const manifest: CanonicalMigrationManifest = {
   lockRiskClassification: "MODERATE",
   rollbackLimitations: [],
   objects: [
-    {
-      objectType: "table",
-      schemaName: "public",
-      objectName: "tenants",
-      definitionHash: definitionHash({ table: "tenants", columns: ["tenant_id"] }),
-      metadata: { columns: ["tenant_id"] }
-    }
+    makeObject("table", "tenants", { columns: ["tenant_id"] }),
+    makeObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants")
   ]
 };
 
-function table(metadata: Record<string, unknown>): SchemaInventoryObject {
-  return {
-    objectType: "table",
-    schemaName: "public",
-    objectName: "tenants",
-    definitionHash: definitionHash({ objectType: "table", schemaName: "public", objectName: "tenants", metadata }),
-    metadata
-  };
-}
-
 describe("reconcileMigration", () => {
   it("classifies exact schema without ledger as baseline-only", () => {
-    const result = reconcileMigration(manifest, [table({ columns: ["tenant_id"] })], []);
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants")
+      ],
+      []
+    );
 
     expect(result.classification).toBe("ALREADY_APPLIED_NOT_RECORDED");
     expect(result.recommendedAction).toBe("BASELINE_LEDGER_ONLY");
@@ -48,23 +78,37 @@ describe("reconcileMigration", () => {
     expect(result.recommendedAction).toBe("ELIGIBLE_FOR_CONTROLLED_APPLICATION");
   });
 
-  it("classifies partial schema as corrective migration required", () => {
+  it("detects definition drift instead of treating a key match as exact", () => {
     const result = reconcileMigration(
-      {
-        ...manifest,
-        objects: [
-          ...manifest.objects,
-          {
-            objectType: "column",
-            schemaName: "public",
-            objectName: "tenant_id",
-            parentObject: "tenants",
-            definitionHash: definitionHash({ table: "tenants", column: "tenant_id" }),
-            metadata: {}
-          }
-        ]
-      },
-      [table({ columns: [] })],
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "uuid", isNullable: false }, "tenants")
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("detects extra scoped objects on a canonical table as drift", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject("column", "unexpected_column", { dataType: "text", isNullable: true }, "tenants")
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("classifies missing scoped objects as partially applied", () => {
+    const result = reconcileMigration(
+      manifest,
+      [makeInventoryObject("table", "tenants", { columns: ["tenant_id"] })],
       []
     );
 

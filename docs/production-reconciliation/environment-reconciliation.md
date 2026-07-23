@@ -27,3 +27,11 @@ Mandatory production safety assertions:
 - voice runtime disabled
 - call transfer disabled
 - human approval required
+
+Safety notes:
+
+- provider identity alone never authorizes execution
+- a real telephony provider identifier may exist while runtime remains disabled
+- disabled and sandbox-equivalent provider states are classified separately from active runtime states
+- missing provider credentials are never treated as permission to activate a provider
+- production telephony, production voice, and production calling remain disabled in this branch

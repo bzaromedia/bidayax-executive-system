@@ -1,9 +1,23 @@
+import { stableJson } from "./hash.js";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
+import { normalizeSchemaObject } from "./schema-normalization.js";
 import type {
   CanonicalManifestObject,
   CanonicalMigrationManifest,
   MigrationReconciliationResult,
+  SchemaDefinitionObjectType,
   SchemaInventoryObject
 } from "./types.js";
+
+const structuralScopedObjectTypes = new Set<SchemaDefinitionObjectType>([
+  "column",
+  "primary_key",
+  "foreign_key",
+  "unique_constraint",
+  "check_constraint"
+]);
+
+type ObjectComparisonResult = "EXACT" | "MISMATCHED" | "UNKNOWN";
 
 function makeKey(object: {
   objectType: string;
@@ -14,18 +28,110 @@ function makeKey(object: {
   return [object.objectType, object.schemaName, object.parentObject ?? "", object.objectName].join(":");
 }
 
-function objectsEquivalent(canonical: CanonicalManifestObject, live: SchemaInventoryObject): boolean {
+function hasBooleanValue(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
+function hasStringValue(value: unknown): value is string {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function hasArrayValues(value: unknown): value is string[] {
+  return Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === "string" && entry.length > 0);
+}
+
+function hasDefinitionEvidence(object: CanonicalManifestObject | SchemaInventoryObject): boolean {
+  const metadata = normalizeSchemaObject(object).metadata;
+
+  switch (object.objectType) {
+    case "table":
+      return hasArrayValues(metadata.columns);
+    case "column":
+      return hasStringValue(metadata.dataType) && hasBooleanValue(metadata.isNullable);
+    case "primary_key":
+    case "unique_constraint":
+      return hasArrayValues(metadata.columns);
+    case "foreign_key":
+      return (
+        hasArrayValues(metadata.columns) &&
+        hasStringValue(metadata.referencedTable) &&
+        hasArrayValues(metadata.referencedColumns)
+      );
+    case "check_constraint":
+      return hasStringValue(metadata.expression);
+    case "index":
+      return hasArrayValues(metadata.columns) && hasStringValue(metadata.method) && hasBooleanValue(metadata.unique);
+    case "trigger":
+      return (
+        hasStringValue(metadata.actionTiming) &&
+        hasArrayValues(metadata.eventManipulation) &&
+        hasStringValue(metadata.functionName) &&
+        hasStringValue(metadata.level)
+      );
+    case "function":
+      return hasStringValue(metadata.language) && hasStringValue(metadata.returnType) && typeof metadata.body === "string";
+    case "sequence":
+      return (
+        hasStringValue(metadata.dataType) &&
+        metadata.increment !== null &&
+        metadata.maximumValue !== null &&
+        metadata.minimumValue !== null &&
+        metadata.startValue !== null
+      );
+    case "policy":
+      return hasStringValue(metadata.command) && hasBooleanValue(metadata.permissive);
+    case "extension":
+      return hasStringValue(metadata.name);
+    case "comment":
+      return hasStringValue(metadata.targetType) && metadata.commentText !== null;
+    case "row_level_security":
+      return hasBooleanValue(metadata.rowSecurity) && hasBooleanValue(metadata.forceRowSecurity);
+    default:
+      return false;
+  }
+}
+
+function compareObjects(canonical: CanonicalManifestObject, live: SchemaInventoryObject): ObjectComparisonResult {
   if (makeKey(canonical) !== makeKey(live)) {
-    return false;
+    return "MISMATCHED";
   }
 
-  if (canonical.objectType === "comment") {
-    const canonicalTarget = canonical.metadata.targetType;
-    const liveTarget = live.metadata.targetType;
-    return canonicalTarget === undefined || liveTarget === undefined || canonicalTarget === liveTarget;
+  if (!hasDefinitionEvidence(canonical) || !hasDefinitionEvidence(live)) {
+    return "UNKNOWN";
   }
 
-  return true;
+  const normalizedCanonical = normalizeSchemaObject(canonical);
+  const normalizedLive = normalizeSchemaObject(live);
+
+  const identicalDefinition =
+    stableJson(normalizedCanonical) === stableJson(normalizedLive) &&
+    buildSchemaDefinitionHash(canonical) === buildSchemaDefinitionHash(live);
+
+  return identicalDefinition ? "EXACT" : "MISMATCHED";
+}
+
+function collectCanonicalTables(manifest: CanonicalMigrationManifest): Set<string> {
+  const tables = new Set<string>();
+
+  for (const object of manifest.objects) {
+    if (object.objectType === "table") {
+      tables.add(object.objectName);
+    }
+
+    if (object.parentObject && structuralScopedObjectTypes.has(object.objectType)) {
+      tables.add(object.parentObject);
+    }
+  }
+
+  return tables;
+}
+
+function isWithinCanonicalScope(object: SchemaInventoryObject, canonicalTables: Set<string>): boolean {
+  return (
+    structuralScopedObjectTypes.has(object.objectType) &&
+    object.parentObject !== undefined &&
+    canonicalTables.has(object.parentObject)
+  );
 }
 
 export function reconcileMigration(
@@ -34,10 +140,14 @@ export function reconcileMigration(
   recordedMigrationIds: string[]
 ): MigrationReconciliationResult {
   const byKey = new Map(inventory.map((object) => [makeKey(object), object]));
+  const manifestKeys = new Set(manifest.objects.map((object) => makeKey(object)));
+  const canonicalTables = collectCanonicalTables(manifest);
   const evidence: string[] = [];
   let exactMatches = 0;
   let missingObjects = 0;
   let mismatchedObjects = 0;
+  let unknownObjects = 0;
+  let extraScopedObjects = 0;
 
   for (const object of manifest.objects) {
     const liveObject = byKey.get(makeKey(object));
@@ -48,13 +158,33 @@ export function reconcileMigration(
       continue;
     }
 
-    if (objectsEquivalent(object, liveObject)) {
+    const comparison = compareObjects(object, liveObject);
+    if (comparison === "EXACT") {
       exactMatches += 1;
+      continue;
+    }
+
+    if (comparison === "UNKNOWN") {
+      unknownObjects += 1;
+      evidence.push(`${object.objectType} ${object.objectName} lacks sufficient definition evidence for safe equivalence`);
       continue;
     }
 
     mismatchedObjects += 1;
     evidence.push(`${object.objectType} ${object.objectName} differs from canonical expectation`);
+  }
+
+  for (const liveObject of inventory) {
+    if (manifestKeys.has(makeKey(liveObject))) {
+      continue;
+    }
+
+    if (!isWithinCanonicalScope(liveObject, canonicalTables)) {
+      continue;
+    }
+
+    extraScopedObjects += 1;
+    evidence.push(`${liveObject.objectType} ${liveObject.objectName} is unexpectedly present in canonical scope`);
   }
 
   const ledgerStatus = recordedMigrationIds.includes(manifest.migrationId)
@@ -64,10 +194,15 @@ export function reconcileMigration(
       : "UNKNOWN";
 
   const totalObjects = manifest.objects.length;
-  const absent = exactMatches === 0 && missingObjects === totalObjects;
-  const exact = exactMatches === totalObjects;
-  const partial = missingObjects > 0 && (exactMatches > 0 || mismatchedObjects > 0);
-  const drift = mismatchedObjects > 0 && missingObjects === 0;
+  const exact =
+    exactMatches === totalObjects &&
+    mismatchedObjects === 0 &&
+    missingObjects === 0 &&
+    extraScopedObjects === 0 &&
+    unknownObjects === 0;
+  const absent = exactMatches === 0 && missingObjects === totalObjects && mismatchedObjects === 0 && extraScopedObjects === 0;
+  const partial = missingObjects > 0 && !absent;
+  const drift = missingObjects === 0 && unknownObjects === 0 && (mismatchedObjects > 0 || extraScopedObjects > 0);
 
   if (exact && ledgerStatus === "RECORDED") {
     return {
@@ -90,6 +225,18 @@ export function reconcileMigration(
       recommendedAction: "BASELINE_LEDGER_ONLY",
       compatibilityRisk: "LOW",
       evidence: ["schema exactly matches canonical manifest", "migration ledger entry missing or unknown"]
+    };
+  }
+
+  if (unknownObjects > 0) {
+    return {
+      migrationId: manifest.migrationId,
+      ledgerStatus,
+      schemaStatus: "UNKNOWN",
+      classification: "BLOCKED",
+      recommendedAction: "BLOCK",
+      compatibilityRisk: "CRITICAL",
+      evidence
     };
   }
 
@@ -136,6 +283,6 @@ export function reconcileMigration(
     classification: "BLOCKED",
     recommendedAction: "BLOCK",
     compatibilityRisk: "CRITICAL",
-    evidence: ["unable to determine reconciliation state"]
+    evidence: evidence.length > 0 ? evidence : ["unable to determine reconciliation state"]
   };
 }

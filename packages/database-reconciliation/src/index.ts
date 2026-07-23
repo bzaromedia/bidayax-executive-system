@@ -6,5 +6,7 @@ export * from "./hash.js";
 export * from "./image-preservation.js";
 export * from "./migration-parser.js";
 export * from "./reconciliation-engine.js";
+export * from "./schema-definition-hash.js";
 export * from "./schema-inventory.js";
+export * from "./schema-normalization.js";
 export * from "./types.js";

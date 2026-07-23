@@ -7,10 +7,16 @@ export const executiveCardBindings = {
   card: "127.0.0.1:3100:3000",
   dashboard: "127.0.0.1:3101:3001"
 } as const;
+export const executiveCardInternalNetworkKey = "executive_card_internal";
+export const executiveCardInternalNetworkName = "the-executive-card-internal";
 export const executiveCardVolumeName = "the_executive_card_postgres";
 export const rollbackImageTags = {
   card: "the-executive-card-card:rollback-20260722",
   dashboard: "the-executive-card-dashboard:rollback-20260722"
+} as const;
+export const approvedRollbackImageIds = {
+  card: "sha256:43501ebd11bc9d4354b14f23a5a5c7720ea1c16f78ed2decd24670274f1a63ea",
+  dashboard: "sha256:72d69b76ccbc31e0b107821c18b3668210c7765623b96fb93a27e58410e93b85"
 } as const;
 
 export const canonicalEnvironmentDefinitions: EnvironmentVariableDefinition[] = [
@@ -40,7 +46,7 @@ export const canonicalEnvironmentDefinitions: EnvironmentVariableDefinition[] = 
   { name: "IDENTITY_SESSION_IDLE_SECONDS", group: "SESSION", required: true },
   { name: "IDENTITY_SESSION_ABSOLUTE_SECONDS", group: "SESSION", required: true },
   { name: "IDENTITY_CLOCK_SKEW_SECONDS", group: "SESSION", required: true },
-  { name: "TELEPHONY_PROVIDER", group: "TELEPHONY", required: true, expectedValue: "mock" },
+  { name: "TELEPHONY_PROVIDER", group: "TELEPHONY", required: false },
   {
     name: "TELEPHONY_PROVIDER_MODE",
     group: "TELEPHONY",
@@ -52,7 +58,12 @@ export const canonicalEnvironmentDefinitions: EnvironmentVariableDefinition[] = 
   { name: "TWILIO_PHONE_NUMBER", group: "TELEPHONY", required: false },
   { name: "TWILIO_WEBHOOK_SIGNING_ENABLED", group: "TELEPHONY", required: false },
   { name: "TELEPHONY_SANDBOX_WEBHOOK_SECRET", group: "TELEPHONY", required: false, secret: true },
-  { name: "VOICE_RUNTIME_PROVIDER", group: "VOICE", required: true, expectedValue: "none" },
+  {
+    name: "VOICE_RUNTIME_PROVIDER",
+    group: "VOICE",
+    required: true,
+    expectedValue: { oneOf: ["none", "disabled"] }
+  },
   { name: "VOICE_AGENT_ENABLED", group: "VOICE", required: true, expectedValue: false },
   { name: "VOICE_TEST_MODE", group: "VOICE", required: true, expectedValue: true },
   { name: "LIVE_INBOUND_CALLS_ENABLED", group: "TELEPHONY", required: true, expectedValue: false },

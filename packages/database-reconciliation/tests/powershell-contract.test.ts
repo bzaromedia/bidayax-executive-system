@@ -26,4 +26,15 @@ describe("powershell contract", () => {
       expect(content).not.toContain("$$");
     }
   });
+
+  it("requires explicit operator scope for host and compose safety", () => {
+    const preflight = readFileSync(join(repoRoot, "scripts", "production-reconciliation", "invoke-preflight.ps1"), "utf8");
+    const composeSafety = readFileSync(join(repoRoot, "scripts", "production-reconciliation", "invoke-compose-safety-check.ps1"), "utf8");
+    const imagePreservation = readFileSync(join(repoRoot, "scripts", "production-reconciliation", "invoke-image-preservation.ps1"), "utf8");
+
+    expect(preflight).toContain("[string]$TargetHost");
+    expect(composeSafety).toContain("[string]$ActualProjectName");
+    expect(imagePreservation).toContain("[string]$ExpectedImageId");
+    expect(imagePreservation).toContain("[string]$ObservedImageId");
+  });
 });

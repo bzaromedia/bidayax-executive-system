@@ -1,3 +1,19 @@
+export type SchemaDefinitionObjectType =
+  | "extension"
+  | "table"
+  | "column"
+  | "primary_key"
+  | "foreign_key"
+  | "unique_constraint"
+  | "check_constraint"
+  | "index"
+  | "trigger"
+  | "function"
+  | "sequence"
+  | "policy"
+  | "comment"
+  | "row_level_security";
+
 export type SchemaObjectStatus =
   | "EXACT"
   | "MISSING"
@@ -6,7 +22,7 @@ export type SchemaObjectStatus =
   | "UNKNOWN";
 
 export interface SchemaObjectEvidence {
-  objectType: string;
+  objectType: SchemaDefinitionObjectType;
   schemaName: string;
   objectName: string;
   parentObject?: string;
@@ -17,7 +33,7 @@ export interface SchemaObjectEvidence {
 }
 
 export interface SchemaInventoryObject {
-  objectType: string;
+  objectType: SchemaDefinitionObjectType;
   schemaName: string;
   objectName: string;
   parentObject?: string;
@@ -71,14 +87,7 @@ export interface MigrationReconciliationResult {
 }
 
 export interface CanonicalManifestObject {
-  objectType:
-    | "extension"
-    | "table"
-    | "column"
-    | "index"
-    | "trigger"
-    | "function"
-    | "comment";
+  objectType: SchemaDefinitionObjectType;
   schemaName: string;
   objectName: string;
   parentObject?: string;
@@ -120,7 +129,10 @@ export type EnvironmentClassification =
   | "RENAMED"
   | "LIVE_ONLY"
   | "REQUIRES_SECRET_PROVISIONING"
-  | "REQUIRES_OPERATOR_DECISION";
+  | "REQUIRES_OPERATOR_DECISION"
+  | "SAFE_DISABLED"
+  | "SAFE_SANDBOX"
+  | "SAFE_CONFIGURED_INACTIVE";
 
 export interface EnvironmentVariableDefinition {
   name: string;
@@ -145,17 +157,35 @@ export interface EnvironmentValidationResult {
   evidence: string[];
 }
 
+export interface ComposeSafetyInput {
+  expectedProjectName: string;
+  actualProjectName: string;
+  renderedCompose: string;
+}
+
 export interface ComposeInvariantResult {
   invariant: string;
   status: "PASSED" | "FAILED";
   evidence: string[];
 }
 
+export interface ImagePreservationRequest {
+  service: "card" | "dashboard";
+  expectedImageId: string;
+  observedImageId: string;
+  rollbackTag: string;
+  existingTagImageId?: string;
+}
+
 export interface ImagePreservationPlan {
-  sourceImageId: string;
-  requestedRollbackTag: string;
+  service: "card" | "dashboard";
+  expectedImageId: string;
+  observedImageId: string;
+  rollbackTag: string;
+  equalityResult: "MATCH" | "MISMATCH" | "INVALID";
   verificationCommands: string[];
   taggingCommands: string[];
+  refusalReason?: string;
   evidenceFields: string[];
 }
 

@@ -1,6 +1,8 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$CanonicalSha,
+  [Parameter(Mandatory = $true)]
+  [string]$TargetHost,
   [string]$ExpectedComposeProject = "the-executive-card",
   [string]$ExpectedCardBinding = "127.0.0.1:3100:3000",
   [string]$ExpectedDashboardBinding = "127.0.0.1:3101:3001",
@@ -35,6 +37,7 @@ $result = [ordered]@{
   canonicalSha = $CanonicalSha
   currentBranch = $currentBranch
   currentHead = $currentHead
+  targetHost = $TargetHost
   expectedComposeProject = $ExpectedComposeProject
   expectedCardBinding = $ExpectedCardBinding
   expectedDashboardBinding = $ExpectedDashboardBinding
@@ -43,8 +46,8 @@ $result = [ordered]@{
 
 if ($EmitRemotePlan) {
   $result["remotePlan"] = @(
-    "ssh hostinger-executive-card",
-    "docker compose --project-name the-executive-card --file /opt/the-executive-card/repo/infrastructure/docker/docker-compose.hostinger.yml config"
+    "ssh $TargetHost",
+    "docker compose --project-name $ExpectedComposeProject --file /opt/the-executive-card/repo/infrastructure/docker/docker-compose.hostinger.yml config"
   )
 }
 
