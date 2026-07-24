@@ -27,6 +27,7 @@ function makeBaseEnvironment() {
     ["IDENTITY_SESSION_IDLE_SECONDS", "1800"],
     ["IDENTITY_SESSION_ABSOLUTE_SECONDS", "28800"],
     ["IDENTITY_CLOCK_SKEW_SECONDS", "60"],
+    ["TELEPHONY_PROVIDER", "mock"],
     ["TELEPHONY_PROVIDER_MODE", "disabled"],
     ["VOICE_RUNTIME_PROVIDER", "none"],
     ["VOICE_AGENT_ENABLED", "false"],
@@ -51,7 +52,7 @@ describe("environment contract validator", () => {
     );
   });
 
-  it("classifies disabled telephony without a provider as safe", () => {
+  it("classifies mock disabled telephony as safe", () => {
     const results = validateEnvironmentVariables(makeBaseEnvironment());
 
     expect(results.find((result) => result.variable === "TELEPHONY_PROVIDER")?.classification).toBe(
@@ -59,35 +60,33 @@ describe("environment contract validator", () => {
     );
   });
 
-  it("classifies sandbox mock telephony as safe sandbox", () => {
+  it("rejects sandbox mock telephony in production reconciliation", () => {
     const environment = makeBaseEnvironment();
-    environment.set("TELEPHONY_PROVIDER", "mock");
     environment.set("TELEPHONY_PROVIDER_MODE", "sandbox");
     const results = validateEnvironmentVariables(environment);
 
     expect(results.find((result) => result.variable === "TELEPHONY_PROVIDER")?.classification).toBe(
-      "SAFE_SANDBOX"
+      "PRESENT_INVALID"
     );
   });
 
-  it("classifies a real provider in disabled mode as configured inactive", () => {
+  it("rejects a real provider even when call controls are disabled", () => {
     const environment = makeBaseEnvironment();
     environment.set("TELEPHONY_PROVIDER", "twilio");
     const results = validateEnvironmentVariables(environment);
 
     expect(results.find((result) => result.variable === "TELEPHONY_PROVIDER")?.classification).toBe(
-      "SAFE_CONFIGURED_INACTIVE"
+      "PRESENT_INVALID"
     );
   });
 
-  it("requires operator review for a real provider in sandbox mode", () => {
+  it("rejects active voice guardrails", () => {
     const environment = makeBaseEnvironment();
-    environment.set("TELEPHONY_PROVIDER", "twilio");
-    environment.set("TELEPHONY_PROVIDER_MODE", "sandbox");
+    environment.set("VOICE_AGENT_ENABLED", "true");
     const results = validateEnvironmentVariables(environment);
 
     expect(results.find((result) => result.variable === "TELEPHONY_PROVIDER")?.classification).toBe(
-      "REQUIRES_OPERATOR_DECISION"
+      "PRESENT_INVALID"
     );
   });
 });

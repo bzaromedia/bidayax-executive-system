@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
-import { definitionHash, sha256 } from "./hash.js";
-import { normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.js";
-import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
-import type { CanonicalManifestObject, CanonicalMigrationManifest, SchemaDefinitionObjectType } from "./types.js";
+import { definitionHash, sha256 } from "./hash.ts";
+import { collapseWhitespace, normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.ts";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.ts";
+import type { CanonicalManifestObject, CanonicalMigrationManifest, SchemaDefinitionObjectType } from "./types.ts";
 
 const manualMetadata: Record<
   string,
@@ -279,8 +279,15 @@ function extractTables(sql: string): CanonicalManifestObject[] {
           {
             dataType: extractDataType(definition),
             isNullable: !/NOT\s+NULL|PRIMARY\s+KEY/i.test(definition),
-            default:
-              definition.match(/\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|NULL|CHECK|CONSTRAINT|REFERENCES|UNIQUE|PRIMARY\s+KEY|GENERATED)\b|$)/i)?.[1] ?? null,
+            defaultHash:
+              definitionHash(
+                normalizeSchemaExpression(
+                  definition.match(/\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|NULL|CHECK|CONSTRAINT|REFERENCES|UNIQUE|PRIMARY\s+KEY|GENERATED)\b|$)/i)?.[1] ?? null
+                ) ?? ""
+              ),
+            hasDefault:
+              definition.match(/\bDEFAULT\s+(.+?)(?=\s+(?:NOT\s+NULL|NULL|CHECK|CONSTRAINT|REFERENCES|UNIQUE|PRIMARY\s+KEY|GENERATED)\b|$)/i) !==
+              null,
             isGenerated: /GENERATED\s+ALWAYS\s+AS/i.test(definition),
             generationExpression:
               definition.match(/GENERATED\s+ALWAYS\s+AS\s*\((.+)\)\s+STORED/i)?.[1] ?? null
@@ -357,6 +364,7 @@ function extractTriggers(sql: string): CanonicalManifestObject[] {
         normalizeName(triggerName),
         {
           actionTiming,
+          enabled: true,
           eventManipulation: (eventManipulation ?? "").split(/\s+OR\s+/i).map((value) => value.trim()).filter(Boolean),
           functionName,
           level
@@ -369,13 +377,14 @@ function extractTriggers(sql: string): CanonicalManifestObject[] {
 
 function extractFunctions(sql: string): CanonicalManifestObject[] {
   return Array.from(
-    sql.matchAll(/CREATE OR REPLACE FUNCTION\s+([a-zA-Z0-9_]+)\s*\((.*?)\)\s*RETURNS\s+([a-zA-Z0-9_ ]+?)\s+AS\s+\$\$([\s\S]*?)\$\$\s+LANGUAGE\s+([a-zA-Z0-9_]+)/gi)
+    sql.matchAll(/CREATE OR REPLACE FUNCTION\s+([a-zA-Z0-9_]+)\s*\((.*?)\)\s*RETURNS\s+([a-zA-Z0-9_ ]+?)\s+AS\s+\$\$([\s\S]*?)\$\$([\s\S]*?);/gi)
   ).flatMap((match) => {
     const functionName = match[1];
     const functionArguments = match[2] ?? "";
     const returnType = match[3];
     const body = match[4];
-    const language = match[5];
+    const tail = match[5] ?? "";
+    const language = tail.match(/\bLANGUAGE\s+([a-zA-Z0-9_]+)/i)?.[1];
     if (!functionName || !returnType || !language) {
       return [];
     }
@@ -383,9 +392,13 @@ function extractFunctions(sql: string): CanonicalManifestObject[] {
     return [
       createObject("function", "public", normalizeName(functionName), {
         arguments: functionArguments,
-        body,
+        bodyHash: definitionHash(collapseWhitespace(body ?? "")),
         language,
-        returnType
+        leakproof: /\bLEAKPROOF\b/i.test(tail),
+        returnType,
+        securityDefiner: /\bSECURITY\s+DEFINER\b/i.test(tail),
+        strict: /\bSTRICT\b|\bRETURNS\s+NULL\s+ON\s+NULL\s+INPUT\b/i.test(tail),
+        volatility: tail.match(/\b(IMMUTABLE|STABLE|VOLATILE)\b/i)?.[1]?.toLowerCase() ?? "volatile"
       })
     ];
   });
@@ -401,8 +414,9 @@ function extractComments(sql: string): CanonicalManifestObject[] {
 
     return [
       createObject("comment", "public", normalizeName(tableName), {
+        commentHash: definitionHash(collapseWhitespace(commentText ?? "")),
         targetType: "table",
-        commentText: commentText ?? ""
+        commentPresent: true
       })
     ];
   });

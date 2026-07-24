@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
-import { canonicalEnvironmentDefinitions } from "./canonical-contract.js";
-import type { EnvironmentValidationResult } from "./types.js";
+import { canonicalEnvironmentDefinitions } from "./canonical-contract.ts";
+import type { EnvironmentValidationResult } from "./types.ts";
 
 type ParsedEnvironment = Map<string, string>;
 
@@ -71,18 +71,31 @@ function classifyTelephonyProvider(environment: ParsedEnvironment): EnvironmentV
   const provider = normalizeText(environment.get("TELEPHONY_PROVIDER"));
   const mode = normalizeText(environment.get("TELEPHONY_PROVIDER_MODE"));
   const safeGuardrails =
+    normalizeText(environment.get("VOICE_RUNTIME_PROVIDER")) === "none" &&
+    isFalseLike(environment.get("VOICE_AGENT_ENABLED")) &&
+    isTrueLike(environment.get("VOICE_TEST_MODE")) &&
     isFalseLike(environment.get("LIVE_INBOUND_CALLS_ENABLED")) &&
     isFalseLike(environment.get("OUTBOUND_CALLS_ENABLED")) &&
     isFalseLike(environment.get("ALLOW_PRODUCTION_CALLS")) &&
     isFalseLike(environment.get("CALL_TRANSFER_ENABLED")) &&
+    isFalseLike(environment.get("VOICE_RECORDING_DISCLOSURE_ENABLED")) &&
     isTrueLike(environment.get("REQUIRE_HUMAN_APPROVAL"));
 
-  if (mode !== "disabled" && mode !== "sandbox") {
+  if (provider !== "mock") {
     return {
       variable: "TELEPHONY_PROVIDER",
       group: "TELEPHONY",
       classification: "PRESENT_INVALID",
-      evidence: ["telephony provider mode must be disabled or sandbox before provider evaluation"]
+      evidence: ["production reconciliation requires TELEPHONY_PROVIDER=mock"]
+    };
+  }
+
+  if (mode !== "disabled") {
+    return {
+      variable: "TELEPHONY_PROVIDER",
+      group: "TELEPHONY",
+      classification: "PRESENT_INVALID",
+      evidence: ["production reconciliation requires TELEPHONY_PROVIDER_MODE=disabled"]
     };
   }
 
@@ -95,7 +108,7 @@ function classifyTelephonyProvider(environment: ParsedEnvironment): EnvironmentV
     };
   }
 
-  if (provider === null || (provider === "mock" && mode === "disabled")) {
+  if (provider === "mock" && mode === "disabled") {
     return {
       variable: "TELEPHONY_PROVIDER",
       group: "TELEPHONY",
@@ -104,29 +117,11 @@ function classifyTelephonyProvider(environment: ParsedEnvironment): EnvironmentV
     };
   }
 
-  if (provider === "mock" && mode === "sandbox") {
-    return {
-      variable: "TELEPHONY_PROVIDER",
-      group: "TELEPHONY",
-      classification: "SAFE_SANDBOX",
-      evidence: ["sandbox provider is isolated behind disabled production call controls"]
-    };
-  }
-
-  if (mode === "disabled") {
-    return {
-      variable: "TELEPHONY_PROVIDER",
-      group: "TELEPHONY",
-      classification: "SAFE_CONFIGURED_INACTIVE",
-      evidence: ["live provider may be configured, but the runtime remains fail-closed and inactive"]
-    };
-  }
-
   return {
     variable: "TELEPHONY_PROVIDER",
     group: "TELEPHONY",
-    classification: "REQUIRES_OPERATOR_DECISION",
-    evidence: ["sandbox mode with a non-mock provider requires explicit operator review"]
+    classification: "PRESENT_INVALID",
+    evidence: ["telephony provider configuration is not approved for production reconciliation"]
   };
 }
 

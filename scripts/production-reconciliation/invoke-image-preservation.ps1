@@ -31,7 +31,11 @@ if ($ExistingTagImageId) {
   $arguments += $ExistingTagImageId
 }
 
-& node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/image-preservation.ts") @arguments |
-  Set-Content -LiteralPath $absoluteOutput -NoNewline
+$report = & node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/image-preservation.ts") @arguments
+if ($LASTEXITCODE -ne 0) {
+  throw "Image preservation plan failed with exit code $LASTEXITCODE."
+}
+
+$report | Set-Content -LiteralPath $absoluteOutput -NoNewline
 
 Write-Host "Image preservation plan written to $absoluteOutput"

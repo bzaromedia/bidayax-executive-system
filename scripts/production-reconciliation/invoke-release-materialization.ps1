@@ -1,6 +1,12 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$GitSha,
+  [Parameter(Mandatory = $true)]
+  [string]$TargetHost,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeProject,
+  [Parameter(Mandatory = $true)]
+  [string]$OperatorAuthorizationReference,
   [string]$ReleaseRoot = "/opt/the-executive-card/releases",
   [string]$CurrentLink = "/opt/the-executive-card/current",
   [string]$SharedRoot = "/opt/the-executive-card/shared"
@@ -11,6 +17,9 @@ $ErrorActionPreference = "Stop"
 
 [ordered]@{
   gitSha = $GitSha
+  targetHost = $TargetHost
+  composeProject = $ComposeProject
+  operatorAuthorizationReference = $OperatorAuthorizationReference
   releaseRoot = $ReleaseRoot
   currentLink = $CurrentLink
   sharedRoot = $SharedRoot

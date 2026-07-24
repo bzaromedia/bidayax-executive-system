@@ -1,4 +1,4 @@
-import { validateEnvironmentFile } from "../environment-contract.js";
+import { validateEnvironmentFile } from "../environment-contract.ts";
 
 const filePath = process.argv[2];
 
@@ -7,4 +7,20 @@ if (!filePath) {
   process.exit(1);
 }
 
-console.log(JSON.stringify(validateEnvironmentFile(filePath), null, 2));
+const results = validateEnvironmentFile(filePath);
+console.log(JSON.stringify(results, null, 2));
+
+const blockingClassifications = new Set([
+  "PRESENT_INVALID",
+  "PRESENT_EMPTY",
+  "MISSING_REQUIRED",
+  "DEPRECATED",
+  "RENAMED",
+  "LIVE_ONLY",
+  "REQUIRES_SECRET_PROVISIONING",
+  "REQUIRES_OPERATOR_DECISION"
+]);
+
+if (results.some((result) => blockingClassifications.has(result.classification))) {
+  process.exit(2);
+}

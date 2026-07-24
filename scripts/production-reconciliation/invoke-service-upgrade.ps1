@@ -3,7 +3,15 @@ param(
   [ValidateSet("card", "dashboard")]
   [string]$Service,
   [Parameter(Mandatory = $true)]
-  [string]$GitSha
+  [string]$GitSha,
+  [Parameter(Mandatory = $true)]
+  [string]$TargetHost,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeProject,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeFilePath,
+  [Parameter(Mandatory = $true)]
+  [string]$OperatorAuthorizationReference
 )
 
 Set-StrictMode -Version Latest
@@ -12,6 +20,10 @@ $ErrorActionPreference = "Stop"
 [ordered]@{
   service = $Service
   gitSha = $GitSha
+  targetHost = $TargetHost
+  composeProject = $ComposeProject
+  composeFilePath = $ComposeFilePath
+  operatorAuthorizationReference = $OperatorAuthorizationReference
   orderedSteps = @(
     "Verify live baseline has not changed",
     "Preserve rollback image tag for the service",

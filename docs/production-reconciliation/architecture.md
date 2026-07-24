@@ -16,4 +16,8 @@ Post-review hardening:
 - compose project identity must be supplied explicitly and validated directly
 - rollback image preservation requires approved expected and observed image digests
 - operator scripts require explicit target scope rather than implicit production defaults
+- CLI-backed operator scripts must fail closed on unsafe reports before writing success messages
+- schema inventory credentials are supplied through the process environment, not command arguments
+- generated local evidence is ignored under `artifacts/`
+- proposed Nginx route artifacts are transitional legacy-target files; Caddy remains the canonical production proxy
 - these corrections were added after final PR #11 safety review while the branch remained repository-only and undeployed

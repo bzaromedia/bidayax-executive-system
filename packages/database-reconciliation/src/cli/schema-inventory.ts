@@ -1,9 +1,9 @@
-import { collectSchemaInventory } from "../schema-inventory.js";
+import { collectSchemaInventory } from "../schema-inventory.ts";
 
-const connectionString = process.argv[2] ?? process.env.DATABASE_URL;
+const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.error("DATABASE_URL or an explicit connection string argument is required.");
+  console.error("DATABASE_URL is required in the process environment.");
   process.exit(1);
 }
 

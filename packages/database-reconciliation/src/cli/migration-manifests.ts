@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { buildCanonicalMigrationManifest } from "../migration-parser.js";
+import { buildCanonicalMigrationManifest } from "../migration-parser.ts";
 
 const repoRoot = process.cwd();
 const migrationIds = [

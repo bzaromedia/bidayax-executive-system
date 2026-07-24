@@ -1,7 +1,6 @@
 # Project-scoped Codex defaults for The Executive Card.
-# Model defaults are intentionally not pinned here because the requested
-# GPT-5.4 High Executor target is catalog-verified locally, but model-backed
-# invocation could not be validated on this surface under current tenant policy.
+# Model defaults are intentionally not pinned here. Preferred models and the
+# documented Executor fallback are maintained in docs/codex/MODEL-HIERARCHY.md.
 
 [agents]
 max_threads = 4

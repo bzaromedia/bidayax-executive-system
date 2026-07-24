@@ -1,7 +1,12 @@
 param(
   [Parameter(Mandatory = $true)]
   [string]$CanonicalSha,
-  [string]$ComposeProject = "the-executive-card"
+  [Parameter(Mandatory = $true)]
+  [string]$TargetHost,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeProject,
+  [Parameter(Mandatory = $true)]
+  [string]$OperatorAuthorizationReference
 )
 
 Set-StrictMode -Version Latest
@@ -9,7 +14,9 @@ $ErrorActionPreference = "Stop"
 
 [ordered]@{
   canonicalSha = $CanonicalSha
+  targetHost = $TargetHost
   composeProject = $ComposeProject
+  operatorAuthorizationReference = $OperatorAuthorizationReference
   validationSteps = @(
     "Validate card loopback route /card/ad-garner",
     "Validate dashboard loopback /api/system/health",

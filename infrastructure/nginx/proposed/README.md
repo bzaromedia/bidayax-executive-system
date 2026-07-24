@@ -1,7 +1,13 @@
 # Proposed Executive Card Dashboard Route Exceptions
 
-This directory contains a proposed, non-deployed Nginx fragment for the existing
-dashboard host on the shared VPS.
+This directory contains a proposed, non-deployed Nginx fragment for the
+historical shared-VPS dashboard host.
+
+The canonical production launch model is the dedicated Hostinger VPS with
+host-level Caddy, documented in `docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`.
+These Nginx files are transitional legacy-target artifacts only. They must not
+be applied unless a separate owner decision explicitly authorizes the historical
+shared-VPS path.
 
 Insertion point:
 

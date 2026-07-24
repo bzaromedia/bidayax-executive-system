@@ -1,20 +1,25 @@
-import { stableJson } from "./hash.js";
-import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
-import { normalizeSchemaObject } from "./schema-normalization.js";
+import { stableJson } from "./hash.ts";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.ts";
+import { normalizeSchemaObject } from "./schema-normalization.ts";
 import type {
   CanonicalManifestObject,
   CanonicalMigrationManifest,
   MigrationReconciliationResult,
   SchemaDefinitionObjectType,
   SchemaInventoryObject
-} from "./types.js";
+} from "./types.ts";
 
-const structuralScopedObjectTypes = new Set<SchemaDefinitionObjectType>([
+const tableScopedObjectTypes = new Set<SchemaDefinitionObjectType>([
   "column",
   "primary_key",
   "foreign_key",
   "unique_constraint",
-  "check_constraint"
+  "check_constraint",
+  "index",
+  "trigger",
+  "policy",
+  "comment",
+  "row_level_security"
 ]);
 
 type ObjectComparisonResult = "EXACT" | "MISMATCHED" | "UNKNOWN";
@@ -64,12 +69,21 @@ function hasDefinitionEvidence(object: CanonicalManifestObject | SchemaInventory
     case "trigger":
       return (
         hasStringValue(metadata.actionTiming) &&
+        hasBooleanValue(metadata.enabled) &&
         hasArrayValues(metadata.eventManipulation) &&
         hasStringValue(metadata.functionName) &&
         hasStringValue(metadata.level)
       );
     case "function":
-      return hasStringValue(metadata.language) && hasStringValue(metadata.returnType) && typeof metadata.body === "string";
+      return (
+        hasStringValue(metadata.bodyHash) &&
+        hasStringValue(metadata.language) &&
+        hasStringValue(metadata.returnType) &&
+        hasBooleanValue(metadata.securityDefiner) &&
+        hasBooleanValue(metadata.strict) &&
+        hasBooleanValue(metadata.leakproof) &&
+        hasStringValue(metadata.volatility)
+      );
     case "sequence":
       return (
         hasStringValue(metadata.dataType) &&
@@ -79,11 +93,17 @@ function hasDefinitionEvidence(object: CanonicalManifestObject | SchemaInventory
         metadata.startValue !== null
       );
     case "policy":
-      return hasStringValue(metadata.command) && hasBooleanValue(metadata.permissive);
+      return (
+        hasStringValue(metadata.command) &&
+        hasBooleanValue(metadata.permissive) &&
+        hasStringValue(metadata.qualifierHash) &&
+        hasStringValue(metadata.rolesHash) &&
+        hasStringValue(metadata.withCheckHash)
+      );
     case "extension":
       return hasStringValue(metadata.name);
     case "comment":
-      return hasStringValue(metadata.targetType) && metadata.commentText !== null;
+      return hasStringValue(metadata.targetType) && hasStringValue(metadata.commentHash);
     case "row_level_security":
       return hasBooleanValue(metadata.rowSecurity) && hasBooleanValue(metadata.forceRowSecurity);
     default:
@@ -118,29 +138,49 @@ function collectCanonicalTables(manifest: CanonicalMigrationManifest): Set<strin
       tables.add(object.objectName);
     }
 
-    if (object.parentObject && structuralScopedObjectTypes.has(object.objectType)) {
-      tables.add(object.parentObject);
+    const tableName = getTableScopeName(object);
+    if (tableName) {
+      tables.add(tableName);
     }
   }
 
   return tables;
 }
 
+function getTableScopeName(object: {
+  objectType: SchemaDefinitionObjectType;
+  objectName: string;
+  parentObject?: string;
+}): string | null {
+  if (!tableScopedObjectTypes.has(object.objectType)) {
+    return null;
+  }
+
+  if (object.parentObject) {
+    return object.parentObject;
+  }
+
+  if (object.objectType === "comment" || object.objectType === "row_level_security") {
+    return object.objectName;
+  }
+
+  return null;
+}
+
 function isWithinCanonicalScope(object: SchemaInventoryObject, canonicalTables: Set<string>): boolean {
-  return (
-    structuralScopedObjectTypes.has(object.objectType) &&
-    object.parentObject !== undefined &&
-    canonicalTables.has(object.parentObject)
-  );
+  const tableName = getTableScopeName(object);
+  return tableName !== null && canonicalTables.has(tableName);
 }
 
 export function reconcileMigration(
   manifest: CanonicalMigrationManifest,
   inventory: SchemaInventoryObject[],
-  recordedMigrationIds: string[]
+  recordedMigrationIds: string[],
+  knownCanonicalObjects: CanonicalManifestObject[] = manifest.objects
 ): MigrationReconciliationResult {
   const byKey = new Map(inventory.map((object) => [makeKey(object), object]));
   const manifestKeys = new Set(manifest.objects.map((object) => makeKey(object)));
+  const knownCanonicalKeys = new Set(knownCanonicalObjects.map((object) => makeKey(object)));
   const canonicalTables = collectCanonicalTables(manifest);
   const evidence: string[] = [];
   let exactMatches = 0;
@@ -175,7 +215,7 @@ export function reconcileMigration(
   }
 
   for (const liveObject of inventory) {
-    if (manifestKeys.has(makeKey(liveObject))) {
+    if (manifestKeys.has(makeKey(liveObject)) || knownCanonicalKeys.has(makeKey(liveObject))) {
       continue;
     }
 

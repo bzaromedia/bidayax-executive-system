@@ -15,7 +15,11 @@ $absoluteOutput = Join-Path $repoRoot $OutputPath
 $outputDirectory = Split-Path -Parent $absoluteOutput
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 
-& node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/compose-safety.ts") $ComposeFilePath $ActualProjectName |
-  Set-Content -LiteralPath $absoluteOutput -NoNewline
+$report = & node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/compose-safety.ts") $ComposeFilePath $ActualProjectName $ExpectedComposeProject
+if ($LASTEXITCODE -ne 0) {
+  throw "Compose safety check failed with exit code $LASTEXITCODE."
+}
+
+$report | Set-Content -LiteralPath $absoluteOutput -NoNewline
 
 Write-Host "Compose safety report written to $absoluteOutput for project $ActualProjectName"

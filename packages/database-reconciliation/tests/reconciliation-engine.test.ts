@@ -115,4 +115,125 @@ describe("reconcileMigration", () => {
     expect(result.classification).toBe("PARTIALLY_APPLIED");
     expect(result.recommendedAction).toBe("CREATE_CORRECTIVE_MIGRATION");
   });
+
+  it("blocks baseline repair when live definition evidence is insufficient", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text" }, "tenants")
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("BLOCKED");
+    expect(result.recommendedAction).toBe("BLOCK");
+    expect(result.compatibilityRisk).toBe("CRITICAL");
+  });
+
+  it("classifies an unexpected trigger on a canonical table as drift", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "trigger",
+          "unexpected_security_trigger",
+          {
+            actionTiming: "BEFORE",
+            enabled: true,
+            eventManipulation: ["UPDATE"],
+            functionName: "bypass_guard",
+            level: "ROW"
+          },
+          "tenants"
+        )
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+    expect(result.recommendedAction).toBe("MANUAL_REVIEW_REQUIRED");
+  });
+
+  it("classifies an unexpected index on a canonical table as drift", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "index",
+          "idx_tenants_unexpected",
+          { columns: ["tenant_id"], method: "btree", predicate: null, unique: false },
+          "tenants"
+        )
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("classifies an unexpected table comment on a canonical table as drift", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject("comment", "tenants", {
+          targetType: "table",
+          commentHash: "unexpected-comment-hash",
+          commentPresent: true
+        })
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("classifies unexpected row-level-security state on a canonical table as drift", () => {
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject("row_level_security", "tenants", {
+          forceRowSecurity: false,
+          rowSecurity: true
+        })
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("allows explicitly known later canonical objects on a migration table", () => {
+    const laterIndex = makeObject(
+      "index",
+      "idx_tenants_known_later",
+      { columns: ["tenant_id"], method: "btree", predicate: null, unique: false },
+      "tenants"
+    );
+    const result = reconcileMigration(
+      manifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "index",
+          "idx_tenants_known_later",
+          { columns: ["tenant_id"], method: "btree", predicate: null, unique: false },
+          "tenants"
+        )
+      ],
+      [],
+      [...manifest.objects, laterIndex]
+    );
+
+    expect(result.classification).toBe("ALREADY_APPLIED_NOT_RECORDED");
+  });
 });

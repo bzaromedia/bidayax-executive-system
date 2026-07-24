@@ -11,6 +11,7 @@ storybook-static/
 .next-build/
 coverage/
 *.tsbuildinfo
+artifacts/
 
 # logs
 *.log

@@ -1,4 +1,4 @@
-import type { EnvironmentVariableDefinition } from "./types.js";
+import type { EnvironmentVariableDefinition } from "./types.ts";
 
 export const canonicalApprovedSha = "1ff58dd466d755129f81bfa8c5fae5cd06d391cd";
 export const liveKnownSha = "de7f5fa3cefb20123791c5a6e678674b0f881b84";
@@ -46,12 +46,12 @@ export const canonicalEnvironmentDefinitions: EnvironmentVariableDefinition[] = 
   { name: "IDENTITY_SESSION_IDLE_SECONDS", group: "SESSION", required: true },
   { name: "IDENTITY_SESSION_ABSOLUTE_SECONDS", group: "SESSION", required: true },
   { name: "IDENTITY_CLOCK_SKEW_SECONDS", group: "SESSION", required: true },
-  { name: "TELEPHONY_PROVIDER", group: "TELEPHONY", required: false },
+  { name: "TELEPHONY_PROVIDER", group: "TELEPHONY", required: true, expectedValue: "mock" },
   {
     name: "TELEPHONY_PROVIDER_MODE",
     group: "TELEPHONY",
     required: true,
-    expectedValue: { oneOf: ["disabled", "sandbox"] }
+    expectedValue: "disabled"
   },
   { name: "TWILIO_ACCOUNT_SID", group: "TELEPHONY", required: false, secret: true },
   { name: "TWILIO_AUTH_TOKEN", group: "TELEPHONY", required: false, secret: true },

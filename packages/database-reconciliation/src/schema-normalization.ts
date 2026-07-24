@@ -1,4 +1,4 @@
-import type { CanonicalManifestObject, SchemaInventoryObject, SchemaDefinitionObjectType } from "./types.js";
+import type { CanonicalManifestObject, SchemaInventoryObject, SchemaDefinitionObjectType } from "./types.ts";
 
 type SchemaLikeObject = CanonicalManifestObject | SchemaInventoryObject;
 
@@ -127,18 +127,74 @@ function splitExpressionList(value: string): string[] {
 }
 
 function stripSafeLiteralCasts(value: string): string {
-  return value.replace(/'([^']*)'::(?:text|varchar|character varying)/gi, "'$1'");
+  return value
+    .replace(/'([^']*)'::(?:text|varchar|character varying)/gi, "'$1'")
+    .replace(/\b(true|false)\b::boolean/gi, "$1")
+    .replace(/\b([0-9]+(?:\.[0-9]+)?)::(?:integer|bigint|numeric|double precision|real)/gi, "$1")
+    .replace(/\(([a-z_][a-z0-9_]*)\)::(?:text|varchar|character varying)/gi, "$1")
+    .replace(/\)::(?:text|varchar|character varying)\[\]/gi, ")");
+}
+
+function normalizeBetweenExpression(value: string): string {
+  return value.replace(
+    /\b([a-z_][a-z0-9_]*)\s+between\s+([0-9]+(?:\.[0-9]+)?)\s+and\s+([0-9]+(?:\.[0-9]+)?)/gi,
+    "$1 >= $2 and $1 <= $3"
+  );
 }
 
 function normalizeMembershipExpression(value: string): string {
-  const match = value.match(/^(.+?)\s*=\s*ANY\s*\(\s*ARRAY\[(.+)\]\s*\)$/i);
-  if (!match) {
-    return value;
+  return value
+    .replace(/([a-z_][a-z0-9_]*)\s*=\s*any\s*\(\s*array\[([^\]]+)\]\s*\)/gi, (_match, left: string, entries: string) => {
+      const normalizedEntries = splitExpressionList(entries).map((entry) => collapseWhitespace(stripSafeLiteralCasts(entry)));
+      return `${left} in (${normalizedEntries.join(", ")})`;
+    })
+    .replace(/([a-z_][a-z0-9_]*)\s*<>\s*all\s*\(\s*array\[([^\]]+)\]\s*\)/gi, (_match, left: string, entries: string) => {
+      const normalizedEntries = splitExpressionList(entries).map((entry) => collapseWhitespace(stripSafeLiteralCasts(entry)));
+      return `${left} not in (${normalizedEntries.join(", ")})`;
+    });
+}
+
+function stripRedundantLogicalParens(value: string): string {
+  let result = value;
+  let previous = "";
+
+  while (result !== previous) {
+    previous = result;
+    result = result.replace(/\(([^()]*\b(?:and|or)\b[^()]*)\)/gi, "$1");
   }
 
-  const left = collapseWhitespace(unwrapOuterParens(match[1] ?? ""));
-  const entries = splitExpressionList(match[2] ?? "").map((entry) => collapseWhitespace(stripSafeLiteralCasts(entry)));
-  return `${left} IN (${entries.join(", ")})`;
+  return result;
+}
+
+function stripNonMembershipParens(value: string): string {
+  const keepStack: boolean[] = [];
+  let result = "";
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? "";
+
+    if (character === "(") {
+      const prefix = result.toLowerCase();
+      const keep = /\b(?:not\s+)?in\s*$/.test(prefix);
+      keepStack.push(keep);
+      if (keep) {
+        result += character;
+      }
+      continue;
+    }
+
+    if (character === ")") {
+      const keep = keepStack.pop() ?? false;
+      if (keep) {
+        result += character;
+      }
+      continue;
+    }
+
+    result += character;
+  }
+
+  return result;
 }
 
 export function normalizeSchemaExpression(value: unknown): string | null {
@@ -146,9 +202,17 @@ export function normalizeSchemaExpression(value: unknown): string | null {
     return null;
   }
 
-  const collapsed = collapseWhitespace(unwrapOuterParens(value)).replace(/\s+/g, " ");
-  const normalized = normalizeMembershipExpression(stripSafeLiteralCasts(collapsed));
-  return collapseWhitespace(unwrapOuterParens(normalized)).replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+  const collapsed = collapseWhitespace(unwrapOuterParens(value)).replace(/\s+/g, " ").toLowerCase();
+  const normalized = stripNonMembershipParens(stripRedundantLogicalParens(
+    normalizeBetweenExpression(normalizeMembershipExpression(stripSafeLiteralCasts(collapsed)))
+  ));
+  return collapseWhitespace(unwrapOuterParens(normalized))
+    .toLowerCase()
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")")
+    .replace(/\(([a-z_][a-z0-9_]*)\)/gi, "$1")
+    .replace(/,\s*/g, ", ")
+    .replace(/\s+/g, " ");
 }
 
 function normalizeScalar(value: unknown): unknown {
@@ -203,7 +267,8 @@ function normalizeMetadata(
     case "column":
       return {
         dataType: normalizeType(metadata.dataType),
-        default: normalizeSchemaExpression(metadata.default),
+        defaultHash: typeof metadata.defaultHash === "string" ? metadata.defaultHash : null,
+        hasDefault: normalizeBoolean(metadata.hasDefault),
         generationExpression: normalizeSchemaExpression(metadata.generationExpression),
         isGenerated: normalizeBoolean(metadata.isGenerated),
         isNullable: normalizeNullable(metadata.isNullable)
@@ -237,6 +302,7 @@ function normalizeMetadata(
       return {
         actionTiming:
           typeof metadata.actionTiming === "string" ? collapseWhitespace(metadata.actionTiming).toUpperCase() : null,
+        enabled: normalizeBoolean(metadata.enabled),
         eventManipulation: normalizeStringArray(metadata.eventManipulation, { sortValues: true }),
         functionName:
           typeof metadata.functionName === "string" ? normalizeSchemaIdentifier(metadata.functionName) : null,
@@ -245,9 +311,13 @@ function normalizeMetadata(
     case "function":
       return {
         arguments: typeof metadata.arguments === "string" ? collapseWhitespace(metadata.arguments) : "",
-        body: typeof metadata.body === "string" ? collapseWhitespace(metadata.body) : "",
+        bodyHash: typeof metadata.bodyHash === "string" ? metadata.bodyHash : null,
         language: typeof metadata.language === "string" ? collapseWhitespace(metadata.language).toLowerCase() : null,
-        returnType: normalizeType(metadata.returnType)
+        leakproof: normalizeBoolean(metadata.leakproof),
+        returnType: normalizeType(metadata.returnType),
+        securityDefiner: normalizeBoolean(metadata.securityDefiner),
+        strict: normalizeBoolean(metadata.strict),
+        volatility: typeof metadata.volatility === "string" ? collapseWhitespace(metadata.volatility).toLowerCase() : null
       };
     case "sequence":
       return {
@@ -261,9 +331,11 @@ function normalizeMetadata(
       return {
         command: typeof metadata.command === "string" ? collapseWhitespace(metadata.command).toUpperCase() : null,
         permissive: normalizeBoolean(metadata.permissive),
-        qualifier: normalizeSchemaExpression(metadata.qualifier),
-        roles: normalizeStringArray(metadata.roles, { sortValues: true }),
-        withCheck: normalizeSchemaExpression(metadata.withCheck)
+        qualifierHash: typeof metadata.qualifierHash === "string" ? metadata.qualifierHash : null,
+        qualifierPresent: normalizeBoolean(metadata.qualifierPresent),
+        rolesHash: typeof metadata.rolesHash === "string" ? metadata.rolesHash : null,
+        withCheckHash: typeof metadata.withCheckHash === "string" ? metadata.withCheckHash : null,
+        withCheckPresent: normalizeBoolean(metadata.withCheckPresent)
       };
     case "extension":
       return {
@@ -271,7 +343,7 @@ function normalizeMetadata(
       };
     case "comment":
       return {
-        commentText: typeof metadata.commentText === "string" ? collapseWhitespace(metadata.commentText) : null,
+        commentHash: typeof metadata.commentHash === "string" ? metadata.commentHash : null,
         targetType: typeof metadata.targetType === "string" ? collapseWhitespace(metadata.targetType).toLowerCase() : null
       };
     case "row_level_security":

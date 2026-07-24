@@ -1,15 +1,15 @@
 import { Client } from "pg";
 
-import { definitionHash } from "./hash.js";
-import { normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.js";
-import { buildSchemaDefinitionHash } from "./schema-definition-hash.js";
+import { definitionHash } from "./hash.ts";
+import { collapseWhitespace, normalizeSchemaExpression, normalizeSchemaIdentifier } from "./schema-normalization.ts";
+import { buildSchemaDefinitionHash } from "./schema-definition-hash.ts";
 import type {
   MigrationLedgerRow,
   MigrationLedgerTable,
   SchemaDefinitionObjectType,
   SchemaInventoryObject,
   SchemaInventoryReport
-} from "./types.js";
+} from "./types.ts";
 
 const schemaInventoryQueries = {
   extensions: `
@@ -71,17 +71,17 @@ const schemaInventoryQueries = {
   `,
   triggers: `
     SELECT
-      trigger_schema AS table_schema,
-      event_object_table AS table_name,
-      trigger_name,
-      action_timing,
-      action_orientation,
-      array_agg(DISTINCT event_manipulation ORDER BY event_manipulation) AS event_manipulations,
-      action_statement
-    FROM information_schema.triggers
-    WHERE trigger_schema NOT IN ('pg_catalog', 'information_schema')
-    GROUP BY trigger_schema, event_object_table, trigger_name, action_timing, action_orientation, action_statement
-    ORDER BY trigger_schema, event_object_table, trigger_name;
+      n.nspname AS table_schema,
+      c.relname AS table_name,
+      t.tgname AS trigger_name,
+      pg_get_triggerdef(t.oid, true) AS trigger_definition,
+      t.tgenabled AS trigger_enabled
+    FROM pg_trigger t
+    JOIN pg_class c ON c.oid = t.tgrelid
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
+      AND NOT t.tgisinternal
+    ORDER BY n.nspname, c.relname, t.tgname;
   `,
   functions: `
     SELECT
@@ -90,7 +90,11 @@ const schemaInventoryQueries = {
       pg_get_function_identity_arguments(p.oid) AS function_arguments,
       pg_get_functiondef(p.oid) AS function_definition,
       pg_get_function_result(p.oid) AS return_type,
-      l.lanname AS language
+      l.lanname AS language,
+      p.prosecdef AS security_definer,
+      p.provolatile AS volatility,
+      p.proisstrict AS strict,
+      p.proleakproof AS leakproof
     FROM pg_proc p
     JOIN pg_namespace n ON n.oid = p.pronamespace
     JOIN pg_language l ON l.oid = p.prolang
@@ -397,6 +401,28 @@ function extractFunctionBody(definition: string): string {
   return definition.trim();
 }
 
+function escapeIdentifier(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+function parseTriggerDefinition(definition: string): {
+  actionTiming: string | null;
+  eventManipulation: string[];
+  functionName: string | null;
+  level: string | null;
+} {
+  const match = definition.match(
+    /CREATE TRIGGER\s+\S+\s+(BEFORE|AFTER|INSTEAD OF)\s+([\s\S]*?)\s+ON\s+\S+\s+FOR EACH\s+(ROW|STATEMENT)\s+EXECUTE FUNCTION\s+([a-zA-Z0-9_".]+)/i
+  );
+
+  return {
+    actionTiming: match?.[1] ?? null,
+    eventManipulation: (match?.[2] ?? "").split(/\s+OR\s+/i).map((value) => value.trim()).filter(Boolean),
+    functionName: match?.[4] ? normalizeName(match[4]) : null,
+    level: match?.[3] ?? null
+  };
+}
+
 export async function collectSchemaInventory(connectionString: string): Promise<SchemaInventoryReport> {
   const client = new Client({ connectionString });
   await client.connect();
@@ -436,7 +462,8 @@ export async function collectSchemaInventory(connectionString: string): Promise<
           {
             dataType: row.data_type,
             isNullable: row.is_nullable,
-            default: row.column_default,
+            defaultHash: definitionHash(normalizeSchemaExpression(row.column_default) ?? ""),
+            hasDefault: row.column_default !== null,
             isGenerated: row.is_generated,
             generationExpression: row.generation_expression
           },
@@ -464,7 +491,8 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       objects.push(
         createObject("comment", row.table_schema, normalizeName(row.table_name), {
           targetType: "table",
-          commentText: row.comment_text
+          commentHash: definitionHash(collapseWhitespace(row.comment_text)),
+          commentPresent: true
         })
       );
     }
@@ -494,7 +522,7 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       indexdef: string;
     }>(schemaInventoryQueries.indexes);
     for (const row of indexes.rows) {
-      if (normalizeName(row.indexname).endsWith("_pkey")) {
+      if (normalizeName(row.indexname).endsWith("_pkey") || normalizeName(row.indexname).endsWith("_key")) {
         continue;
       }
       objects.push(parseIndexObject(row.table_schema, row.table_name, row.indexname, row.indexdef));
@@ -504,22 +532,22 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       table_schema: string;
       table_name: string;
       trigger_name: string;
-      action_timing: string;
-      action_orientation: string;
-      event_manipulations: string[] | string;
-      action_statement: string;
+      trigger_definition: string;
+      trigger_enabled: string;
     }>(schemaInventoryQueries.triggers);
     for (const row of triggers.rows) {
+      const parsed = parseTriggerDefinition(row.trigger_definition);
       objects.push(
         createObject(
           "trigger",
           row.table_schema,
           normalizeName(row.trigger_name),
           {
-            actionTiming: row.action_timing,
-            eventManipulation: toStringArray(row.event_manipulations),
-            functionName: row.action_statement.match(/EXECUTE FUNCTION\s+([a-zA-Z0-9_]+)/i)?.[1] ?? null,
-            level: row.action_orientation
+            actionTiming: parsed.actionTiming,
+            enabled: row.trigger_enabled === "O",
+            eventManipulation: parsed.eventManipulation,
+            functionName: parsed.functionName,
+            level: parsed.level
           },
           row.table_name
         )
@@ -533,14 +561,27 @@ export async function collectSchemaInventory(connectionString: string): Promise<
       function_definition: string;
       return_type: string;
       language: string;
+      security_definer: boolean;
+      volatility: string;
+      strict: boolean;
+      leakproof: boolean;
     }>(schemaInventoryQueries.functions);
     for (const row of functions.rows) {
       objects.push(
         createObject("function", row.function_schema, normalizeName(row.function_name), {
           arguments: row.function_arguments,
-          body: extractFunctionBody(row.function_definition),
+          bodyHash: definitionHash(collapseWhitespace(extractFunctionBody(row.function_definition))),
           language: row.language,
-          returnType: row.return_type
+          leakproof: row.leakproof,
+          returnType: row.return_type,
+          securityDefiner: row.security_definer,
+          strict: row.strict,
+          volatility:
+            row.volatility === "i"
+              ? "immutable"
+              : row.volatility === "s"
+                ? "stable"
+                : "volatile"
         })
       );
     }
@@ -603,10 +644,12 @@ export async function collectSchemaInventory(connectionString: string): Promise<
           normalizeName(row.policyname),
           {
             permissive: row.permissive,
-            roles: row.roles,
+            rolesHash: definitionHash(JSON.stringify(toStringArray(row.roles).sort())),
             command: row.cmd,
-            qualifier: row.qual,
-            withCheck: row.with_check
+            qualifierHash: definitionHash(normalizeSchemaExpression(row.qual) ?? ""),
+            qualifierPresent: row.qual !== null,
+            withCheckHash: definitionHash(normalizeSchemaExpression(row.with_check) ?? ""),
+            withCheckPresent: row.with_check !== null
           },
           row.tablename
         )
@@ -655,9 +698,9 @@ export async function collectSchemaInventory(connectionString: string): Promise<
         continue;
       }
 
-      const safeIdentifiers = safeColumns.map((columnName) => `"${columnName}"`).join(", ");
+      const safeIdentifiers = safeColumns.map((columnName) => escapeIdentifier(columnName)).join(", ");
       const rowsQuery = await client.query<Record<string, unknown>>(
-        `SELECT ${safeIdentifiers} FROM "${ledgerTable.table_schema}"."${ledgerTable.table_name}" ORDER BY 1`
+        `SELECT ${safeIdentifiers} FROM ${escapeIdentifier(ledgerTable.table_schema)}.${escapeIdentifier(ledgerTable.table_name)} ORDER BY 1`
       );
 
       for (const row of rowsQuery.rows) {

@@ -19,3 +19,11 @@ Primary components:
 - `scripts/production-reconciliation/`
 - `infrastructure/nginx/proposed/`
 - this documentation set
+
+`infrastructure/nginx/proposed/` is a transitional legacy-target artifact for the
+historical shared-VPS Nginx path. The current canonical production deployment
+model remains the dedicated Hostinger VPS with host-level Caddy.
+
+Generated evidence under `artifacts/production-reconciliation/` is ignored by
+Git and must be treated as local/operator evidence only. It must not contain
+secrets.

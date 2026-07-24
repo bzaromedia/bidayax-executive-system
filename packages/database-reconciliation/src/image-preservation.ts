@@ -1,5 +1,5 @@
-import { approvedRollbackImageIds, rollbackImageTags } from "./canonical-contract.js";
-import type { ImagePreservationPlan, ImagePreservationRequest } from "./types.js";
+import { approvedRollbackImageIds, rollbackImageTags } from "./canonical-contract.ts";
+import type { ImagePreservationPlan, ImagePreservationRequest } from "./types.ts";
 
 const imageIdPattern = /^sha256:[a-f0-9]{64}$/;
 
@@ -20,8 +20,9 @@ function buildPlan(
   const normalizedObserved = normalizeImageId(request.observedImageId) ?? request.observedImageId.trim();
   const normalizedExpected = normalizeImageId(request.expectedImageId) ?? request.expectedImageId.trim();
   const normalizedExisting = normalizeImageId(request.existingTagImageId);
+  const commandSafe = equalityResult === "MATCH";
   const taggingCommands =
-    equalityResult === "MATCH" && normalizedExisting !== normalizedObserved
+    commandSafe && normalizedExisting !== normalizedObserved
       ? [`docker image tag ${normalizedObserved} ${request.rollbackTag}`]
       : [];
 
@@ -31,10 +32,12 @@ function buildPlan(
     observedImageId: normalizedObserved,
     rollbackTag: request.rollbackTag,
     equalityResult,
-    verificationCommands: [
-      `docker image inspect --format '{{.Id}}' ${normalizedObserved}`,
-      `docker image inspect --format '{{.Id}}' ${request.rollbackTag}`
-    ],
+    verificationCommands: commandSafe
+      ? [
+          `docker image inspect --format '{{.Id}}' ${normalizedObserved}`,
+          `docker image inspect --format '{{.Id}}' ${request.rollbackTag}`
+        ]
+      : [],
     taggingCommands,
     ...(refusalReason ? { refusalReason } : {}),
     evidenceFields: [

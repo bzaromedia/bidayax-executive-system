@@ -28,6 +28,7 @@ describe("image preservation plan", () => {
 
     expect(plan.equalityResult).toBe("MISMATCH");
     expect(plan.taggingCommands).toEqual([]);
+    expect(plan.verificationCommands).toEqual([]);
   });
 
   it("refuses an unapproved expected image identity", () => {
@@ -40,6 +41,47 @@ describe("image preservation plan", () => {
 
     expect(plan.equalityResult).toBe("INVALID");
     expect(plan.refusalReason).toContain("approved rollback image identity");
+    expect(plan.verificationCommands).toEqual([]);
+  });
+
+  it("refuses malformed image identifiers without executable commands", () => {
+    const plan = buildImagePreservationPlan({
+      service: "card",
+      expectedImageId: "sha256:not-valid;docker ps",
+      observedImageId: approvedRollbackImageIds.card,
+      rollbackTag: rollbackImageTags.card
+    });
+
+    expect(plan.equalityResult).toBe("INVALID");
+    expect(plan.verificationCommands).toEqual([]);
+    expect(plan.taggingCommands).toEqual([]);
+  });
+
+  it("refuses a wrong service rollback tag without executable commands", () => {
+    const plan = buildImagePreservationPlan({
+      service: "card",
+      expectedImageId: approvedRollbackImageIds.card,
+      observedImageId: approvedRollbackImageIds.card,
+      rollbackTag: rollbackImageTags.dashboard
+    });
+
+    expect(plan.equalityResult).toBe("INVALID");
+    expect(plan.verificationCommands).toEqual([]);
+    expect(plan.taggingCommands).toEqual([]);
+  });
+
+  it("refuses an existing rollback tag mismatch without executable commands", () => {
+    const plan = buildImagePreservationPlan({
+      service: "card",
+      expectedImageId: approvedRollbackImageIds.card,
+      observedImageId: approvedRollbackImageIds.card,
+      rollbackTag: rollbackImageTags.card,
+      existingTagImageId: approvedRollbackImageIds.dashboard
+    });
+
+    expect(plan.equalityResult).toBe("MISMATCH");
+    expect(plan.verificationCommands).toEqual([]);
+    expect(plan.taggingCommands).toEqual([]);
   });
 
   it("does not retag when the rollback tag already points at the approved image", () => {

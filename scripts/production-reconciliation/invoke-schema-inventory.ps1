@@ -1,6 +1,8 @@
 param(
   [Parameter(Mandatory = $true)]
-  [string]$ConnectionString,
+  [string]$TargetHost,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeProject,
   [string]$OutputPath = "artifacts/production-reconciliation/schema-inventory.json"
 )
 
@@ -12,7 +14,15 @@ $absoluteOutput = Join-Path $repoRoot $OutputPath
 $outputDirectory = Split-Path -Parent $absoluteOutput
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 
-& node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/schema-inventory.ts") $ConnectionString |
-  Set-Content -LiteralPath $absoluteOutput -NoNewline
+if (-not $env:DATABASE_URL) {
+  throw "DATABASE_URL must be supplied through the process environment, not a command argument."
+}
 
-Write-Host "Schema inventory written to $absoluteOutput"
+$report = & node --experimental-strip-types (Join-Path $repoRoot "packages/database-reconciliation/src/cli/schema-inventory.ts")
+if ($LASTEXITCODE -ne 0) {
+  throw "Schema inventory failed with exit code $LASTEXITCODE."
+}
+
+$report | Set-Content -LiteralPath $absoluteOutput -NoNewline
+
+Write-Host "Schema inventory written to $absoluteOutput for $TargetHost / $ComposeProject"

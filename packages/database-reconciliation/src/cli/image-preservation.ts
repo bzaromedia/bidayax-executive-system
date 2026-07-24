@@ -1,4 +1,4 @@
-import { buildImagePreservationPlan } from "../image-preservation.js";
+import { buildImagePreservationPlan } from "../image-preservation.ts";
 
 const service = process.argv[2];
 const expectedImageId = process.argv[3];
@@ -13,16 +13,16 @@ if ((service !== "card" && service !== "dashboard") || !expectedImageId || !obse
   process.exit(1);
 }
 
-console.log(
-  JSON.stringify(
-    buildImagePreservationPlan({
-      service,
-      expectedImageId,
-      observedImageId,
-      rollbackTag,
-      ...(existingTagImageId ? { existingTagImageId } : {})
-    }),
-    null,
-    2
-  )
-);
+const plan = buildImagePreservationPlan({
+  service,
+  expectedImageId,
+  observedImageId,
+  rollbackTag,
+  ...(existingTagImageId ? { existingTagImageId } : {})
+});
+
+console.log(JSON.stringify(plan, null, 2));
+
+if (plan.equalityResult !== "MATCH") {
+  process.exit(2);
+}

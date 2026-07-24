@@ -1,4 +1,4 @@
-import type { OperationEvidenceRecord } from "./types.js";
+import type { OperationEvidenceRecord } from "./types.ts";
 
 export function createOperationEvidenceRecord(
   partial: Omit<OperationEvidenceRecord, "timestampUtc">

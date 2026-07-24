@@ -1,7 +1,13 @@
 param(
   [Parameter(Mandatory = $true)]
   [ValidateSet("application", "proxy", "database")]
-  [string]$RollbackLevel
+  [string]$RollbackLevel,
+  [Parameter(Mandatory = $true)]
+  [string]$TargetHost,
+  [Parameter(Mandatory = $true)]
+  [string]$ComposeProject,
+  [Parameter(Mandatory = $true)]
+  [string]$OperatorAuthorizationReference
 )
 
 Set-StrictMode -Version Latest
@@ -29,5 +35,8 @@ $plans = @{
 
 [ordered]@{
   rollbackLevel = $RollbackLevel
+  targetHost = $TargetHost
+  composeProject = $ComposeProject
+  operatorAuthorizationReference = $OperatorAuthorizationReference
   steps = $plans[$RollbackLevel]
 } | ConvertTo-Json -Depth 4

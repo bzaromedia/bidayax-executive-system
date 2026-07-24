@@ -20,18 +20,22 @@ Tracked groups:
 
 Mandatory production safety assertions:
 
-- telephony provider mode disabled or sandbox-equivalent
+- telephony provider `mock`
+- telephony provider mode `disabled`
 - live inbound disabled
 - outbound disabled
 - production calls disabled
-- voice runtime disabled
+- voice runtime provider `none`
+- voice agent disabled
+- voice test mode enabled
+- recording disclosure disabled
 - call transfer disabled
 - human approval required
 
 Safety notes:
 
 - provider identity alone never authorizes execution
-- a real telephony provider identifier may exist while runtime remains disabled
-- disabled and sandbox-equivalent provider states are classified separately from active runtime states
+- a real telephony provider identifier is not accepted for the current production
+  reconciliation contract
 - missing provider credentials are never treated as permission to activate a provider
 - production telephony, production voice, and production calling remain disabled in this branch

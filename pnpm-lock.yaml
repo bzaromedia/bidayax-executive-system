@@ -242,13 +242,14 @@ importers:
         version: link:../types
 
   packages/database-reconciliation:
+    dependencies:
+      pg:
+        specifier: 8.22.0
+        version: 8.22.0
     devDependencies:
       '@types/pg':
         specifier: 8.20.0
         version: 8.20.0
-      pg:
-        specifier: 8.22.0
-        version: 8.22.0
       typescript:
         specifier: ^5.7.2
         version: 5.9.3
