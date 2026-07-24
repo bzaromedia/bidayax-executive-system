@@ -1,0 +1,23 @@
+# Architecture
+
+The reconciliation package has four layers:
+
+1. canonical migration manifests derived from repository migrations `0014`–`0017`
+2. deterministic live schema inventory for PostgreSQL 17
+3. reconciliation classification and operator decision support
+4. guarded PowerShell operator entrypoints and runbooks
+
+The package is provider-neutral. It compares evidence; it never executes a migration decision automatically.
+
+Post-review hardening:
+
+- definition equality is required for exact schema classification
+- missing definition evidence blocks baseline-only repair
+- compose project identity must be supplied explicitly and validated directly
+- rollback image preservation requires approved expected and observed image digests
+- operator scripts require explicit target scope rather than implicit production defaults
+- CLI-backed operator scripts must fail closed on unsafe reports before writing success messages
+- schema inventory credentials are supplied through the process environment, not command arguments
+- generated local evidence is ignored under `artifacts/`
+- proposed Nginx route artifacts are transitional legacy-target files; Caddy remains the canonical production proxy
+- these corrections were added after final PR #11 safety review while the branch remained repository-only and undeployed

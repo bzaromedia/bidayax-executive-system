@@ -35,3 +35,19 @@
 - Evidence:
   - `docs/FUTURE_SPECIALIST_AGENT_COLLECTIVE.md`
   - `docs/EVOLUTIONARY_AGENT_SYSTEM.md`
+
+## 2026-07-24 - Preferred Executor And Advisor Policy Updated
+
+- Decision: update active Codex workflow policy to prefer a role-based Executor
+  target of `gpt-5.5` with high reasoning and a read-only Advisor target of
+  `gpt-5.6-sol` with extra-high reasoning.
+- Reason: the current PR #11 remediation instruction requires a role-based
+  policy that records runtime fallbacks without permanently repinning the
+  Executor role when a preferred model is unavailable.
+- Evidence:
+  - root `AGENTS.md` now states the Executor may not self-approve and commit
+    authority follows required Advisor approval
+  - `docs/codex/MODEL-HIERARCHY.md`
+  - `docs/codex/WORKFLOW.md`
+  - `.codex/README.md`
+  - `.codex/config.toml`

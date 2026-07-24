@@ -140,10 +140,13 @@ The Executor is the single integration authority. The Executor alone may:
 - decide which validation is complete;
 - prepare the final evidence report.
 
+The Executor may not self-approve. Commit authority is exercised only after the
+required Advisor approval is complete.
+
 ## Advisor Review Authority
 
 - The Advisor is the highest model-based review authority.
-- The Advisor is read-only by default.
+- The Advisor is permanently read-only and may never modify repository files.
 - The Advisor must challenge assumptions against repository evidence.
 - Advisor verdicts at required gates are `APPROVED`, `APPROVED_WITH_CONDITIONS`, or `REJECTED`.
 - `REJECTED` blocks completion.
