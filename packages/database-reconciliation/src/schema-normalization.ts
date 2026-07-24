@@ -87,11 +87,46 @@ function normalizeType(value: unknown): string | null {
 function unwrapOuterParens(value: string): string {
   let result = value.trim();
 
-  while (result.startsWith("(") && result.endsWith(")")) {
+  while (hasSingleOuterParenPair(result)) {
     result = result.slice(1, -1).trim();
   }
 
   return result;
+}
+
+function hasSingleOuterParenPair(value: string): boolean {
+  if (!value.startsWith("(") || !value.endsWith(")")) {
+    return false;
+  }
+
+  let depth = 0;
+  let inSingleQuote = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? "";
+
+    if (character === "'" && value[index - 1] !== "\\") {
+      inSingleQuote = !inSingleQuote;
+      continue;
+    }
+
+    if (inSingleQuote) {
+      continue;
+    }
+
+    if (character === "(") {
+      depth += 1;
+    }
+
+    if (character === ")") {
+      depth -= 1;
+      if (depth === 0 && index < value.length - 1) {
+        return false;
+      }
+    }
+  }
+
+  return depth === 0;
 }
 
 function splitExpressionList(value: string): string[] {
@@ -135,6 +170,99 @@ function stripSafeLiteralCasts(value: string): string {
     .replace(/\)::(?:text|varchar|character varying)\[\]/gi, ")");
 }
 
+function normalizeExpressionWhitespaceAndCase(value: string): string {
+  const normalizedInput = value.replace(/\r\n/g, "\n");
+  let result = "";
+  let pendingWhitespace = false;
+  let inSingleQuote = false;
+
+  for (let index = 0; index < normalizedInput.length; index += 1) {
+    const character = normalizedInput[index] ?? "";
+
+    if (character === "'" && inSingleQuote && normalizedInput[index + 1] === "'") {
+      result += "''";
+      index += 1;
+      continue;
+    }
+
+    if (character === "'") {
+      inSingleQuote = !inSingleQuote;
+      if (pendingWhitespace && result.length > 0) {
+        result += " ";
+      }
+      pendingWhitespace = false;
+      result += character;
+      continue;
+    }
+
+    if (!inSingleQuote && /\s/.test(character)) {
+      pendingWhitespace = true;
+      continue;
+    }
+
+    if (pendingWhitespace && result.length > 0) {
+      result += " ";
+    }
+    pendingWhitespace = false;
+    result += inSingleQuote ? character : character.toLowerCase();
+  }
+
+  return result.trim();
+}
+
+function normalizeExpressionPunctuation(value: string): string {
+  let result = "";
+  let inSingleQuote = false;
+
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index] ?? "";
+
+    if (character === "'" && inSingleQuote && value[index + 1] === "'") {
+      result += "''";
+      index += 1;
+      continue;
+    }
+
+    if (character === "'") {
+      inSingleQuote = !inSingleQuote;
+      result += character;
+      continue;
+    }
+
+    if (inSingleQuote) {
+      result += character;
+      continue;
+    }
+
+    if (character === "(") {
+      result += "(";
+      while (value[index + 1] === " ") {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (character === ")") {
+      result = result.trimEnd();
+      result += ")";
+      continue;
+    }
+
+    if (character === ",") {
+      result = result.trimEnd();
+      result += ", ";
+      while (value[index + 1] === " ") {
+        index += 1;
+      }
+      continue;
+    }
+
+    result += character;
+  }
+
+  return result.trim();
+}
+
 function normalizeBetweenExpression(value: string): string {
   return value.replace(
     /\b([a-z_][a-z0-9_]*)\s+between\s+([0-9]+(?:\.[0-9]+)?)\s+and\s+([0-9]+(?:\.[0-9]+)?)/gi,
@@ -154,44 +282,19 @@ function normalizeMembershipExpression(value: string): string {
     });
 }
 
-function stripRedundantLogicalParens(value: string): string {
+function stripAtomicParens(value: string): string {
   let result = value;
   let previous = "";
 
   while (result !== previous) {
     previous = result;
-    result = result.replace(/\(([^()]*\b(?:and|or)\b[^()]*)\)/gi, "$1");
-  }
-
-  return result;
-}
-
-function stripNonMembershipParens(value: string): string {
-  const keepStack: boolean[] = [];
-  let result = "";
-
-  for (let index = 0; index < value.length; index += 1) {
-    const character = value[index] ?? "";
-
-    if (character === "(") {
-      const prefix = result.toLowerCase();
-      const keep = /\b(?:not\s+)?in\s*$/.test(prefix);
-      keepStack.push(keep);
-      if (keep) {
-        result += character;
+    result = result.replace(/\(([^()]+)\)/g, (match, inner: string) => {
+      if (/\bor\b/i.test(inner)) {
+        return match;
       }
-      continue;
-    }
 
-    if (character === ")") {
-      const keep = keepStack.pop() ?? false;
-      if (keep) {
-        result += character;
-      }
-      continue;
-    }
-
-    result += character;
+      return inner.trim();
+    });
   }
 
   return result;
@@ -202,17 +305,11 @@ export function normalizeSchemaExpression(value: unknown): string | null {
     return null;
   }
 
-  const collapsed = collapseWhitespace(unwrapOuterParens(value)).replace(/\s+/g, " ").toLowerCase();
-  const normalized = stripNonMembershipParens(stripRedundantLogicalParens(
+  const collapsed = normalizeExpressionWhitespaceAndCase(unwrapOuterParens(value));
+  const normalized = stripAtomicParens(
     normalizeBetweenExpression(normalizeMembershipExpression(stripSafeLiteralCasts(collapsed)))
-  ));
-  return collapseWhitespace(unwrapOuterParens(normalized))
-    .toLowerCase()
-    .replace(/\(\s+/g, "(")
-    .replace(/\s+\)/g, ")")
-    .replace(/\(([a-z_][a-z0-9_]*)\)/gi, "$1")
-    .replace(/,\s*/g, ", ")
-    .replace(/\s+/g, " ");
+  );
+  return normalizeExpressionPunctuation(normalizeExpressionWhitespaceAndCase(unwrapOuterParens(normalized)));
 }
 
 function normalizeScalar(value: unknown): unknown {
@@ -365,6 +462,3 @@ export function normalizeSchemaObject(object: SchemaLikeObject) {
     metadata: normalizeMetadata(object.objectType, object.metadata)
   };
 }
-
-
-

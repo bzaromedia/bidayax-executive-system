@@ -146,6 +146,17 @@ describe("compose safety validator", () => {
     expect(results.find((result) => result.invariant === "project-name-operator-scope")?.status).toBe("FAILED");
   });
 
+  it("fails if an operator attempts to override the canonical expected project", () => {
+    const fixture = makeRenderedCompose({ actualProjectName: "unapproved-project" });
+    const results = validateComposeSafety({
+      expectedProjectName: "unapproved-project",
+      actualProjectName: fixture.actualProjectName,
+      renderedCompose: fixture.renderedCompose
+    });
+
+    expect(results.find((result) => result.invariant === "project-name-operator-scope")?.status).toBe("FAILED");
+  });
+
   it("fails if the card host binding changes", () => {
     const fixture = makeRenderedCompose({ cardBinding: "0.0.0.0:3000:3000" });
     const results = validateComposeSafety({

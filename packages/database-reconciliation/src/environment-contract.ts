@@ -67,6 +67,10 @@ function isTrueLike(value: string | undefined): boolean {
   return ["1", "true", "yes", "on", "enabled"].includes(normalizeText(value) ?? "");
 }
 
+function isFalseLikeOrEmpty(value: string | undefined): boolean {
+  return value === undefined || value.length === 0 || isFalseLike(value);
+}
+
 function classifyTelephonyProvider(environment: ParsedEnvironment): EnvironmentValidationResult {
   const provider = normalizeText(environment.get("TELEPHONY_PROVIDER"));
   const mode = normalizeText(environment.get("TELEPHONY_PROVIDER_MODE"));
@@ -142,6 +146,18 @@ export function validateEnvironmentVariables(environment: ParsedEnvironment): En
         group: definition.group,
         classification: definition.required ? "MISSING_REQUIRED" : "MISSING_OPTIONAL",
         evidence: definition.reservedForFuture ? ["future optional reservation"] : ["variable missing"]
+      });
+      continue;
+    }
+
+    if (definition.reservedForFuture) {
+      results.push({
+        variable: definition.name,
+        group: definition.group,
+        classification: isFalseLikeOrEmpty(value) ? "SAFE_DISABLED" : "PRESENT_INVALID",
+        evidence: isFalseLikeOrEmpty(value)
+          ? ["future capability remains explicitly disabled"]
+          : ["future capability is frozen and must not be enabled in production reconciliation"]
       });
       continue;
     }

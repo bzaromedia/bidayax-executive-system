@@ -321,6 +321,7 @@ function collectRuntimeEnvironmentFailures(servicesSection: string[]): string[] 
 
 export function validateComposeSafety(input: ComposeSafetyInput): ComposeInvariantResult[] {
   const { actualProjectName, expectedProjectName, renderedCompose } = input;
+  const expectedProjectLocked = expectedProjectName === executiveCardComposeProject;
   const lines = splitLines(renderedCompose);
   const servicesSection = getSectionLines(lines, "services");
   const networksSection = getSectionLines(lines, "networks");
@@ -336,8 +337,8 @@ export function validateComposeSafety(input: ComposeSafetyInput): ComposeInvaria
   const migrateBlock = getNamedChildBlock(servicesSection, "migrate").join("\n");
 
   return [
-    result("project-name-operator-scope", actualProjectName.trim().length > 0 && actualProjectName === expectedProjectName, [
-      `expected compose project ${expectedProjectName}`,
+    result("project-name-operator-scope", expectedProjectLocked && actualProjectName === executiveCardComposeProject, [
+      `expected compose project ${executiveCardComposeProject}`,
       `received compose project ${actualProjectName || "<empty>"}`
     ]),
     result("card-loopback-binding", portMappings.includes(executiveCardBindings.card), [

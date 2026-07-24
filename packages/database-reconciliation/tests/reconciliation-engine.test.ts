@@ -91,6 +91,90 @@ describe("reconcileMigration", () => {
     expect(result.classification).toBe("SCHEMA_DRIFT");
   });
 
+  it("detects check constraint drift when logical grouping changes", () => {
+    const checkManifest: CanonicalMigrationManifest = {
+      ...manifest,
+      objects: [
+        ...manifest.objects,
+        makeObject(
+          "check_constraint",
+          "tenant_membership_scope_check",
+          { expression: "(A AND B) OR (C AND D)" },
+          "tenants"
+        )
+      ]
+    };
+    const result = reconcileMigration(
+      checkManifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "check_constraint",
+          "tenant_membership_scope_check",
+          { expression: "A AND (B OR C) AND D" },
+          "tenants"
+        )
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+    expect(result.recommendedAction).toBe("MANUAL_REVIEW_REQUIRED");
+  });
+
+  it("detects check constraint drift when quoted identifier semantics differ", () => {
+    const checkManifest: CanonicalMigrationManifest = {
+      ...manifest,
+      objects: [
+        ...manifest.objects,
+        makeObject("check_constraint", "quoted_identifier_check", { expression: '"Tenant_ID" IS NOT NULL' }, "tenants")
+      ]
+    };
+    const result = reconcileMigration(
+      checkManifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "check_constraint",
+          "quoted_identifier_check",
+          { expression: "tenant_id IS NOT NULL" },
+          "tenants"
+        )
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
+  it("detects check constraint drift inside string literal content", () => {
+    const checkManifest: CanonicalMigrationManifest = {
+      ...manifest,
+      objects: [
+        ...manifest.objects,
+        makeObject("check_constraint", "literal_content_check", { expression: "status <> 'needs review'" }, "tenants")
+      ]
+    };
+    const result = reconcileMigration(
+      checkManifest,
+      [
+        makeInventoryObject("table", "tenants", { columns: ["tenant_id"] }),
+        makeInventoryObject("column", "tenant_id", { dataType: "text", isNullable: false }, "tenants"),
+        makeInventoryObject(
+          "check_constraint",
+          "literal_content_check",
+          { expression: "status <> 'needs  review'" },
+          "tenants"
+        )
+      ],
+      []
+    );
+
+    expect(result.classification).toBe("SCHEMA_DRIFT");
+  });
+
   it("detects extra scoped objects on a canonical table as drift", () => {
     const result = reconcileMigration(
       manifest,

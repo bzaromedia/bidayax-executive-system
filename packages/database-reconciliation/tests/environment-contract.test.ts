@@ -89,4 +89,32 @@ describe("environment contract validator", () => {
       "PRESENT_INVALID"
     );
   });
+
+  it("keeps future Wallet flags safely disabled when absent or false", () => {
+    const environment = makeBaseEnvironment();
+    environment.set("WALLET_FEATURE_ENABLED", "false");
+    environment.set("WALLET_PUBLIC_ISSUANCE_ENABLED", "disabled");
+    const results = validateEnvironmentVariables(environment);
+
+    expect(results.find((result) => result.variable === "WALLET_FEATURE_ENABLED")?.classification).toBe(
+      "SAFE_DISABLED"
+    );
+    expect(results.find((result) => result.variable === "WALLET_PUBLIC_ISSUANCE_ENABLED")?.classification).toBe(
+      "SAFE_DISABLED"
+    );
+  });
+
+  it("rejects enabled future Wallet flags", () => {
+    const environment = makeBaseEnvironment();
+    environment.set("WALLET_FEATURE_ENABLED", "true");
+    environment.set("WALLET_PUBLIC_ISSUANCE_ENABLED", "enabled");
+    const results = validateEnvironmentVariables(environment);
+
+    expect(results.find((result) => result.variable === "WALLET_FEATURE_ENABLED")?.classification).toBe(
+      "PRESENT_INVALID"
+    );
+    expect(results.find((result) => result.variable === "WALLET_PUBLIC_ISSUANCE_ENABLED")?.classification).toBe(
+      "PRESENT_INVALID"
+    );
+  });
 });

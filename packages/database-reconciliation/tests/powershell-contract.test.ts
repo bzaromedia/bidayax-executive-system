@@ -42,7 +42,7 @@ describe("powershell contract", () => {
     expect(schemaInventory).toContain("[string]$TargetHost");
     expect(schemaInventory).toContain("[string]$ComposeProject");
     expect(composeSafety).toContain("[string]$ActualProjectName");
-    expect(composeSafety).toContain("$ExpectedComposeProject");
+    expect(composeSafety).not.toContain("$ExpectedComposeProject");
     expect(imagePreservation).toContain("[string]$ExpectedImageId");
     expect(imagePreservation).toContain("[string]$ObservedImageId");
     expect(releaseMaterialization).toContain("[string]$OperatorAuthorizationReference");
