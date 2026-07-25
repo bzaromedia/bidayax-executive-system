@@ -31,6 +31,7 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm db:migrations:verify",
     "verify:design-governance": "node --experimental-strip-types scripts/verify-design-governance.ts",
     "verify:dev-orchestration": "node --experimental-strip-types scripts/verify-dev-orchestration.ts",
+    "verify:communications-data-model:postgres": "node --experimental-strip-types scripts/verify-communications-data-model-postgres.ts",
     "verify:no-missing-workspaces": "node --experimental-strip-types scripts/verify-no-missing-workspaces.ts",
     "verify:no-placeholders": "node --experimental-strip-types scripts/verify-no-placeholders.ts",
     "verify:observability": "pnpm db:migrations:verify && pnpm telemetry:verify",

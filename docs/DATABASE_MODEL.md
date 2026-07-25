@@ -211,6 +211,48 @@ database/models/telephony-integration.md
 
 Phase 9 still does not store raw recordings, raw audio streams, real provider execution records, sent email records, calendar booking records, payment data, contact enrichment, or CRM pipeline records.
 
+## Phase 11B Communications Data Model Tables
+
+Phase 11B adds the Communications-owned persistence boundary accepted by
+ADR-0002. Migration `database/migrations/0018_create_communications_data_model.sql`
+creates:
+
+```text
+communications
+communication_participants
+communication_participant_endpoints
+communication_consent_policies
+communication_consent_receipts
+communication_suppressions
+communication_lifecycle_transitions
+communication_command_idempotency_keys
+communication_dispatch_attempts
+communication_webhook_evidence
+communication_routing_policies
+communication_receptionist_sessions
+communication_adapter_health
+communication_trust_evidence_references
+communication_audit_events
+```
+
+The migration preserves single-writer Communications ownership for product
+policy, consent, suppression, lifecycle, command idempotency, dispatch-attempt
+state, webhook evidence, routing policy, receptionist-session references,
+adapter health, trust references, and audit evidence. Telephony tables remain
+adapter-local or legacy preparation evidence unless a later accepted decision
+changes ownership.
+
+The database model enforces tenant scope, card scope where applicable,
+tenant-composite relationships, append-only evidence, authorization evidence,
+active-session and active-grant checks for command writes, active-consent
+requirements for queued dispatch attempts, suppression denial, disabled
+provider dispatch, durable idempotency, explicit lifecycle transitions, and
+sanitized audit, trust, webhook, and metadata records.
+
+Phase 11B does not create provider activation, production telephony,
+production voice, live webhooks, orchestration runtime, Wallet, payment,
+marketplace, loyalty, rewards, or Phase 12 implementation tables.
+
 ## Migration Policy
 
 When migrations are introduced:
@@ -224,4 +266,9 @@ When migrations are introduced:
 
 ## Remaining Non-Implementation Note
 
-The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, Phase 7 contact graph tables, Phase 8 receptionist foundation tables, and Phase 9 telephony preparation tables. Contact, company, CRM, live provider execution, scheduling, enrichment, payment, and production automation tables are intentionally unbuilt.
+The implemented persistence model now includes the Phase 4 event ledger, Phase
+6 intent scores, Phase 7 contact graph tables, Phase 8 receptionist foundation
+tables, Phase 9 telephony preparation tables, and the Phase 11B
+Communications-owned data-model tables. Contact, company, CRM, live provider
+execution, scheduling execution, enrichment, payment, Wallet, and production
+automation tables remain intentionally unbuilt.
