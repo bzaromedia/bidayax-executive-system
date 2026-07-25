@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -19,9 +19,11 @@ Phase 11B should define a tenant-scoped, communications-owned data model that
 extends the existing telephony and trust foundations instead of creating a
 parallel storage system.
 
-This ADR is a planning draft only. It does not authorize migrations, schema
-changes, generated clients, runtime code, provider integration, deployment, or
-production activation.
+This ADR becomes effective only when merged by PR #14. It authorizes Phase 11B
+implementation entry only after every Phase Gate Policy entry requirement is
+evidenced and an owner-approved implementation plan records the file scope. It
+does not authorize provider integration, deployment, production activation,
+Phase 11C behavior, Phase 12 work, or Wallet-related work.
 
 ## Context
 
@@ -58,9 +60,9 @@ model while reusing compatible tables and avoiding dual writers.
 
 ## Non-Goals
 
-- Migrations or schema changes.
-- Runtime persistence implementation.
-- Generated database clients.
+- Migrations or schema changes outside the Phase 11B implementation package.
+- Runtime orchestration behavior.
+- Generated database clients outside the approved Phase 11B package.
 - Provider selection or provider activation.
 - Live webhook execution.
 - Live inbound calls, outbound calls, voice, messaging, or scheduling.
@@ -90,8 +92,11 @@ The planned model should cover:
 - `communication_adapter_health`
 - `communication_failover_event`
 
-Existing telephony entities remain adapter or compatibility evidence until a
-later accepted implementation package changes write authority.
+Existing telephony entities remain adapter or compatibility evidence until an
+accepted Phase 11B implementation package changes write authority. Migration
+`0005_create_telephony_preparation.sql` is legacy preparation evidence and may
+not receive new Communications-owned writes unless a later implementation
+package proves tenant scoping, ownership, and rollback safety.
 
 ## Aggregates and Ownership
 
@@ -148,6 +153,15 @@ aware, purpose aware, versioned, jurisdiction tagged, and linked to evidence.
 Recording, transcription, AI disclosure, revocation, source, and timestamp
 fields must be explicit.
 
+Consent policy and participant consent evidence are separate records. Policy
+records define the rule version, jurisdiction, channel, purpose, disclosure,
+and retention obligations. Participant consent observations or receipts record
+the subject, source, evidence reference, effective time, expiry, revocation
+state, and consented purpose. Missing, expired, ambiguous, purpose-mismatched,
+channel-mismatched, stale, or revoked evidence must deny dispatch. Revocation
+and dispatch must be transactionally ordered so a revocation race cannot permit
+execution.
+
 ## Suppression Records
 
 Suppression records must support participant-level and policy-level suppression,
@@ -167,7 +181,13 @@ transcripts, raw audio, provider secrets, private keys, authorization tokens,
 and raw provider payloads must not be stored in trust evidence.
 
 The model must define linkage to the existing trust tables without duplicating
-cryptographic storage.
+cryptographic storage. Phase 11B implementation must decide exact
+Communications trust domains, artifact schemas, canonicalization versions, key
+purposes, tenant-composite links, evidence-field allowlists, and rejection
+rules before any trust rows are written. If the existing trust domain
+constraints cannot represent Communications-owned evidence, the implementation
+must extend the trust schema through a forward migration rather than misclassify
+Communications evidence under another domain.
 
 ## Communications Routing Data
 
@@ -191,8 +211,19 @@ and normalized transport health.
 ## Tenant Isolation
 
 All Communications-owned rows must be tenant-scoped. Card-owned rows must use
-card and tenant constraints that prevent cross-tenant references. Cross-tenant
-negative tests are required before implementation closure.
+card and tenant constraints that prevent cross-tenant references.
+
+Phase 11B implementation must make table-by-table ownership decisions for all
+reused, extended, deprecated, quarantined, or new tables. Every tenant-owned
+relationship must use database-enforced tenant-composite references such as
+`(tenant_id, resource_id)`, plus card scope where applicable. Session, callback,
+transcript, recording, audit, routing, consent, suppression, trust, and
+receptionist-session references must reject tenant or card mismatches at the
+database boundary.
+
+Cross-tenant and cross-card negative tests are required before implementation
+closure. Disposable PostgreSQL tests must attempt mismatched inserts for every
+child/session/reference pair and prove database-level rejection.
 
 ## Authorization Model
 
@@ -200,6 +231,14 @@ Every write path must resolve authenticated identity and permissions on the
 server. Caller-supplied tenant, card, role, and permission claims are
 non-authoritative. Sensitive commands require command-specific permissions,
 resource ownership, reason, and audit evidence.
+
+Communications records must bind actors to authoritative identity evidence:
+user, service, or platform principal references; tenant membership; card grant
+where applicable; session or delegated-authority context; authorization
+decision ID; permission version; policy version; denial evidence; and audit
+event linkage. Forged actor identifiers, revoked sessions or grants,
+cross-tenant principals, suppression release attempts, and platform kill-switch
+commands must fail closed in tests.
 
 ## Data Classification
 
@@ -225,6 +264,16 @@ The model must minimize personally identifiable information, avoid raw
 transcripts and raw audio in trust evidence, redact provider payloads, and
 preserve consent and suppression decisions.
 
+Raw webhook bodies and raw provider payload bytes are transient signature
+verification inputs by default. Durable storage may keep only hashes, provider
+event identifiers, verification results, timestamps, and sanitized metadata
+unless a later accepted implementation package records a legal basis,
+segregated encrypted storage, strict read authorization, short TTL, deletion
+evidence, and rollback behavior. Audit, trust, logs, metrics, traces, and
+dashboard data must reject raw bodies, phone/email values where not explicitly
+authorized, authorization headers, tokens, provider secrets, transcripts, audio,
+and secret-like keys.
+
 ## Indexing and Query Patterns
 
 Planned query patterns include tenant/card status views, lifecycle timelines,
@@ -242,13 +291,22 @@ transaction boundaries before migrations are authored.
 
 Phase 11B implementation must use forward-only migrations with rollback plans,
 database-backed validation, compatibility checks against existing telephony
-tables, and explicit dual-write prevention. No migration is authorized by this
-Proposed ADR.
+tables, and explicit dual-write prevention.
+
+The implementation package must add or identify a named mandatory PostgreSQL
+validation gate that applies the complete migration chain and verifies
+constraints, tenant isolation, immutability, concurrency, idempotency,
+rollback/roll-forward safety, dual-write prevention, and continued provider
+dispatch disablement. The existing filename/sequence migration verifier is
+necessary but not sufficient for Phase 11B closure.
 
 ## Rollback Strategy
 
 Rollback must preserve production-disabled behavior, avoid provider access, and
-restore the last approved schema state. Rollback evidence must prove no
+restore service safety without deleting audit, consent, lifecycle, or trust
+evidence. Rollback for forward-only migrations means disabling new writers,
+disabling new readers where necessary, reverting composition roots, or applying
+a corrective roll-forward migration. Rollback evidence must prove no
 communications provider, VPS, production database, or production data was
 accessed without authorization.
 
@@ -281,20 +339,37 @@ payload leakage.
 
 - The Communications data model extends or reuses existing telephony and trust
   foundations without parallel ownership.
+- Table-by-table ownership decisions classify existing tables as reused,
+  extended, deprecated, quarantined, or adapter-local.
+- Legacy migration `0005_create_telephony_preparation.sql` writes are
+  quarantined or made safe before Communications-owned writes use them.
 - All planned rows are tenant-scoped and card-scoped where applicable.
+- Every tenant-owned relationship uses tenant-composite database constraints,
+  plus card scope where applicable.
 - Single-writer ownership and dual-write prevention are explicit.
-- Consent, suppression, audit, trust evidence, retention, privacy, and
-  authorization requirements are defined.
-- Migration, rollback, validation, and observability requirements are defined.
-- Phase 11B implementation remains locked until this ADR is accepted and an
-  implementation package is approved.
+- Consent policy records are separated from immutable participant consent
+  evidence, and missing, stale, mismatched, or revoked consent denies dispatch.
+- Suppression, audit, trust evidence, retention, privacy, and authorization
+  requirements are defined.
+- Raw webhook, PII, transcript, audio, token, provider-secret, and raw provider
+  payload storage boundaries are enforced.
+- Communications trust domains, artifact schemas, canonicalization versions,
+  and evidence allowlists are defined.
+- Migration, rollback, PostgreSQL validation, and observability requirements are
+  defined.
+- Phase 11B implementation remains locked until PR #14 is merged, this ADR or a
+  superseding ADR is Accepted and effective, every Phase Gate Policy entry
+  criterion is evidenced, and an implementation package is owner-approved.
 
 ## Test Strategy
 
 Required future implementation tests include migration verification,
 database-backed integration tests, tenant-isolation tests, cross-card negative
-tests, idempotency tests, append-only audit tests, consent and suppression
-tests, authorization tests, rollback tests, and repository verification.
+tests, tenant-composite foreign-key rejection tests, idempotency tests,
+concurrency tests, append-only audit tests, consent and suppression tests,
+revocation-versus-dispatch race tests, authorization tests, trust evidence
+allowlist tests, raw payload and PII rejection tests, rollback or corrective
+roll-forward tests, and repository verification.
 
 ## Completion Evidence
 

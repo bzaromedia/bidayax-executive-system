@@ -5,22 +5,23 @@
 - Phase: 11A
 - Name: Communications Domain Architecture and Governance
 - Owner: BidayaX LLC
-- Closure status: Proposed
-- Date: 2026-07-24
+- Closure status: Accepted
+- Date: 2026-07-25
 
-## Closure Recommendation
+## Formal Closure Decision
 
-Outcome A: Phase 11A is complete when this closure record is reviewed,
-Advisor-approved, accepted, and merged.
+Outcome A: Phase 11A is complete. This closure record was reviewed,
+Advisor-approved, accepted, and merged by PR #13.
 
-Phase 11B planning is the next authorized action only after this closure record
-is merged. Phase 11B implementation remains locked until a scoped Phase 11B plan
-and accepted ADR coverage authorize it.
+Phase 11B planning is the next authorized action. Phase 11B implementation
+remains locked until PR #14 is merged, ADR-0002 or a superseding ADR is
+Accepted, every Phase Gate Policy entry requirement is evidenced, and an
+owner-approved implementation plan authorizes the file scope.
 
 ## ADRs Satisfied
 
 - ADR: `docs/adr/0001-communications-completion-boundary.md`
-- Status: Accepted in this closure branch; effective when merged.
+- Status: Accepted and effective after PR #13 merged.
 - Evidence: ADR-0001 defines the Communications target boundary, current
   migration state, security implications, non-goals, consequences, testing
   strategy, migration strategy, rollback strategy, and future impact.
@@ -135,8 +136,6 @@ and accepted ADR coverage authorize it.
 
 ## Remaining Risks
 
-- Closure remains pending PR #13 final merge Advisor review, approval, and
-  merge.
 - Future edits can drift from ADR-0001 unless Phase 11B starts with a scoped
   plan and accepted ADR coverage.
 - Legacy telephony still owns executable transport control-plane behavior until
@@ -165,7 +164,8 @@ and accepted ADR coverage authorize it.
   `be63fbf454fed53b30f38f2f8bfb884d46c95292`.
 - PR #12: linear production governance,
   `d3b7091d781b21a6bb2944520e637faeb2347e35`.
-- Closure PR: PR #13 from `docs/phase-11a-closure`.
+- Closure PR: PR #13 from branch docs/phase-11a-closure,
+  `744d4ab9d5b04c69935848755d4b48d2e8f45c27`.
 
 ## Production Status
 
@@ -186,7 +186,8 @@ the closure PR before merge.
 
 ## Formal Decision
 
-- Decision: Recommend accepting Phase 11A as complete when this closure record
-  receives final Advisor approval and is merged.
+- Decision: Phase 11A is accepted as complete.
 - Approver: BidayaX LLC owner or explicitly authorized repository reviewer.
-- Date: 2026-07-24.
+- Evidence: PR #13 merged the closure record and traceability evidence, and
+  post-merge repository validation passed.
+- Date: 2026-07-25.

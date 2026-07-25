@@ -30,10 +30,17 @@ not silently rewrite accepted history.
 ## Status Vocabulary
 
 - `Proposed`: drafted for review; not implementation authority.
-- `Accepted`: approved and active; implementation may proceed within scope.
+- `Accepted`: approved; implementation may proceed within scope only after the
+  ADR is merged into the active repository history and all applicable phase
+  entry gates are satisfied.
 - `Superseded`: replaced by a later accepted ADR.
 - `Amended`: changed through the explicit amendment mechanism below.
 - `Rejected`: reviewed and not accepted.
+
+ADR status changes in an open pull request are not active governance until the
+pull request is merged. A branch may carry `Accepted` only as a merge-effective
+decision candidate after the required review evidence exists; the decision
+becomes active only in the merged repository state.
 
 ## Immutability
 
@@ -60,4 +67,4 @@ ADR coverage before implementation.
 | ADR | Title | Status | Phase |
 | --- | --- | --- | --- |
 | `0001` | Communications Completion Boundary | Accepted | Phase 11 |
-| `0002` | Communications Data Model | Proposed | Phase 11B |
+| `0002` | Communications Data Model | Accepted | Phase 11B |

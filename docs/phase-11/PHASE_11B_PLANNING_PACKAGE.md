@@ -71,17 +71,68 @@ Phase 11A is formally closed by:
   logs.
 - Which data is prohibited from storage.
 
+## Phase 11B Entry Requirements
+
+Phase 11B implementation may begin only after all of the following are true:
+
+- PR #14 is merged.
+- ADR-0002 or a superseding Communications Data Model ADR is Accepted and
+  effective.
+- Scope and non-goals are explicit.
+- Acceptance criteria are authoritative.
+- The test and validation plan identifies required local and CI gates,
+  including database-backed PostgreSQL validation.
+- Rollback is defined as disabling new writers/readers or corrective
+  roll-forward without deleting audit, consent, lifecycle, or trust evidence.
+- Security, privacy, reliability, and observability requirements are defined.
+- An owner-approved implementation plan records the exact file scope and work
+  package order.
+- No owner decision remains unresolved.
+- Phase 11B scope is separable from Phase 11C orchestration behavior.
+- Wallet, Phase 12, production activation, provider activation, and future work
+  remain excluded.
+
+## Security And Data Boundary Requirements
+
+- Every reused, extended, deprecated, quarantined, adapter-local, or new table
+  must have a table-by-table ownership decision.
+- Legacy `0005_create_telephony_preparation.sql` writes must be quarantined or
+  made safe before Communications-owned writes use them.
+- Every tenant-owned relationship must use database-enforced
+  tenant-composite references, plus card scope where applicable.
+- Consent policy records must be separate from participant consent observations
+  or receipts.
+- Missing, expired, ambiguous, purpose-mismatched, channel-mismatched, stale, or
+  revoked consent must deny dispatch.
+- Raw webhook bodies and raw provider payload bytes are transient signature
+  verification inputs by default.
+- Durable webhook evidence may keep hashes, provider event IDs, verification
+  results, timestamps, and sanitized metadata only, unless a later accepted
+  implementation package documents legal basis, segregated encrypted storage,
+  strict access control, short TTL, deletion evidence, and rollback behavior.
+- Trust evidence must use exact Communications domains, artifact schemas,
+  canonicalization versions, key purposes, tenant-composite links, and
+  allowlisted fields.
+- Actors must bind to authoritative user, service, or platform principal
+  evidence, tenant memberships, card grants where applicable, sessions or
+  delegated authority, authorization decision IDs, permission versions, policy
+  versions, denial evidence, and audit events.
+- Phase 11B must include a named mandatory PostgreSQL validation gate that
+  applies the full migration chain and tests constraints, tenant isolation,
+  immutability, concurrency, idempotency, rollback/roll-forward safety,
+  dual-write prevention, provider credential absence, and disabled dispatch.
+
 ## Proposed Work Packages For Later Authorization
 
 These are planning outputs only:
 
 | Package | Purpose | Implementation status |
 | --- | --- | --- |
-| 11B-1 | Finalize ADR-0002 and entity inventory | Planning only |
-| 11B-2 | Draft migration design and rollback plan | Locked |
-| 11B-3 | Draft database-backed validation plan | Locked |
-| 11B-4 | Draft repository/service integration plan | Locked |
-| 11B-5 | Draft Phase 11B closure evidence template | Locked |
+| 11B-1 | Finalize ADR-0002, entity inventory, and table ownership decisions | Planning only |
+| 11B-2 | Draft migration design, PostgreSQL validation gate, and rollback/roll-forward plan | Locked |
+| 11B-3 | Draft tenant-isolation, authorization, consent, suppression, trust, PII, and raw-payload test plan | Locked |
+| 11B-4 | Draft repository/service integration plan without Phase 11C orchestration behavior | Locked |
+| 11B-5 | Draft Phase 11B traceability and closure evidence template | Locked |
 
 ## Validation Strategy
 
@@ -90,12 +141,22 @@ Future implementation must include:
 - migration verification;
 - disposable PostgreSQL integration tests;
 - tenant-isolation and cross-card negative tests;
+- tenant-composite foreign-key mismatch tests for every child/session/reference
+  pair;
 - idempotency tests;
+- concurrency tests;
 - append-only audit and lifecycle tests;
 - consent and suppression tests;
+- consent revocation-versus-dispatch race tests;
 - authorization tests;
+- forged actor, revoked session, revoked grant, cross-tenant principal, and
+  kill-switch authorization denial tests;
 - trust-evidence linkage tests;
-- rollback validation;
+- trust evidence allowlist and sensitive-field rejection tests;
+- raw webhook body, raw provider payload, phone/email, authorization header,
+  token, transcript, audio, and secret-like key rejection tests for audit,
+  trust, logs, metrics, traces, and dashboard data;
+- rollback or corrective roll-forward validation;
 - repository `pnpm verify`;
 - Advisor review.
 

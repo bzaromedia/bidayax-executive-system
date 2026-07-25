@@ -41,15 +41,19 @@ Production Hardening or historical Phase 12 Observability.
 
 ## Next Authorized Work Package
 
-Review the Phase 11B Data Model planning package and proposed ADR-0002. Do not
-begin Phase 11B implementation, migrations, schema changes, runtime code,
-provider integration, production activation, or Phase 12 implementation.
+Review, validate, and merge the Phase 11B Data Model planning package and
+ADR-0002. Do not begin Phase 11B implementation, migrations, schema changes,
+runtime code, provider integration, production activation, or Phase 12
+implementation until PR #14 is merged, ADR-0002 or a superseding ADR is
+Accepted and effective, every Phase Gate Policy entry requirement is evidenced,
+and an owner-approved implementation plan records the authorized file scope.
 
 ## Locked Work
 
 Phase 11B implementation and Phase 11C through 11I remain sequentially locked
-behind accepted planning, accepted ADR coverage, implementation authorization,
-and predecessor closure gates. Phase 12 through Phase 18, Wallet, payments
+behind PR #14 merge, accepted ADR coverage, complete Entry Gate evidence,
+implementation authorization, and predecessor closure gates. Phase 12 through
+Phase 18, Wallet, payments
 expansion, cryptocurrency, digital assets, loyalty, rewards, marketplace,
 white-label expansion, enterprise expansion, speculative AI features,
 experimental UI systems, unrelated platform integrations, and Version 2
