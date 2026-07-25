@@ -30,7 +30,7 @@ subphases:
 
 | Subphase | Name | Current disposition |
 | --- | --- | --- |
-| 11A | Architecture and governance | Active; awaiting PR #12 merge and closure evidence. |
+| 11A | Architecture and governance | Closure evidence package proposed; 11B remains locked until accepted and merged. |
 | 11B | Data model | Locked until 11A closure. |
 | 11C | Orchestration runtime | Locked until 11B closure. |
 | 11D | Telephony adapter | Locked until 11C closure. |

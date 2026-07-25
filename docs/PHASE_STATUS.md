@@ -5,7 +5,9 @@ Owner: BidayaX LLC
 Public URL: https://theexecutivecard.online  
 Review stage: Recovery Phase B - Enterprise Completion Gate
 
-Allowed statuses: implemented, partial, active, deferred, blocked, removed_from_release_scope.
+Allowed statuses for this historical v1.0 table: implemented, partial, deferred, blocked, removed_from_release_scope.
+
+Active production-roadmap status is tracked in `docs/governance/CURRENT_PHASE_STATUS.md`, not as a row status in this historical table.
 
 The Executive Card v1.0 includes only implemented, tested, production-buildable capabilities. Deferred enterprise trust layers are not active product capabilities in v1.0.
 

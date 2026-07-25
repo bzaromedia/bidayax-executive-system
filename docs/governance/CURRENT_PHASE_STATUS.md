@@ -36,9 +36,8 @@ Production Hardening or historical Phase 12 Observability.
 
 ## Next Authorized Work Package
 
-Complete PR #12 governance review, validation, Advisor approval, and merge.
-After PR #12 merges, prepare the Phase 11A closure evidence package. Do not
-begin Phase 11B implementation or Phase 12 implementation.
+Review and merge the Phase 11A closure evidence package. Do not begin Phase 11B
+implementation or Phase 12 implementation.
 
 ## Locked Work
 
