@@ -111,13 +111,26 @@ unresolved earlier package.
 | Existing area | Decision |
 | --- | --- |
 | `0005_create_telephony_preparation.sql` | Quarantine as legacy preparation evidence. Do not write Communications-owned rows to these tables. |
+| `telephony_calls` | Legacy preparation table. Do not use for new Communications-owned writes. |
+| `telephony_call_events` | Legacy preparation table. Communications audit and lifecycle evidence must use Communications-owned records. |
+| `voice_sessions` | Legacy preparation table. Receptionist-session references must use the Phase 11B Communications boundary. |
+| `outbound_call_requests` | Legacy preparation table. Outbound dispatch remains disabled until later authorization. |
 | `telephony_phone_numbers` | Adapter-local number metadata; may be referenced by Communications through tenant-composite constraints only. |
 | `telephony_call_sessions` | Adapter-local transport sessions; Communications lifecycle must use its own aggregate and may link by tenant-composite adapter reference. |
+| `telephony_call_queues` | Adapter-local queue metadata; Communications routing policy may reference queue capability only through tenant-composite constraints. |
 | `telephony_callback_requests` | Legacy callback evidence; no new Communications ownership until a later cutover plan proves compatibility. |
+| `telephony_appointment_requests` | Adapter-local or legacy appointment evidence; Communications scheduling intent must use Communications-owned records. |
 | `telephony_call_transcripts` | Adapter-local metadata only; raw transcript storage remains prohibited for Communications trust evidence. |
+| `telephony_voice_profiles` | Adapter-local voice capability metadata; Phase 11B must not use it to activate voice providers or receptionist runtime behavior. |
 | `telephony_call_recordings` | Adapter-local metadata only; raw audio storage remains prohibited for Communications trust evidence. |
+| `telephony_voicemails` | Adapter-local voicemail metadata; Communications message outcomes must use Communications-owned evidence and must not store raw audio or transcripts. |
 | `telephony_consent_policies` | Legacy policy evidence; Phase 11B must separate Communications consent policies from participant consent receipts. |
 | `telephony_audit_events` | Adapter-local audit evidence; Communications must create its own audit boundary or tenant-composite safe references. |
+| `telephony_routing_rules` | Adapter-local routing capability metadata; Communications routing policy remains Communications-owned. |
+| `telephony_escalation_policies` | Adapter-local escalation metadata; Communications escalation policy remains governed by Communications and receptionist boundaries. |
+| `telephony_emergency_policy_signals` | Adapter-local emergency signal metadata; Communications emergency handling remains policy-owned and dispatch-disabled. |
+| `telephony_command_idempotency_keys` | Adapter-local command idempotency metadata; Communications command idempotency must use Communications-owned records and separate keys/write paths. |
+| `telephony_usage_ledger` | Adapter-local usage evidence; billing, revenue, Wallet, marketplace, rewards, and loyalty remain frozen and out of scope. |
 | `trust_*` and `cryptographic_envelopes` | Trust-owned immutable evidence; Communications may link only through explicit domains, artifact schemas, and allowlisted sanitized fields. |
 | `tenant_memberships`, `card_access_grants`, `application_sessions` | Identity-owned authorization evidence; Communications actor records must reference authoritative identity/session/grant context. |
 
