@@ -128,16 +128,9 @@ PR #14 is merged.
 
 ## Implementation Work Packages
 
-These packages become active only after PR #14 merges and the post-merge entry
-gate is proven.
-
-| Package | Purpose | Implementation status |
-| --- | --- | --- |
-| 11B-1 | Finalize ADR-0002, entity inventory, and table ownership decisions | Authorized after PR #14 merge and post-merge entry verification |
-| 11B-2 | Add migration design, PostgreSQL validation gate, and rollback/roll-forward plan | Authorized after 11B-1 evidence |
-| 11B-3 | Add tenant-isolation, authorization, consent, suppression, trust, PII, and raw-payload tests | Authorized after 11B-2 evidence |
-| 11B-4 | Add repository/service integration plan without Phase 11C orchestration behavior | Authorized after 11B-3 evidence |
-| 11B-5 | Add Phase 11B traceability evidence | Authorized after implementation validation |
+The sole authoritative 11B-1 through 11B-5 implementation sequence is recorded
+in `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`. This planning package does
+not define a separate or competing work-package order.
 
 ## Validation Strategy
 

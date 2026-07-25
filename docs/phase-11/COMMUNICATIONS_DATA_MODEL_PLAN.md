@@ -5,7 +5,10 @@ Phase: 11B
 
 ## Principle
 
-Phase 11 must extend the existing communications-related storage foundation rather than create a parallel overlapping domain.
+Phase 11 must reconcile with the existing communications-related storage
+foundation without creating dual writers or parallel overlapping ownership.
+Communications owns the canonical product data model; Telephony remains an
+adapter boundary for transport metadata.
 
 This plan does not authorize migrations, schema changes, generated clients,
 runtime code, provider activation, deployment, or production data access.
@@ -32,19 +35,21 @@ runtime code, provider activation, deployment, or production data access.
 - Quarantine `database/migrations/0005_create_telephony_preparation.sql` as
   legacy preparation evidence unless a later implementation package proves
   tenant scoping, ownership, and rollback safety for any reused write path.
-- Extend `telephony_phone_numbers` for communications-owned number ownership
-  metadata only after tenant-composite ownership is proven.
-- Extend `telephony_callback_requests` for communications callback
-  orchestration only after session and tenant/card references are
-  database-enforced.
-- Extend `telephony_call_sessions` for channel-neutral lifecycle linkage only
-  after Communications becomes the lifecycle writer.
-- Extend `telephony_call_recordings` and `telephony_call_transcripts` for
-  policy-owned metadata only; raw audio and raw transcripts remain prohibited.
+- Treat `telephony_phone_numbers` as adapter-local capability metadata.
+  Communications may reference it only through tenant-composite constraints.
+- Treat `telephony_callback_requests` as legacy callback evidence. Phase 11B
+  must not make it a new Communications write target without a superseding
+  cutover decision.
+- Treat `telephony_call_sessions` as adapter-local transport session metadata.
+  Communications lifecycle state must live in Communications-owned aggregates
+  and may link to adapter sessions only by tenant-composite reference.
+- Treat `telephony_call_recordings` and `telephony_call_transcripts` as
+  adapter-local metadata only; raw audio and raw transcripts remain prohibited.
 - Split consent policy records from participant consent observations or
   receipts before relying on consent for dispatch.
-- Extend `telephony_audit_events` for communications audit coverage only after
-  actor, tenant, card, and authorization-decision references are authoritative.
+- Treat `telephony_audit_events` as adapter-local audit evidence.
+  Communications audit must use a Communications-owned boundary or safe
+  tenant-composite references.
 - Add participants, state transitions, attempts, suppressions, business-hours
   policies, webhook evidence, summaries, provider health, failover evidence,
   and trust evidence references where the implementation plan proves single
@@ -74,7 +79,7 @@ runtime code, provider activation, deployment, or production data access.
 
 - ADR-0002, Accepted and effective only when PR #14 is merged.
 - Entity and aggregate inventory.
-- Reuse, extend, or add decision table for existing tables.
+- Reconciled ownership map for existing tables.
 - Identifier and idempotency strategy.
 - Tenant and card isolation strategy.
 - Authorization and command-specific permission strategy.
@@ -89,5 +94,6 @@ runtime code, provider activation, deployment, or production data access.
 Phase 11B implementation remains locked until PR #14 is merged, ADR-0002 or a
 superseding ADR is Accepted and effective, every Phase Gate Policy entry
 requirement is evidenced, and an owner-approved implementation package records
-the authorized file scope. This planning document must not be used as migration
-or runtime implementation authority by itself.
+the authorized file scope. The authoritative implementation package order is in
+`docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`. This planning document must
+not be used as migration or runtime implementation authority by itself.

@@ -74,6 +74,9 @@ ADR-0002:
 - `packages/communications-domain/src/types/index.ts`
 - `services/communications/src/repositories/index.ts`
 - `services/communications/src/index.ts`
+- `docs/DATA_STRUCTURES.md`
+- `docs/DATABASE_MODEL.md`
+- `docs/phase-11/COMMUNICATIONS_OWNERSHIP_MAP.md`
 - `docs/phase-11/COMMUNICATIONS_DATA_MODEL_PLAN.md`
 - `docs/phase-11/GAP_ANALYSIS.md`
 - `docs/phase-11/PHASE_11B_ACCEPTANCE_CRITERIA.md`
@@ -187,6 +190,9 @@ when PR #14 is merged:
 
 - accepted ADR coverage: ADR-0002;
 - scope and non-goals: this plan and ADR-0002;
+- source-of-truth data-model documentation:
+  `docs/DATA_STRUCTURES.md`, `docs/DATABASE_MODEL.md`, and
+  `docs/phase-11/COMMUNICATIONS_OWNERSHIP_MAP.md`;
 - acceptance criteria: `docs/phase-11/PHASE_11B_ACCEPTANCE_CRITERIA.md`;
 - test and validation plan: this plan;
 - rollback strategy: ADR-0002 and this plan;
