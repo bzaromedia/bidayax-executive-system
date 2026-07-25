@@ -5,9 +5,15 @@ Owner: BidayaX LLC
 Public URL: https://theexecutivecard.online  
 Review stage: Recovery Phase B - Enterprise Completion Gate
 
-Allowed statuses: implemented, partial, deferred, blocked, removed_from_release_scope.
+Allowed statuses: implemented, partial, active, deferred, blocked, removed_from_release_scope.
 
 The Executive Card v1.0 includes only implemented, tested, production-buildable capabilities. Deferred enterprise trust layers are not active product capabilities in v1.0.
+
+Active production roadmap governance lives in `docs/governance/ROADMAP.md`.
+Historical phase numbers in this table preserve v1.0 recovery evidence and must
+not be used to infer current production milestone closure. The active Phase 11
+Communications Completion sequence remains governed by `docs/phase-11/` and
+`docs/governance/CURRENT_PHASE_STATUS.md`.
 
 | Phase | Area | Status | Evidence path | Tests | Docs | Migration | Release decision | Next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -35,6 +41,19 @@ The Executive Card v1.0 includes only implemented, tested, production-buildable 
 | 22 | Technical Data Room + Commercialization | deferred | `docs/RELEASE_SCOPE.md` | Not applicable | `docs/RELEASE_SCOPE.md` | None | Deferred until after enterprise readiness gate | Do not start marketing site until this gate passes. |
 | 23 | Certification Readiness | deferred | `docs/SECURITY_RELEASE_REVIEW.md` | Not applicable | `docs/SECURITY_RELEASE_REVIEW.md` | None | Deferred to v1.1+ | Prepare control mapping later; do not claim certification. |
 | 24 | Final Enterprise Release Candidate | partial | `FINAL_ENTERPRISE_ACCEPTANCE_REPORT.md` | Root release verification commands | `FINAL_ENTERPRISE_ACCEPTANCE_REPORT.md` | `pnpm db:migrations:verify` | Recovery Phase B acceptance report generated | Proceed to marketing only if report decision permits it. |
+
+## Active Production Milestone
+
+The current active production milestone is Phase 11, Communications Completion.
+It is incomplete until its ADR coverage, acceptance criteria, validation
+evidence, Advisor gates, merge references, and phase closure record are accepted.
+
+See:
+
+- `docs/governance/ROADMAP.md`
+- `docs/governance/CURRENT_PHASE_STATUS.md`
+- `docs/phase-11/PHASE_11_MASTER_PLAN.md`
+- `docs/phase-11/GAP_ANALYSIS.md`
 
 ## Removed From Active Release Scope
 

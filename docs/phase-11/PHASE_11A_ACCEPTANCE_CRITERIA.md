@@ -1,5 +1,11 @@
 # Phase 11A Acceptance Criteria
 
+Status: Not closed.
+
+Completion requires a formal closure record. PR #11 and production
+reconciliation evidence do not by themselves close Phase 11A. See
+`docs/phase-11/GAP_ANALYSIS.md`.
+
 Phase 11A is complete only when:
 
 - Communications is the documented domain root

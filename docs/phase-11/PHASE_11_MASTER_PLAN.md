@@ -2,7 +2,7 @@
 
 ## Status
 
-Phase 11A establishes the Communications Domain as the permanent orchestration boundary for The Executive Card™.
+Phase 11A establishes the Communications Domain as the permanent orchestration boundary for The Executive Card™ and supplies the governance and closure-evidence package for that boundary.
 
 This document supersedes the earlier planning assumption that `services/telephony` is the permanent communications execution authority.
 
@@ -10,7 +10,7 @@ Historical context is preserved:
 
 - Phase 9 created a telephony preparation layer.
 - Phase 10 preserved production-disabled provider readiness and trust evidence boundaries.
-- Phase 11A lifts the domain root above telephony into a channel-neutral communications architecture.
+- Phase 11A lifts the domain root above telephony into a channel-neutral communications architecture and records the governance required before successor subphases begin.
 
 ## Permanent Model
 
@@ -52,7 +52,7 @@ Telephony is one adapter, not the domain root.
 
 ## Phase 11 Sequence
 
-- 11A — Communications Domain Architecture
+- 11A — Communications Domain Architecture and Governance
 - 11B — Communications Data Model
 - 11C — Orchestration Runtime
 - 11D — Telephony Adapter (Sandbox)
@@ -60,7 +60,7 @@ Telephony is one adapter, not the domain root.
 - 11F — Security, Consent & Trust
 - 11G — Observability & Operations
 - 11H — Staging Validation
-- 11I — Production Activation
+- 11I — Communications Production Activation
 
 ## Phase 11A Scope
 
@@ -74,6 +74,8 @@ Phase 11A may add:
 - ownership maps
 - compile-time tests
 - architecture boundary tests
+- governance records
+- closure evidence records
 
 Phase 11A may not add:
 
@@ -84,3 +86,8 @@ Phase 11A may not add:
 - production calling
 - production voice
 - deployment
+
+## Subphase Linearity
+
+Phase 11 subphases execute in order. Phase 11B implementation may not begin
+until Phase 11A has an accepted and merged closure record.

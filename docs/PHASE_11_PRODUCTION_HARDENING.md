@@ -1,5 +1,15 @@
 # Phase 11 — Production Hardening
 
+Historical status: completed v1.0 hardening tranche.
+
+This document is not the closure record for the active Phase 11 Communications
+Completion roadmap. Active Phase 11 governance lives in
+`docs/phase-11/PHASE_11_MASTER_PLAN.md` and
+`docs/governance/CURRENT_PHASE_STATUS.md`.
+
+This distinction does not reopen or invalidate this completed historical
+hardening tranche.
+
 Phase 11 makes the current system safer to deploy, operate, inspect, back up,
 and roll back.
 
@@ -64,4 +74,3 @@ and roll back.
 
 10. Did we avoid adding new product features?
     Yes. Phase 11 only adds hardening, operations, and verification.
-

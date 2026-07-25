@@ -1,5 +1,14 @@
 # Production Hardening
 
+Historical status: completed v1.0 hardening tranche.
+
+This document supports the earlier production-hardening phase record. It does
+not close the active Phase 11 Communications Completion roadmap. See
+`docs/governance/CURRENT_PHASE_STATUS.md` and `docs/phase-11/GAP_ANALYSIS.md`.
+
+This distinction does not reopen or invalidate the completed historical
+production-hardening tranche.
+
 Phase 11 hardens the existing The Executive Card platform without adding product
 features.
 

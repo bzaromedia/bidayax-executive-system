@@ -181,7 +181,8 @@ Responsibilities:
 - Data retention rules.
 - Design-system approval.
 - Dependency approval.
-- Architecture decision records in future phases.
+- Architecture decision records in future phases. Active ADR governance starts
+  at `docs/adr/README.md`.
 
 Output: a product that remains trustworthy as it grows.
 
