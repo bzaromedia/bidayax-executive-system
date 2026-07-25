@@ -60,3 +60,4 @@ ADR coverage before implementation.
 | ADR | Title | Status | Phase |
 | --- | --- | --- | --- |
 | `0001` | Communications Completion Boundary | Accepted | Phase 11 |
+| `0002` | Communications Data Model | Proposed | Phase 11B |

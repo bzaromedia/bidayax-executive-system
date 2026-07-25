@@ -30,8 +30,8 @@ subphases:
 
 | Subphase | Name | Current disposition |
 | --- | --- | --- |
-| 11A | Architecture and governance | Closure evidence package proposed; 11B remains locked until accepted and merged. |
-| 11B | Data model | Locked until 11A closure. |
+| 11A | Architecture and governance | Formally closed by PR #13 and merge commit `744d4ab9d5b04c69935848755d4b48d2e8f45c27`. |
+| 11B | Data model | Planning active only; implementation locked until accepted ADR coverage and an approved implementation package. |
 | 11C | Orchestration runtime | Locked until 11B closure. |
 | 11D | Telephony adapter | Locked until 11C closure. |
 | 11E | Receptionist runtime | Locked until 11D closure. |
