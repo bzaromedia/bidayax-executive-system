@@ -13,8 +13,10 @@ Stabilization is not active for implementation.
 Phase 11A, Architecture and Governance, is formally closed by PR #13 and merge
 commit `744d4ab9d5b04c69935848755d4b48d2e8f45c27`.
 
-The active authorized work package is Phase 11B Data Model planning only. Phase
-11B implementation is not active.
+The active authorized work package is Phase 11B Data Model planning until PR
+#14 is merged. After PR #14 is merged and post-merge validation passes, the
+next authorized work package is Phase 11B implementation only, constrained by
+`docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`.
 
 This determination applies to the active production roadmap. It does not reopen
 or invalidate historical v1.0 phase records, including historical Phase 11
@@ -41,12 +43,12 @@ Production Hardening or historical Phase 12 Observability.
 
 ## Next Authorized Work Package
 
-Review, validate, and merge the Phase 11B Data Model planning package and
-ADR-0002. Do not begin Phase 11B implementation, migrations, schema changes,
-runtime code, provider integration, production activation, or Phase 12
-implementation until PR #14 is merged, ADR-0002 or a superseding ADR is
-Accepted and effective, every Phase Gate Policy entry requirement is evidenced,
-and an owner-approved implementation plan records the authorized file scope.
+Review, validate, and merge the Phase 11B Data Model planning package,
+ADR-0002, and the Phase 11B implementation plan. After PR #14 is merged,
+post-merge validation passes, and the final Advisor gate approves Phase 11B
+entry, create a Phase 11B implementation branch from verified `main` and
+implement only the file scope authorized by
+`docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`.
 
 ## Locked Work
 

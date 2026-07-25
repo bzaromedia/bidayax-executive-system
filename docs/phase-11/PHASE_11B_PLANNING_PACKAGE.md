@@ -1,6 +1,6 @@
 # Phase 11B Planning Package
 
-Status: Draft planning
+Status: Accepted when PR #14 is merged
 Date: 2026-07-25
 
 ## Scope
@@ -17,7 +17,7 @@ Permitted planning work:
 - define tenant isolation, authorization, data classification, encryption,
   retention, privacy, indexing, concurrency, migration, rollback,
   observability, acceptance criteria, validation, and closure evidence;
-- draft ADR-0002.
+- accept ADR-0002 as merge-effective architecture authority.
 
 Prohibited work:
 
@@ -92,6 +92,10 @@ Phase 11B implementation may begin only after all of the following are true:
 - Wallet, Phase 12, production activation, provider activation, and future work
   remain excluded.
 
+Entry gate evidence is recorded in
+`docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md` and becomes active only when
+PR #14 is merged.
+
 ## Security And Data Boundary Requirements
 
 - Every reused, extended, deprecated, quarantined, adapter-local, or new table
@@ -122,17 +126,18 @@ Phase 11B implementation may begin only after all of the following are true:
   immutability, concurrency, idempotency, rollback/roll-forward safety,
   dual-write prevention, provider credential absence, and disabled dispatch.
 
-## Proposed Work Packages For Later Authorization
+## Implementation Work Packages
 
-These are planning outputs only:
+These packages become active only after PR #14 merges and the post-merge entry
+gate is proven.
 
 | Package | Purpose | Implementation status |
 | --- | --- | --- |
-| 11B-1 | Finalize ADR-0002, entity inventory, and table ownership decisions | Planning only |
-| 11B-2 | Draft migration design, PostgreSQL validation gate, and rollback/roll-forward plan | Locked |
-| 11B-3 | Draft tenant-isolation, authorization, consent, suppression, trust, PII, and raw-payload test plan | Locked |
-| 11B-4 | Draft repository/service integration plan without Phase 11C orchestration behavior | Locked |
-| 11B-5 | Draft Phase 11B traceability and closure evidence template | Locked |
+| 11B-1 | Finalize ADR-0002, entity inventory, and table ownership decisions | Authorized after PR #14 merge and post-merge entry verification |
+| 11B-2 | Add migration design, PostgreSQL validation gate, and rollback/roll-forward plan | Authorized after 11B-1 evidence |
+| 11B-3 | Add tenant-isolation, authorization, consent, suppression, trust, PII, and raw-payload tests | Authorized after 11B-2 evidence |
+| 11B-4 | Add repository/service integration plan without Phase 11C orchestration behavior | Authorized after 11B-3 evidence |
+| 11B-5 | Add Phase 11B traceability evidence | Authorized after implementation validation |
 
 ## Validation Strategy
 

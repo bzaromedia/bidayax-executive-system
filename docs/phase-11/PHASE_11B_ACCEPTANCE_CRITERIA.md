@@ -1,6 +1,6 @@
 # Phase 11B Acceptance Criteria
 
-Status: Planning draft
+Status: Accepted when PR #14 is merged
 Date: 2026-07-25
 
 Phase 11B is not implemented by this document. These criteria define the bar

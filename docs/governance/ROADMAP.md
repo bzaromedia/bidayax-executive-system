@@ -31,7 +31,7 @@ subphases:
 | Subphase | Name | Current disposition |
 | --- | --- | --- |
 | 11A | Architecture and governance | Formally closed by PR #13 and merge commit `744d4ab9d5b04c69935848755d4b48d2e8f45c27`. |
-| 11B | Data model | Planning active only; implementation locked until PR #14 merges, ADR-0002 or a superseding ADR is Accepted and effective, every Entry Gate requirement is evidenced, and an owner-approved implementation package records the authorized file scope. |
+| 11B | Data model | Implementation entry is governed by PR #14, ADR-0002, and `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`; implementation may begin only after PR #14 merges, post-merge validation passes, and Advisor approves Phase 11B entry. |
 | 11C | Orchestration runtime | Locked until 11B closure. |
 | 11D | Telephony adapter | Locked until 11C closure. |
 | 11E | Receptionist runtime | Locked until 11D closure. |

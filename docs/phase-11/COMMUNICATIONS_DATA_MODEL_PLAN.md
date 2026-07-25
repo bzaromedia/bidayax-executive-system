@@ -1,6 +1,6 @@
 # Communications Data Model Plan
 
-Status: Planning draft
+Status: Accepted when PR #14 is merged
 Phase: 11B
 
 ## Principle
