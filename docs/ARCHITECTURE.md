@@ -233,6 +233,13 @@ Future shared TypeScript, lint, formatting, build, and test configuration.
 
 Future shared domain and API types.
 
+### packages/communications-domain
+
+Phase 11 Communications Domain architecture boundary. This package owns
+provider-neutral communications contracts, policy inputs and outputs,
+consent-aware command shapes, event taxonomy, error taxonomy, and shared
+boundary types used by later communications runtime slices.
+
 ### packages/sdk
 
 Future internal SDK for calling platform APIs from apps and workers.
@@ -258,6 +265,15 @@ Future relationship graph builder and rebuild pathway for anonymous first-party 
 Future receptionist workflow runtime.
 
 Phase 8 starts this as a deterministic simulation package only.
+
+### services/communications
+
+Phase 11 communications orchestration boundary. This service owns the future
+composition root for communications command evaluation, policy enforcement,
+adapter coordination, receptionist boundary integration, and governed event
+emission. Phase 11A defines this boundary only; later Phase 11 subphases must
+add data ownership, runtime execution, adapter cutover, observability, staging
+validation, and production activation through their own gates.
 
 ### services/telephony
 

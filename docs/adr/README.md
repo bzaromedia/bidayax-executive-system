@@ -59,4 +59,4 @@ ADR coverage before implementation.
 
 | ADR | Title | Status | Phase |
 | --- | --- | --- | --- |
-| `0001` | Communications Completion Boundary | Proposed | Phase 11 |
+| `0001` | Communications Completion Boundary | Accepted | Phase 11 |

@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Date
 
@@ -15,11 +15,10 @@ Proposed
 
 ## Decision
 
-If accepted, Phase 11 Communications Completion will use the Communications
-Domain as the channel-neutral orchestration boundary. Telephony, voice,
-messaging, scheduling, and future channels will be adapters below that boundary
-and may not bypass Communications policy, consent, trust, or authorization
-controls.
+Phase 11 Communications Completion uses the Communications Domain as the
+channel-neutral target orchestration boundary. Telephony, voice, messaging,
+scheduling, and future channels are adapters below that boundary and may not
+bypass Communications policy, consent, trust, or authorization controls.
 
 ## Context
 
@@ -63,8 +62,6 @@ remaining Phase 11 work continues.
 
 ## Selected Architecture
 
-The target architecture is:
-
 Applications call a channel-neutral Communications API. The Communications
 Orchestrator owns policy, routing, consent, suppressions, trust evidence,
 idempotency, audit events, and observability. Channel adapters execute only
@@ -101,9 +98,9 @@ trust, and observability handling.
 
 ## Security Considerations
 
-If accepted, the Communications Domain must fail closed on missing
-authorization, tenant scope, card scope, consent, suppressions, kill-switch
-state, replay protection, and provider safety state.
+The Communications Domain must fail closed on missing authorization, tenant
+scope, card scope, consent, suppressions, kill-switch state, replay protection,
+and provider safety state.
 
 Every command must resolve the authenticated principal on the server. Caller
 supplied tenant, card, role, and permission claims are non-authoritative.
@@ -197,9 +194,8 @@ credentials or irreversible production actions without explicit approval.
 
 ## Consequences
 
-If accepted, future Communications work must route through the Communications
-Domain. Direct provider or channel implementation outside the boundary is
-architecture drift.
+Future Communications work must route through the Communications Domain. Direct
+provider or channel implementation outside the boundary is architecture drift.
 
 ## Future Impact
 
