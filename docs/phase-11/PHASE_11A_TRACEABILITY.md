@@ -35,7 +35,7 @@ production-data access, Wallet work, or Phase 12 work.
 | No external communication occurs | PASSED | `services/communications/src/runtime/index.ts`, `services/communications/tests/runtime.test.ts`, PR #9 body smoke/security confirmations |
 | Required tests pass | PASSED | PR #9 CI `verify`, PR #12 CI `verify`, local closure validation recorded in `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md` |
 | Required validation passes | PASSED | PR #9 validation, PR #12 validation, post-merge `pnpm verify` on `main` after PR #12 |
-| Advisor Gates A, B, and C return `APPROVED` | PASSED | Gate A/B evidence is recorded in `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md`; final Gate C returned `ADVISOR_APPROVED` after the architecture source-of-truth update and refreshed validation. |
+| Advisor Gates A, B, and C return `APPROVED` | PASSED | Gate A/B evidence is recorded in `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md`; final Gate C returned `APPROVED` after the architecture source-of-truth update and refreshed validation. |
 
 ## Architecture Boundaries
 

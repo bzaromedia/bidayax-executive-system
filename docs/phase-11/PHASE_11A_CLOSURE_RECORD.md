@@ -58,7 +58,7 @@ and accepted ADR coverage authorize it.
 | No external communication occurs | PASSED | disabled communications runtime and PR #9 security confirmations |
 | Required tests pass | PASSED | PR #9, PR #12, post-merge verification, and closure branch validation |
 | Required validation passes | PASSED | Validation table below |
-| Advisor Gates A, B, and C approved | PASSED | Gate evidence below; final closure Advisor review returned `ADVISOR_APPROVED` after the architecture source-of-truth update and refreshed validation. |
+| Advisor Gates A, B, and C approved | PASSED | Gate evidence below; final closure Advisor review returned `APPROVED` after the architecture source-of-truth update and refreshed validation. |
 
 ## Advisor Gate Results
 
@@ -66,7 +66,7 @@ and accepted ADR coverage authorize it.
 | --- | --- | --- |
 | Gate A: Architecture | PASSED | PR #12 preferred Advisor review approved the governance, ADR policy, phase linearity, Phase 11A status, and ADR-0001 merge readiness at `edea7cf8063630260450f7ab3feb68688531e889`. |
 | Gate B: High-risk governance and security | PASSED | PR #12 read-only security and architecture blockers were repaired, then the preferred Advisor approved production authorization, Wallet freeze, security scope, and historical-record integrity. |
-| Gate C: Final acceptance | PASSED | Fallback read-only Advisor requested as `gpt-5.5` with `xhigh` reasoning returned `ADVISOR_APPROVED` after confirming prior conditions were resolved. The Advisor runtime reported Codex based on GPT-5 with no more specific model ID exposed. |
+| Gate C: Final acceptance | PASSED | Fallback read-only Advisor requested as `gpt-5.5` with `xhigh` reasoning returned `APPROVED` after confirming prior conditions were resolved. The Advisor runtime reported Codex based on GPT-5 with no more specific model ID exposed. |
 
 ## Validation Results
 
@@ -78,7 +78,7 @@ and accepted ADR coverage authorize it.
 | Closure branch focused tests | PASSED | Communications-domain tests: 3 files, 7 tests; communications service tests: 3 files, 12 tests; telephony adapter boundary: 1 file, 3 tests; receptionist boundary: 1 file, 3 tests. |
 | Closure branch policy checks | PASSED | `git diff --check`, `pnpm verify:public-claims`, `pnpm verify:no-placeholders`, `pnpm verify:release-scope`, `pnpm verify:design-governance`, `pnpm verify:no-missing-workspaces`, doc-link check, and secret scan. |
 | Closure branch `pnpm verify` | PASSED | Full typecheck, lint, tests, build, and migration verification after closure evidence updates. |
-| Final Advisor Gate C | PASSED | `ADVISOR_APPROVED`; prior conditions on `docs/ARCHITECTURE.md`, staged closure records, and whitespace validation were resolved. |
+| Final Advisor Gate C | PASSED | `APPROVED`; prior conditions on `docs/ARCHITECTURE.md`, staged closure records, and whitespace validation were resolved. |
 
 ## Security Review
 
@@ -121,9 +121,22 @@ and accepted ADR coverage authorize it.
 - Production authorization record: Not applicable to Phase 11A; required before
   Phase 11I.
 
+## Advisor Disposition
+
+- Advisor model: Fallback requested as `gpt-5.5`; Advisor runtime reported
+  Codex based on GPT-5 with no more specific model ID exposed.
+- Reasoning: Fallback requested as `xhigh`; no more specific runtime reasoning
+  metadata was exposed.
+- Verdict: `APPROVED`.
+- Evidence: Final closure Gate C re-review confirmed the architecture
+  source-of-truth entries for `packages/communications-domain` and
+  `services/communications`, staged closure records, whitespace validation, and
+  PR #13 closure readiness before this Draft PR was opened.
+
 ## Remaining Risks
 
-- Closure remains pending Draft PR review, validation, approval, and merge.
+- Closure remains pending PR #13 final merge Advisor review, approval, and
+  merge.
 - Future edits can drift from ADR-0001 unless Phase 11B starts with a scoped
   plan and accepted ADR coverage.
 - Legacy telephony still owns executable transport control-plane behavior until
@@ -152,7 +165,7 @@ and accepted ADR coverage authorize it.
   `be63fbf454fed53b30f38f2f8bfb884d46c95292`.
 - PR #12: linear production governance,
   `d3b7091d781b21a6bb2944520e637faeb2347e35`.
-- Closure PR: to be opened from `docs/phase-11a-closure`.
+- Closure PR: PR #13 from `docs/phase-11a-closure`.
 
 ## Production Status
 
