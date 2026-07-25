@@ -7,6 +7,9 @@ Completion roadmap. Active Phase 11 governance lives in
 `docs/phase-11/PHASE_11_MASTER_PLAN.md` and
 `docs/governance/CURRENT_PHASE_STATUS.md`.
 
+This distinction does not reopen or invalidate this completed historical
+hardening tranche.
+
 Phase 11 makes the current system safer to deploy, operate, inspect, back up,
 and roll back.
 

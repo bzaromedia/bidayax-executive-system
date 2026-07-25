@@ -5,6 +5,19 @@ Status: Active ADR governance
 This directory contains durable architecture decision records for The Executive
 Card(TM). ADRs are separate from implementation plans and phase closure records.
 
+## Scope And Precedence
+
+ADRs govern product and runtime architecture decisions.
+
+`docs/codex/DECISION-LOG.md` remains the source of truth for Codex workflow and
+repository-agent operating decisions. Subject-specific documents remain the
+source of truth for detailed specifications, acceptance criteria, runbooks, and
+implementation evidence.
+
+When an ADR conflicts with an accepted subject-specific source, the conflict
+must be resolved through a new ADR, amendment, or subject-document update. Do
+not silently rewrite accepted history.
+
 ## Numbering
 
 - ADR numbers are four digits, starting at `0001`.

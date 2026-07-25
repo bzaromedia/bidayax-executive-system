@@ -38,9 +38,25 @@ is not a closure record.
 ## Security Review
 
 - Authorization behavior:
+- Command-specific permissions:
 - Tenant isolation:
+- Card and resource ownership:
+- Cross-tenant and cross-card negative evidence:
+- Consent and suppression:
+- Suppression release controls:
+- Kill-switch controls:
+- Trust-evidence integrity:
+- Audit coverage, including denied actions:
+- Privacy and PII minimization:
+- Retention and redaction:
+- Replay protection:
+- Provider verification:
 - Secrets handling:
+- Secret scanning:
+- Fail-closed behavior:
+- Frozen-scope verification:
 - Production safety:
+- Production authorization record:
 
 ## Advisor Disposition
 
@@ -72,6 +88,15 @@ is not a closure record.
 - Deployment status:
 - Production activation status:
 - Explicit exclusions:
+- VPS, hosting, provider, credential, and production-data access status:
+
+## Exceptions
+
+Every skipped required check must be recorded as:
+
+| Check | Status | Owner | Expiry | Reason | Approval |
+| --- | --- | --- | --- | --- | --- |
+|  | BLOCKED |  |  |  |  |
 
 ## Formal Decision
 

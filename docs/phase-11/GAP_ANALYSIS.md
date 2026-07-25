@@ -23,8 +23,8 @@ Phase 11 Communications Completion is incomplete.
 | ADR coverage | No accepted Communications Completion ADR existed before this branch. | Review and accept `docs/adr/0001-communications-completion-boundary.md` or a superseding ADR. |
 | 11A closure | No formal Phase 11A closure record exists. | Create a closure record using `docs/governance/PHASE_CLOSURE_TEMPLATE.md`. |
 | Advisor gates | `PHASE_11A_ACCEPTANCE_CRITERIA.md` requires Advisor Gates A, B, and C approved; no canonical closure evidence records all three. | Record gate evidence in the 11A closure package. |
-| 11B through 11H | The active sequence lists remaining data model, runtime, adapter, receptionist, security, observability, and staging work. | Create scoped plans only after accepted ADR coverage. |
-| 11I | Production activation is separately authorized and not part of 11A through 11H. | Do not begin until prior Phase 11 stages and explicit owner approval are complete. |
+| 11B through 11H | The active sequence lists remaining data model, runtime, adapter, receptionist, security, observability, and staging work. | Create scoped plans only after accepted ADR coverage and Phase 11A closure; do not implement successor subphases early. |
+| 11I | Communications production activation is separately authorized and not part of 11A through 11H. | Do not begin until prior Phase 11 stages are closed and approval from the BidayaX LLC owner or an explicitly named production delegate is recorded in a merged activation record. |
 
 ## Next Smallest Authorized Work Package
 
@@ -37,3 +37,6 @@ Finish the Phase 11A governance package:
 - obtain Advisor approval for the closure package.
 
 No Phase 12 implementation is authorized by this gap analysis.
+
+No Phase 11B implementation is authorized until Phase 11A has an accepted and
+merged closure record.

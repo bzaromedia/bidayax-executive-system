@@ -15,10 +15,11 @@ Proposed
 
 ## Decision
 
-Phase 11 Communications Completion uses the Communications Domain as the
-channel-neutral orchestration boundary. Telephony, voice, messaging, scheduling,
-and future channels are adapters below that boundary and may not bypass
-Communications policy, consent, trust, or authorization controls.
+If accepted, Phase 11 Communications Completion will use the Communications
+Domain as the channel-neutral orchestration boundary. Telephony, voice,
+messaging, scheduling, and future channels will be adapters below that boundary
+and may not bypass Communications policy, consent, trust, or authorization
+controls.
 
 ## Context
 
@@ -62,10 +63,24 @@ remaining Phase 11 work continues.
 
 ## Selected Architecture
 
+The target architecture is:
+
 Applications call a channel-neutral Communications API. The Communications
 Orchestrator owns policy, routing, consent, suppressions, trust evidence,
 idempotency, audit events, and observability. Channel adapters execute only
 within orchestrator-approved boundaries.
+
+Current migration state:
+
+- Phase 11A documents and types the target Communications boundary.
+- Legacy telephony still contains transport control-plane, authorization,
+  idempotency, lifecycle, audit, usage, and trust behavior that must be cut over
+  in governed Phase 11 subphases.
+- Phase 11B through 11D must define data ownership, single-writer rules,
+  compatibility/versioning, composition-root ownership, dual-write prevention,
+  and rollback before implementation changes move authority out of telephony.
+- `docs/ARCHITECTURE.md` must be updated to list `packages/communications-domain`
+  and `services/communications` ownership when this ADR is accepted.
 
 ## Data and Control Flows
 
@@ -86,10 +101,24 @@ trust, and observability handling.
 
 ## Security Considerations
 
-The Communications Domain must fail closed on missing authorization, tenant
-scope, card scope, consent, suppressions, kill-switch state, replay protection,
-and provider safety state. Production execution remains disabled until the 11I
-production activation gate is explicitly approved.
+If accepted, the Communications Domain must fail closed on missing
+authorization, tenant scope, card scope, consent, suppressions, kill-switch
+state, replay protection, and provider safety state.
+
+Every command must resolve the authenticated principal on the server. Caller
+supplied tenant, card, role, and permission claims are non-authoritative.
+Sensitive commands require command-specific permissions, resource ownership,
+reason, and audit evidence. Platform kill switches require a platform
+administrator or BidayaX LLC owner delegate.
+
+Production execution remains disabled until the Phase 11I Communications
+production activation gate is approved through a merged activation record by
+the BidayaX LLC owner or an explicitly named production delegate.
+
+Before that activation record exists, SSH, VPS, hosting-control-panel access,
+production-data access, provider-console or provider-API access, credential
+retrieval or provisioning, provider enablement, deployment, and live execution
+are prohibited.
 
 ## Privacy Considerations
 
@@ -120,6 +149,12 @@ introduced, and repository verification gates.
 
 Schema or data model changes belong to Phase 11B or later and must include
 forward migration, rollback, database-backed validation, and closure evidence.
+Phase 11A does not move database write authority.
+
+Cutover from legacy telephony ownership must be staged through the governed
+Phase 11 sequence. Each subphase must preserve compatibility, define the
+composition root, prevent dual writers, and document rollback before
+implementation begins.
 
 ## Rollback Strategy
 
@@ -162,13 +197,15 @@ credentials or irreversible production actions without explicit approval.
 
 ## Consequences
 
-Future Communications work must route through the Communications Domain. Direct
-provider or channel implementation outside the boundary is architecture drift.
+If accepted, future Communications work must route through the Communications
+Domain. Direct provider or channel implementation outside the boundary is
+architecture drift.
 
 ## Future Impact
 
-Phase 12 Production Stabilization remains locked until Phase 11 is formally
-closed. Wallet and other frozen capabilities remain out of scope.
+Phase 11B remains locked until Phase 11A closure. Phase 12 Production
+Stabilization remains locked until all Phase 11 subphases and formal Phase 11
+closure are complete. Wallet and other frozen capabilities remain out of scope.
 
 ## Related ADRs and Documents
 
