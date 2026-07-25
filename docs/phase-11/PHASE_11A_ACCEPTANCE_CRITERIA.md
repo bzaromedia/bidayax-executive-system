@@ -1,10 +1,13 @@
 # Phase 11A Acceptance Criteria
 
-Status: Closure proposed.
+Status: Closed.
 
-Completion requires the Phase 11A closure record to be accepted and merged.
-PR #11, PR #12, and production reconciliation evidence do not by themselves
-close Phase 11A. See `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md`.
+Phase 11A was formally closed by PR #13 and merge commit
+`744d4ab9d5b04c69935848755d4b48d2e8f45c27`.
+
+PR #11, PR #12, and production reconciliation evidence did not by themselves
+close Phase 11A. Closure required the accepted and merged Phase 11A closure
+record. See `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md`.
 
 Phase 11A is complete only when:
 

@@ -1,12 +1,15 @@
 # Phase 11 Gap Analysis
 
-Status: Closure package proposed
-Date: 2026-07-24
+Status: Phase 11B planning active
+Date: 2026-07-25
 
 ## Current Outcome
 
-Phase 11 Communications Completion is incomplete until the Phase 11A closure
-record is accepted and merged.
+Phase 11 Communications Completion remains incomplete because subphases 11B
+through 11I are not closed.
+
+Phase 11A is formally closed by PR #13 and merge commit
+`744d4ab9d5b04c69935848755d4b48d2e8f45c27`.
 
 ## Completed Or Partially Completed Evidence
 
@@ -16,28 +19,32 @@ record is accepted and merged.
 - Telephony remains documented as an adapter boundary, not the domain root.
 - PR #11 merged repository-only production reconciliation tooling and preserved
   production-disabled operational boundaries.
+- PR #13 merged the Phase 11A closure record and traceability matrix.
 
 ## Remaining Gaps
 
 | Area | Gap | Required next evidence |
 | --- | --- | --- |
-| ADR coverage | Addressed in closure package. | `docs/adr/0001-communications-completion-boundary.md` is accepted on the closure branch and becomes active when merged. |
-| 11A closure | Addressed in closure package. | `docs/phase-11/PHASE_11A_CLOSURE_RECORD.md` records the proposed formal closure decision. |
-| Advisor gates | Addressed in closure package. Gate A and Gate B are supported by PR #12 Advisor approval; Gate C closure review returned `APPROVED`. | Complete the final PR #13 merge Advisor gate before merge and record the result in the final report. |
-| 11B through 11H | The active sequence lists remaining data model, runtime, adapter, receptionist, security, observability, and staging work. | Create scoped plans only after accepted ADR coverage and Phase 11A closure; do not implement successor subphases early. |
+| ADR coverage | ADR-0001 accepted for Phase 11A; ADR-0002 is merge-effective for Phase 11B in PR #14. | Merge PR #14, then treat ADR-0002 as effective only after post-merge verification. |
+| 11A closure | Addressed by PR #13. | Keep Phase 11A closed unless a future accepted ADR supersedes it. |
+| Advisor gates | Addressed for Phase 11A closure; required for PR #14 merge and Phase 11B entry. | Require `ADVISOR_APPROVED_FOR_MERGE_AND_PHASE_11B_ENTRY` before PR #14 merge, then require `ADVISOR_APPROVED` before the later implementation PR. |
+| 11B through 11H | The active sequence lists remaining data model, runtime, adapter, receptionist, security, observability, and staging work. | Create scoped plans only after accepted ADR coverage and predecessor closure; do not implement successor subphases early. |
 | 11I | Communications production activation is separately authorized and not part of 11A through 11H. | Do not begin until prior Phase 11 stages are closed and approval from the BidayaX LLC owner or an explicitly named production delegate is recorded in a merged activation record. |
 
 ## Next Smallest Authorized Work Package
 
-Finish the Phase 11A closure package:
+Merge and verify the Phase 11B Data Model planning package:
 
-- review the accepted Communications Completion ADR;
-- map Phase 11A acceptance criteria to repository evidence;
-- review the proposed Phase 11A closure record;
-- merge PR #13 only after current-head CI, review-thread checks, validation,
-  and final merge Advisor approval pass.
+- verify PR #14 at the current head;
+- merge PR #14 only after CI, review-thread, validation, and Advisor gates
+  pass;
+- run post-merge validation on `main`;
+- create a Phase 11B implementation branch only after ADR-0002 is effective and
+  entry criteria are proven;
+- implement only the authorized scope in
+  `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`.
 
 No Phase 12 implementation is authorized by this gap analysis.
 
-No Phase 11B implementation is authorized until Phase 11A has an accepted and
-merged closure record.
+No Phase 11B implementation is authorized before PR #14 is merged and the
+post-merge entry gate is proven.
