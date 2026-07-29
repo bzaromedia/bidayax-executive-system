@@ -53,6 +53,11 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   audit_append_only: /immutable|append-only/i,
   audit_null_card_bypass: /card scope|not-null|null/i,
   audit_service_disabled: /active service identity/i,
+  audit_invalid_checksum_sha256_metadata: /safe|check constraint/i,
+  audit_invalid_digest_metadata: /safe|check constraint/i,
+  audit_invalid_payload_hash_metadata: /safe|check constraint/i,
+  audit_invalid_request_hash_metadata: /safe|check constraint/i,
+  audit_nested_metadata: /safe|check constraint/i,
   audit_sensitive_metadata: /safe|sensitive|check constraint/i,
   audit_user_without_actor: /requires active tenant membership|not-null|check constraint/i,
   adapter_health_sensitive_reason_code: /safe|sensitive|check constraint/i,
@@ -3637,6 +3642,54 @@ async function runVerification(
         )`
     );
   });
+
+  await expectError(client, "audit_nested_metadata", async () => {
+    await client.query(
+      `insert into communication_audit_events (
+         audit_event_id, tenant_id, card_id, communication_id, event_type,
+         actor_type, actor_user_id, actor_service_id, actor_platform_id,
+         authorization_decision_id, permission_version, policy_version, result,
+         reason_code, occurred_at, metadata
+        ) values (
+          'audit-nested-metadata', 'tenant-test', 'card-test', 'communication-test',
+          'communication.denied', 'user', 'user-test', null, null, 'authz-deny',
+          'communications-permissions-v1', 'communications-policy-v1',
+          'denied', 'NESTED_METADATA_REJECTED', now(),
+          '{"sessionId":"session-test","cardGrantId":"grant-test","requiredPermission":"communications:request_callback","safeWrapper":{"reasonCode":"SAFE_VALUE"}}'::jsonb
+        )`
+    );
+  });
+
+  for (const [field, label] of [
+    ["requestHash", "audit_invalid_request_hash_metadata"],
+    ["payloadHash", "audit_invalid_payload_hash_metadata"],
+    ["digest", "audit_invalid_digest_metadata"],
+    ["checksumSha256", "audit_invalid_checksum_sha256_metadata"]
+  ] as const) {
+    await expectError(client, label, async () => {
+      await client.query(
+        `insert into communication_audit_events (
+           audit_event_id, tenant_id, card_id, communication_id, event_type,
+           actor_type, actor_user_id, actor_service_id, actor_platform_id,
+           authorization_decision_id, permission_version, policy_version, result,
+           reason_code, occurred_at, metadata
+          ) values (
+            $1, 'tenant-test', 'card-test', 'communication-test',
+            'communication.denied', 'user', 'user-test', null, null,
+            'authz-deny', 'communications-permissions-v1',
+            'communications-policy-v1', 'denied', 'INVALID_HASH_REJECTED',
+            now(),
+            jsonb_build_object(
+              'sessionId', 'session-test',
+              'cardGrantId', 'grant-test',
+              'requiredPermission', 'communications:request_callback',
+              $2::text, 'not-a-sha256-digest'
+            )
+          )`,
+        [label.replace(/_/g, "-"), field]
+      );
+    });
+  }
 
   await expectError(client, "audit_user_without_actor", async () => {
     await client.query(

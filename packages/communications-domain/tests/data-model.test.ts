@@ -134,6 +134,23 @@ describe("communications data model contract", () => {
         hint: "(555) 555-0123"
       })
     ).toThrow(/not safe/);
+    for (const field of [
+      "requestHash",
+      "payloadHash",
+      "digest",
+      "checksumSha256"
+    ]) {
+      expect(() =>
+        assertSafeCommunicationMetadata({
+          [field]: "not-a-sha256-digest"
+        })
+      ).toThrow(/SHA-256 hex digest/);
+      expect(() =>
+        assertSafeCommunicationMetadata({
+          [field]: digest.toUpperCase()
+        })
+      ).toThrow(/SHA-256 hex digest/);
+    }
     expect(() =>
       assertSafeCommunicationMetadata(
         "Bearer abc" as unknown as SafeCommunicationMetadata
@@ -523,6 +540,24 @@ describe("communications data model contract", () => {
         }
       })
     ).toThrow(/not safe/);
+
+    expect(() =>
+      assertCommunicationTrustEvidenceReferenceDraft({
+        referenceId: "trust-ref-1",
+        tenantId: "tenant-1",
+        cardId: "card-1",
+        communicationId: "communication-1",
+        domain: "communications.webhook",
+        artifactSchema: "communication-webhook-evidence-v1",
+        canonicalizationVersion: "bidayax-c14n-1",
+        keyPurpose: "tenant_artifact_signing",
+        envelopeId: "envelope-1",
+        trustEventId: "trust-event-1",
+        evidenceFields: {
+          payloadHash: "not-a-sha256-digest"
+        }
+      })
+    ).toThrow(/SHA-256 hex digest/);
 
     expect(() =>
       assertCommunicationTrustEvidenceReferenceDraft({

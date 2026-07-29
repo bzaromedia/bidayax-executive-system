@@ -1,3 +1,34 @@
+CREATE OR REPLACE FUNCTION communication_metadata_value_is_safe_v1(field_name TEXT, field_value JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  text_value TEXT;
+BEGIN
+  IF field_value IS NULL THEN
+    RETURN TRUE;
+  END IF;
+
+  IF jsonb_typeof(field_value) IN ('object', 'array') THEN
+    IF field_name = '' THEN
+      RETURN communication_metadata_is_safe_v1(field_value);
+    END IF;
+
+    RETURN FALSE;
+  END IF;
+
+  IF jsonb_typeof(field_value) <> 'string' THEN
+    RETURN TRUE;
+  END IF;
+
+  text_value := field_value #>> '{}';
+
+  IF field_name IN ('requestHash', 'payloadHash', 'digest', 'checksumSha256') THEN
+    RETURN text_value ~ '^[0-9a-f]{64}$';
+  END IF;
+
+  RETURN text_value !~* '(@|authorization|bearer|token|secret|password|private[ _-]?key|raw[ _-]?(body|payload|transcript|audio)|transcript|recording|audio|e164|phone|email|\+?[0-9][0-9 .()]{6,}[0-9]|\([0-9]{3}\)[0-9 ._-]{3,}[0-9]|(\+?1[- .]?)?\(?[2-9][0-9]{2}\)?[- .][0-9]{3}[- .][0-9]{4}|[0-9]{10,})';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
 CREATE OR REPLACE FUNCTION enforce_communication_authorization_evidence_v1()
 RETURNS TRIGGER AS $$
 DECLARE

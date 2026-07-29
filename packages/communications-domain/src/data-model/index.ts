@@ -137,6 +137,15 @@ export type SafeCommunicationMetadata = Readonly<
   Record<string, SafeCommunicationMetadataValue>
 >;
 
+const communicationMetadataDigestFields = new Set([
+  "requestHash",
+  "payloadHash",
+  "digest",
+  "checksumSha256"
+]);
+
+const sha256HexDigestPattern = /^[0-9a-f]{64}$/;
+
 export type CommunicationEndpointDraft = {
   readonly endpointId: string;
   readonly tenantId: string;
@@ -281,6 +290,15 @@ export function assertSafeCommunicationMetadata(
     }
 
     if (
+      communicationMetadataDigestFields.has(key) &&
+      (typeof value !== "string" || !sha256HexDigestPattern.test(value))
+    ) {
+      throw new Error(
+        `Communication metadata value for '${key}' must be a SHA-256 hex digest.`
+      );
+    }
+
+    if (
       value !== null &&
       typeof value !== "string" &&
       typeof value !== "number" &&
@@ -300,7 +318,7 @@ export function assertCommunicationEndpointDraft(
   assertNonEmpty("tenantId", draft.tenantId);
   assertNonEmpty("participantId", draft.participantId);
 
-  if (!/^[0-9a-f]{64}$/.test(draft.endpointValueHash)) {
+  if (!sha256HexDigestPattern.test(draft.endpointValueHash)) {
     throw new Error("endpointValueHash must be a SHA-256 hex digest.");
   }
 
@@ -404,7 +422,7 @@ export function assertCommunicationCommandIdempotencyDraft(
     throw new Error("card communication commands require user actor and operation permission.");
   }
 
-  if (!/^[0-9a-f]{64}$/.test(draft.requestHash)) {
+  if (!sha256HexDigestPattern.test(draft.requestHash)) {
     throw new Error("requestHash must be a SHA-256 hex digest.");
   }
 }
