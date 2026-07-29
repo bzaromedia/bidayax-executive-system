@@ -195,6 +195,15 @@ function assertDisposableDatabaseUrl(url: string) {
   const host = parsedUrl.hostname.toLowerCase();
   const safeLocalHosts = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
 
+  if (
+    parsedUrl.protocol !== "postgres:" &&
+    parsedUrl.protocol !== "postgresql:"
+  ) {
+    finish("failed", [
+      `Refusing to run against database URL with unsupported protocol '${parsedUrl.protocol}'. Use postgres:// or postgresql:// for the exact local disposable PostgreSQL verifier target.`
+    ]);
+  }
+
   if (parsedUrl.searchParams.size > 0) {
     finish("failed", [
       "Refusing to run against database URL with connection parameters. Use the exact local disposable PostgreSQL verifier target without query parameters."
@@ -240,9 +249,27 @@ function verifyDatabaseUrlSafety() {
   assertDisposableDatabaseUrl(
     `postgres://postgres:postgres@[::1]:5432/${disposableDatabaseName}`
   );
+  assertDisposableDatabaseUrl(
+    `postgresql://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}`
+  );
 
   expectDisposableDatabaseUrlRejection(
     `postgres://postgres:postgres@db.example.com:5432/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `socket://localhost/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `socket://localhost/${disposableDatabaseName}?db=${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `socket://127.0.0.1/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `http://127.0.0.1:5432/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres+srv://127.0.0.1:5432/${disposableDatabaseName}`
   );
   expectDisposableDatabaseUrlRejection(
     `postgres://postgres:postgres@[2001:db8::1]:5432/${disposableDatabaseName}`

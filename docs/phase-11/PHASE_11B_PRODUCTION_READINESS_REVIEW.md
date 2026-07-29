@@ -33,7 +33,9 @@ separate required merge gates.
   `bbbb75b0c3a4b9696f22f5e32052706b15ba30cf`
 - Active corrective branch:
   `fix/phase-11b-postmerge-correctness`
-- Final corrective commit: pending until the corrective branch is committed.
+- Corrective PR: #16. Its final head, GitHub CI result, and merge Advisor
+  disposition must be verified from live PR metadata before merge; any new
+  commit invalidates the prior final-head gate.
 - Governing ADR: `docs/adr/0002-communications-data-model.md`
 - Governing plan:
   `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`
