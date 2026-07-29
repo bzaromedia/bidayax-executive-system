@@ -229,25 +229,34 @@ communication_command_idempotency_keys
 communication_dispatch_attempts
 communication_webhook_evidence
 communication_routing_policies
+communication_business_hours_policies
 communication_receptionist_sessions
 communication_adapter_health
+communication_summaries
+communication_failover_events
 communication_trust_evidence_references
 communication_audit_events
 ```
 
 The migration preserves single-writer Communications ownership for product
 policy, consent, suppression, lifecycle, command idempotency, dispatch-attempt
-state, webhook evidence, routing policy, receptionist-session references,
-adapter health, trust references, and audit evidence. Telephony tables remain
+state, webhook evidence, routing policy, business-hours policy,
+receptionist-session references, adapter health, safe summaries, failover
+evidence, trust references, and audit evidence. Telephony tables remain
 adapter-local or legacy preparation evidence unless a later accepted decision
 changes ownership.
 
 The database model enforces tenant scope, card scope where applicable,
 tenant-composite relationships, append-only evidence, authorization evidence,
-active-session and active-grant checks for command writes, active-consent
-requirements for queued dispatch attempts, suppression denial, disabled
-provider dispatch, durable idempotency, explicit lifecycle transitions, and
-sanitized audit, trust, webhook, and metadata records.
+active-session and active-grant checks for user command writes, active
+Trust-identity and explicit capability checks for service/platform governance
+commands, durable authorization-decision audit evidence, durable consent trust
+evidence, active-consent and active-policy requirements for queued dispatch
+attempts, serialized consent and suppression policy checks, suppression denial
+plus controlled one-way suppression release, disabled provider dispatch,
+durable idempotency with controlled terminal result updates, explicit lifecycle
+transitions with chronology checks, and sanitized audit, trust, webhook,
+adapter-health, summary, failover, and metadata records.
 
 Phase 11B does not create provider activation, production telephony,
 production voice, live webhooks, orchestration runtime, Wallet, payment,

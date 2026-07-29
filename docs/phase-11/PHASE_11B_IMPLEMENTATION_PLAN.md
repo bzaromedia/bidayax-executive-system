@@ -72,6 +72,10 @@ ADR-0002:
 - `packages/communications-domain/src/suppressions/index.ts`
 - `packages/communications-domain/src/trust/index.ts`
 - `packages/communications-domain/src/types/index.ts`
+- `packages/trust/src/domains.ts`
+- `packages/trust/src/__tests__/canonicalization.test.ts`
+- `packages/trust/src/__tests__/envelope.test.ts`
+- `packages/trust/src/__tests__/lifecycle-validation-migration.test.ts`
 - `services/communications/src/repositories/index.ts`
 - `services/communications/src/index.ts`
 - `docs/DATA_STRUCTURES.md`
@@ -81,6 +85,14 @@ ADR-0002:
 - `docs/phase-11/GAP_ANALYSIS.md`
 - `docs/phase-11/PHASE_11B_ACCEPTANCE_CRITERIA.md`
 
+PR #15 merge-readiness remediation may also update active governance and
+evidence files required by the owner-authorized Production Readiness Review
+gate:
+
+- `docs/governance/PHASE_GATE_POLICY.md`
+- `docs/codex/DECISION-LOG.md`
+- `.github/workflows/ci.yml`
+
 Implementation may add only these new files:
 
 - `database/migrations/0018_create_communications_data_model.sql`
@@ -89,6 +101,7 @@ Implementation may add only these new files:
 - `services/communications/tests/data-model-repository-contract.test.ts`
 - `scripts/verify-communications-data-model-postgres.ts`
 - `docs/phase-11/PHASE_11B_TRACEABILITY.md`
+- `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md`
 
 No service runtime, adapter execution, provider, dashboard UI, receptionist
 runtime, deployment, or generated-client files are in scope.
@@ -151,6 +164,9 @@ The implementation must define or prove unnecessary:
 - routing policy records;
 - receptionist-session references;
 - adapter health references;
+- business-hours policies;
+- safe summaries;
+- failover evidence;
 - trust evidence references;
 - append-only audit events.
 
@@ -163,12 +179,14 @@ The implementation must define or prove unnecessary:
 | Domain tests | `pnpm --filter @bidayax/communications-domain test` |
 | Service types | `pnpm --filter @bidayax/communications typecheck` |
 | Service tests | `pnpm --filter @bidayax/communications test` |
+| Trust runtime compatibility | `pnpm --filter @bidayax/trust test` |
 | Migration sequence | `pnpm db:migrations:verify` |
 | PostgreSQL data-model gate | `pnpm verify:communications-data-model:postgres` |
 | Public claims | `pnpm verify:public-claims` |
 | Placeholder scan | `pnpm verify:no-placeholders` |
 | Release scope | `pnpm verify:release-scope` |
 | Workspace integrity | `pnpm verify:no-missing-workspaces` |
+| Production Readiness Review | `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md` with disposition `PRODUCTION_READINESS_REVIEW_PASSED` before merge |
 | Full repository gate | `pnpm verify` |
 | Secret scan | PR diff secret-pattern scan |
 | Advisor review | `ADVISOR_APPROVED` before implementation commit |
@@ -180,21 +198,33 @@ The implementation must test:
 - tenant-composite relationship rejection;
 - cross-card rejection;
 - forged actor rejection;
+- viewer tenant-kill-switch rejection;
+- unprivileged, disabled, and cross-tenant service/platform actor rejection;
 - revoked session or grant rejection;
-- missing, stale, mismatched, ambiguous, and revoked consent denial;
+- durable authorization-decision audit evidence binding;
+- direct terminal command insert rejection and controlled idempotency result
+  update;
+- missing, nonexistent, stale, mismatched, ambiguous, and revoked consent
+  denial;
+- durable consent trust-evidence binding;
 - consent revocation versus dispatch race behavior;
-- suppression enforcement at the data boundary;
+- suppression enforcement and controlled release at the data boundary;
 - idempotency retry behavior;
 - optimistic concurrency or append-only transition behavior;
+- lifecycle chronology rejection;
 - audit immutability;
 - trust evidence allowlist rejection for sensitive fields;
+- trust envelope requirement, key-purpose restriction, payload-projection
+  equality, and Trust event compatibility;
 - raw webhook body and provider payload exclusion from durable records;
+- adapter-health reason-code privacy;
 - phone, email, authorization header, token, transcript, audio, and secret-like
   key rejection from audit, trust, logs, metrics, traces, and dashboard-facing
   records;
 - rollback or corrective roll-forward safety;
 - provider credential absence;
 - dispatch disabled until Phase 11I.
+- business-hours, safe-summary, and failover-evidence table coverage.
 
 ## Entry Gate Evidence
 

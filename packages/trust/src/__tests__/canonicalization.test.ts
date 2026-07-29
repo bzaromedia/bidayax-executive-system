@@ -87,7 +87,7 @@ describe("typed security domain registry", () => {
   const binding = { artifactId: "artifact-1", artifactType: "settings", artifactVersion: "7", cardId: "card-1", payload: { enabled: true, nullable: null }, schemaVersion: "settings-1", tenantId: "tenant-1" } as const;
 
   it("contains every exact domain and produces distinct registered digests", () => {
-    expect(securityDomains).toHaveLength(24);
+    expect(securityDomains).toHaveLength(30);
     const digests = securityDomains.map((domain) => createDomainDigest({ ...binding, domain }));
     expect(new Set(digests)).toHaveLength(securityDomains.length);
   });

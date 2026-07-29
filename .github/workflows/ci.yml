@@ -31,6 +31,9 @@ jobs:
       - name: Verify migrations
         run: pnpm db:migrations:verify
 
+      - name: Verify Communications data model PostgreSQL gate
+        run: pnpm verify:communications-data-model:postgres
+
       - name: Typecheck
         run: pnpm typecheck
 

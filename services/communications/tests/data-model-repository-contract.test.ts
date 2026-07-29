@@ -5,6 +5,7 @@ describe("communications data-model repository contract", () => {
   it("defines persistence operations without runtime orchestration", () => {
     const operations = [
       "reserveCommandIdempotency",
+      "completeCommandIdempotency",
       "upsertParticipantEndpoint",
       "appendLifecycleTransition",
       "recordDispatchAttempt",
@@ -14,6 +15,7 @@ describe("communications data-model repository contract", () => {
 
     expect(operations).toEqual([
       "reserveCommandIdempotency",
+      "completeCommandIdempotency",
       "upsertParticipantEndpoint",
       "appendLifecycleTransition",
       "recordDispatchAttempt",

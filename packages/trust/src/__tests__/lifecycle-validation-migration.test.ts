@@ -105,7 +105,10 @@ describe("runtime validation and redacted logging", () => {
 
 describe("migration 0017 textual contract", () => {
   const root = resolve(import.meta.dirname, "../../../../");
-  const sql = readFileSync(resolve(root, "database/migrations/0017_create_cryptographic_trust_layer.sql"), "utf8");
+  const sql = [
+    readFileSync(resolve(root, "database/migrations/0017_create_cryptographic_trust_layer.sql"), "utf8"),
+    readFileSync(resolve(root, "database/migrations/0018_create_communications_data_model.sql"), "utf8")
+  ].join("\n");
 
   it("uses every exact conventional table name and no superseded competing names", () => {
     const required = [

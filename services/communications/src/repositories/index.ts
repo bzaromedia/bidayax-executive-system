@@ -1,9 +1,12 @@
 import type {
   CommunicationAuditEventDraft,
+  CommunicationAuditEventDataModelDraft,
   CommunicationCommandIdempotencyDraft,
+  CommunicationCommandResultDraft,
   CommunicationDispatchAttemptDraft,
   CommunicationEndpointDraft,
   CommunicationEventEnvelope,
+  CommunicationLifecycleTransitionDraft,
   CommunicationTrustEvidenceReferenceDraft,
   CommunicationTrustEvidenceDraft,
   ProviderNeutralWebhookEvidenceDraft
@@ -35,11 +38,16 @@ export interface CommunicationDataModelRepository {
   reserveCommandIdempotency(
     command: CommunicationCommandIdempotencyDraft
   ): Promise<"reserved" | "replayed" | "conflict">;
+  completeCommandIdempotency(
+    result: CommunicationCommandResultDraft
+  ): Promise<"completed" | "failed" | "replayed">;
   upsertParticipantEndpoint(endpoint: CommunicationEndpointDraft): Promise<void>;
-  appendLifecycleTransition(event: CommunicationEventEnvelope): Promise<void>;
+  appendLifecycleTransition(
+    transition: CommunicationLifecycleTransitionDraft
+  ): Promise<void>;
   recordDispatchAttempt(attempt: CommunicationDispatchAttemptDraft): Promise<void>;
   linkTrustEvidence(
     reference: CommunicationTrustEvidenceReferenceDraft
   ): Promise<void>;
-  appendAuditEvent(event: CommunicationAuditEventDraft): Promise<void>;
+  appendAuditEvent(event: CommunicationAuditEventDataModelDraft): Promise<void>;
 }

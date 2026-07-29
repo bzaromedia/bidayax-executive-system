@@ -120,4 +120,28 @@ describe("complete cryptographic envelope", () => {
     await expect(buildCryptographicEnvelope({ ...input(key, provider), metadata: { accessToken: "secret" } })).rejects.toThrow("sensitive metadata");
     await expect(buildCryptographicEnvelope({ ...input(key, provider), previousEnvelopeId: "env_previous" })).rejects.toThrow("both");
   });
+
+  it("builds and verifies Communications domain evidence with tenant artifact signing", async () => {
+    const { key, provider } = keyFixture("tenant_artifact_signing");
+    const envelope = await buildCryptographicEnvelope({
+      ...input(key, provider),
+      artifactId: "communication-1",
+      artifactType: "communication-webhook-evidence-v1",
+      artifactVersion: "1",
+      domain: "communications.webhook",
+      expiresAt: null,
+      payload: {
+        payloadHash: "a".repeat(64),
+        reasonCode: "WEBHOOK_VERIFIED"
+      },
+      schemaVersion: "communication-webhook-evidence-v1"
+    });
+
+    expect(envelope.domain).toBe("communications.webhook");
+    expect(envelope.keyPurpose).toBe("tenant_artifact_signing");
+    await expect(verify(envelope, key)).resolves.toMatchObject({
+      reasonCodes: ["verified"],
+      valid: true
+    });
+  });
 });
