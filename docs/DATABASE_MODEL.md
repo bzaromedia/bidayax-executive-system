@@ -211,6 +211,57 @@ database/models/telephony-integration.md
 
 Phase 9 still does not store raw recordings, raw audio streams, real provider execution records, sent email records, calendar booking records, payment data, contact enrichment, or CRM pipeline records.
 
+## Phase 11B Communications Data Model Tables
+
+Phase 11B adds the Communications-owned persistence boundary accepted by
+ADR-0002. Migration `database/migrations/0018_create_communications_data_model.sql`
+creates:
+
+```text
+communications
+communication_participants
+communication_participant_endpoints
+communication_consent_policies
+communication_consent_receipts
+communication_suppressions
+communication_lifecycle_transitions
+communication_command_idempotency_keys
+communication_dispatch_attempts
+communication_webhook_evidence
+communication_routing_policies
+communication_business_hours_policies
+communication_receptionist_sessions
+communication_adapter_health
+communication_summaries
+communication_failover_events
+communication_trust_evidence_references
+communication_audit_events
+```
+
+The migration preserves single-writer Communications ownership for product
+policy, consent, suppression, lifecycle, command idempotency, dispatch-attempt
+state, webhook evidence, routing policy, business-hours policy,
+receptionist-session references, adapter health, safe summaries, failover
+evidence, trust references, and audit evidence. Telephony tables remain
+adapter-local or legacy preparation evidence unless a later accepted decision
+changes ownership.
+
+The database model enforces tenant scope, card scope where applicable,
+tenant-composite relationships, append-only evidence, authorization evidence,
+active-session and active-grant checks for user command writes, active
+Trust-identity and explicit capability checks for service/platform governance
+commands, durable authorization-decision audit evidence, durable consent trust
+evidence, active-consent and active-policy requirements for queued dispatch
+attempts, serialized consent and suppression policy checks, suppression denial
+plus controlled one-way suppression release, disabled provider dispatch,
+durable idempotency with controlled terminal result updates, explicit lifecycle
+transitions with chronology checks, and sanitized audit, trust, webhook,
+adapter-health, summary, failover, and metadata records.
+
+Phase 11B does not create provider activation, production telephony,
+production voice, live webhooks, orchestration runtime, Wallet, payment,
+marketplace, loyalty, rewards, or Phase 12 implementation tables.
+
 ## Migration Policy
 
 When migrations are introduced:
@@ -224,4 +275,9 @@ When migrations are introduced:
 
 ## Remaining Non-Implementation Note
 
-The implemented persistence model now includes the Phase 4 event ledger, Phase 6 intent scores, Phase 7 contact graph tables, Phase 8 receptionist foundation tables, and Phase 9 telephony preparation tables. Contact, company, CRM, live provider execution, scheduling, enrichment, payment, and production automation tables are intentionally unbuilt.
+The implemented persistence model now includes the Phase 4 event ledger, Phase
+6 intent scores, Phase 7 contact graph tables, Phase 8 receptionist foundation
+tables, Phase 9 telephony preparation tables, and the Phase 11B
+Communications-owned data-model tables. Contact, company, CRM, live provider
+execution, scheduling execution, enrichment, payment, Wallet, and production
+automation tables remain intentionally unbuilt.

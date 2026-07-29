@@ -48,6 +48,9 @@ Before merge, the active phase or subphase package must have:
 - passing local validation proportional to risk;
 - passing required remote CI;
 - no unresolved review threads or requested changes;
+- a Production Readiness Review for implementation packages that documents
+  architecture, security, data, API and contract, testing, UI/UX contract,
+  operations, and release-safety evidence;
 - read-only Advisor approval when required by repository governance.
 
 Merge does not itself close the phase or subphase unless the merged artifact is

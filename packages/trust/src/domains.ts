@@ -27,7 +27,13 @@ export const securityDomains = [
   "provenance.manifest",
   "watermark.asset",
   "watermark.package",
-  "sentinelq.evidence"
+  "sentinelq.evidence",
+  "communications.lifecycle",
+  "communications.consent",
+  "communications.suppression",
+  "communications.routing",
+  "communications.audit",
+  "communications.webhook"
 ] as const;
 
 export type SecurityDomain = (typeof securityDomains)[number];

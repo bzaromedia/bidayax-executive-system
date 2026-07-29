@@ -8,5 +8,6 @@ export * from "./suppressions";
 export * from "./routing";
 export * from "./policies";
 export * from "./audit";
+export * from "./data-model";
 export * from "./trust";
 export * from "./state-machines";

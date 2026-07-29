@@ -267,3 +267,69 @@ Phase 9 adds telephony preparation structures:
 - outbound safety gate result.
 
 These structures prepare live integration but do not represent active autonomous calling or live AI voice runtime.
+
+## Phase 11B Communications Data Model
+
+Phase 11B introduces a Communications-owned data model for the channel-neutral
+Communications Domain accepted by ADR-0001 and ADR-0002.
+
+Primary structures:
+
+- `communication`: tenant-scoped aggregate root with card scope where
+  applicable, channel, direction, canonical state, state version, request
+  reason, retention class, and sanitized metadata.
+- `communication_participant`: tenant/card-scoped participant identity boundary
+  for external contacts, executives, tenant users, systems, and adapters.
+- `communication_participant_endpoint`: hashed endpoint record. Raw phone
+  numbers, email addresses, authorization headers, transcripts, audio, provider
+  payloads, and secrets are prohibited.
+- `communication_consent_policy`: versioned consent policy by jurisdiction,
+  channel, purpose, disclosure, recording, transcription, and retention class.
+- `communication_consent_receipt`: immutable participant consent evidence with
+  status, source, evidence reference, effective time, expiry, revocation time,
+  sanitized metadata, and a durable consent trust-evidence reference matching
+  the receipt, channel, card, and policy version.
+- `communication_suppression`: participant suppression state with reason,
+  expiry, and controlled release evidence. Suppressions are inserted active and
+  may only move once to released with authorized actor, release reason, and
+  matching audit linkage.
+- `communication_lifecycle_transition`: append-only state transition record
+  with sequence enforcement and terminal-state protection.
+- `communication_command_idempotency_key`: scoped command idempotency record for
+  card, tenant, or platform communications commands. User commands are bound to
+  authoritative membership, session, card grant, authorization decision,
+  permission version, and policy version evidence. Service and platform commands
+  require active Trust identities, explicit kill-switch capabilities, and
+  durable authorization-decision audit evidence.
+- `communication_dispatch_attempt`: dispatch-attempt state with provider
+  execution disabled. Queued attempts require active cited consent, active
+  cited policy at evaluation time, serialized policy checks, and fail closed
+  when suppression is active.
+- `communication_webhook_evidence`: durable webhook evidence limited to
+  provider event identifiers, payload hashes, signature verification result,
+  timestamps, and sanitized metadata.
+- `communication_routing_policy`: Communications-owned routing policy data.
+- `communication_business_hours_policy`: Communications-owned business-hours
+  policy data for future routing decisions without provider activation.
+- `communication_receptionist_session`: receptionist-session reference that
+  preserves the rule that receptionist logic cannot dispatch providers
+  directly.
+- `communication_adapter_health`: adapter health snapshot for future policy
+  decisions with safe reason-code arrays and sanitized metadata only.
+- `communication_summary`: safe summary evidence represented by hashes, status,
+  actor, reason code, and sanitized metadata. Raw communication bodies,
+  transcripts, and recordings are not stored.
+- `communication_failover_event`: failover decision evidence with provider
+  dispatch disabled and sanitized metadata.
+- `communication_trust_evidence_reference`: link from Communications facts to
+  Trust-owned evidence using explicit domains, artifact schemas,
+  canonicalization versions, the accepted tenant artifact signing key purpose,
+  compatible envelopes and trust events, and allowlisted fields that match the
+  signed envelope payload.
+- `communication_audit_event`: append-only audit evidence for allowed, denied,
+  blocked, and failed Communications decisions.
+
+Existing telephony tables remain adapter-local or legacy preparation evidence
+unless a later accepted ADR or implementation package changes ownership. Phase
+11B does not activate providers, production voice, live telephony, Wallet,
+payments, marketplace, loyalty, rewards, Phase 11C orchestration, or Phase 12.

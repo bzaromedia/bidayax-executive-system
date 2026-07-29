@@ -48,6 +48,12 @@ provider execution, webhook evidence, routing policy, receptionist-session
 references, adapter-health references, trust-evidence references, and
 append-only audit events.
 
+The Phase 11B implementation branch introduces these records through migration
+`0018_create_communications_data_model.sql`. The new tables are the
+Communications write boundary for Phase 11B; the telephony tables listed above
+remain adapter-local or legacy evidence and are not promoted to canonical
+Communications ownership.
+
 ## Future Cutover Rule
 
 Any later decision to migrate canonical ownership into or out of an existing

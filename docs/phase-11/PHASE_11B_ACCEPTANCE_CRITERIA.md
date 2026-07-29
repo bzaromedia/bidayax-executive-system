@@ -69,3 +69,23 @@ Phase 11B is complete only when:
 No Phase 11B implementation is authorized until PR #14 is merged, the planning
 ADR is Accepted and effective, every entry requirement is evidenced, and an
 implementation package is explicitly approved.
+
+## Implementation Evidence Mapping
+
+The Phase 11B implementation branch may satisfy implementation criteria only
+through objective evidence:
+
+- source contracts in `packages/communications-domain/src/data-model/index.ts`;
+- service repository contracts in `services/communications/src/repositories/index.ts`;
+- forward-only migration
+  `database/migrations/0018_create_communications_data_model.sql`;
+- domain and service tests;
+- named PostgreSQL validation through
+  `pnpm verify:communications-data-model:postgres`;
+- traceability in `docs/phase-11/PHASE_11B_TRACEABILITY.md`;
+- final full repository validation;
+- independent read-only Advisor approval.
+
+These records support a Draft implementation PR. They do not formally close
+Phase 11B until the implementation is merged and a separate closure record is
+accepted under the Phase Gate Policy.

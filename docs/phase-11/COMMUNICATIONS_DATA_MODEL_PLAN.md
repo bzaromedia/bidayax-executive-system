@@ -97,3 +97,23 @@ requirement is evidenced, and an owner-approved implementation package records
 the authorized file scope. The authoritative implementation package order is in
 `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`. This planning document must
 not be used as migration or runtime implementation authority by itself.
+
+## Implementation Evidence Status
+
+After PR #14 merged, ADR-0002 and
+`docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md` authorized a Phase 11B
+implementation branch limited to the Communications Data Model.
+
+The implementation branch records evidence through:
+
+- `database/migrations/0018_create_communications_data_model.sql`;
+- `packages/communications-domain/src/data-model/index.ts`;
+- `packages/communications-domain/tests/data-model.test.ts`;
+- `services/communications/src/repositories/index.ts`;
+- `services/communications/tests/data-model-repository-contract.test.ts`;
+- `scripts/verify-communications-data-model-postgres.ts`;
+- `docs/phase-11/PHASE_11B_TRACEABILITY.md`.
+
+This evidence does not close Phase 11B by itself. Phase 11B remains awaiting
+implementation review, merge, post-merge validation, Advisor approval for
+closure, and a merged closure record before Phase 11C may begin.

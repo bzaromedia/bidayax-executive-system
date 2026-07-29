@@ -51,3 +51,33 @@
   - `docs/codex/WORKFLOW.md`
   - `.codex/README.md`
   - `.codex/config.toml`
+
+## 2026-07-25 - Implementation PRR Gate Added
+
+- Decision: require an evidence-based Production Readiness Review before
+  implementation PRs merge.
+- Reason: the owner-authorized Master Linear Completion Prompt requires every
+  implementation package to prove architecture, security, data, API and
+  contract, testing, UI/UX contract, operations, and release-safety readiness
+  before merge. This gate is merge-readiness evidence only; it does not
+  collapse implementation into formal phase closure.
+- Evidence:
+  - `docs/governance/PHASE_GATE_POLICY.md`
+  - `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`
+  - `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md`
+
+## 2026-07-26 - Phase 11B PRR Evidence Hardened
+
+- Decision: require Phase 11B implementation merge readiness to prove durable
+  consent evidence binding, durable authorization-decision evidence, controlled
+  command result transitions, controlled suppression release, Trust envelope
+  payload projection, actor evidence binding, adapter-health reason-code
+  privacy, expected-error PostgreSQL assertions, and lifecycle chronology.
+- Reason: final read-only Advisor review rejected the uncommitted PR #15
+  remediation because several Critical and High data-boundary findings remained
+  despite earlier local validation.
+- Evidence:
+  - `database/migrations/0018_create_communications_data_model.sql`
+  - `scripts/verify-communications-data-model-postgres.ts`
+  - `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md`
+  - `docs/phase-11/PHASE_11B_TRACEABILITY.md`
