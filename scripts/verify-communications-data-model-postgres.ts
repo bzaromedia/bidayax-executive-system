@@ -237,9 +237,18 @@ function verifyDatabaseUrlSafety() {
   assertDisposableDatabaseUrl(
     `postgres://postgres:postgres@localhost:5432/${disposableDatabaseName}`
   );
+  assertDisposableDatabaseUrl(
+    `postgres://postgres:postgres@[::1]:5432/${disposableDatabaseName}`
+  );
 
   expectDisposableDatabaseUrlRejection(
     `postgres://postgres:postgres@db.example.com:5432/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@[2001:db8::1]:5432/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@%2Fvar%2Frun%2Fpostgresql:5432/${disposableDatabaseName}`
   );
   expectDisposableDatabaseUrlRejection(
     "postgres://postgres:postgres@127.0.0.1:5432/production_ci"
@@ -257,6 +266,12 @@ function verifyDatabaseUrlSafety() {
     `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?port=5432`
   );
   expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslmode=require`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?ssl=true`
+  );
+  expectDisposableDatabaseUrlRejection(
     `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslcert=/tmp/client.crt`
   );
   expectDisposableDatabaseUrlRejection(
@@ -264,6 +279,27 @@ function verifyDatabaseUrlSafety() {
   );
   expectDisposableDatabaseUrlRejection(
     `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslrootcert=/tmp/ca.crt`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?service=production`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?servicefile=/tmp/pg_service.conf`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?host=127.0.0.1&host=db.example.com`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?%68ost=db.example.com`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?HOST=db.example.com`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?SslMode=require`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?host=%2Fvar%2Frun%2Fpostgresql`
   );
 }
 
