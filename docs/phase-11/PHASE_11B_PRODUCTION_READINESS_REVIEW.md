@@ -1,22 +1,24 @@
 # Phase 11B Production Readiness Review
 
-Status: Proposed for PR #15 merge readiness
-Date: 2026-07-25
+Status: Reopened for post-merge Phase 11B corrective remediation
+Date (America/Los_Angeles): 2026-07-28
 
-This review covers PR #15, the Phase 11B Communications Data Model
-implementation package. It is evidence for implementation merge readiness only.
-It does not close Phase 11B, authorize Phase 11C, activate providers, deploy
-production systems, or unlock Wallet or other frozen work.
+This review covered PR #15, the Phase 11B Communications Data Model
+implementation package, and is reopened for the post-merge Phase 11B
+corrective remediation required by closure-gate review. It is evidence for
+implementation and corrective merge readiness only. It does not close Phase
+11B, authorize Phase 11C, activate providers, deploy production systems, or
+unlock Wallet or other frozen work.
 
-Required final disposition before merge: `PRODUCTION_READINESS_REVIEW_PASSED`.
+Required final disposition before any implementation or corrective merge:
+`PRODUCTION_READINESS_REVIEW_PASSED`.
 
 Current disposition: `PRODUCTION_READINESS_REVIEW_PASSED`.
 
-The local PRR evidence was reopened after the latest Advisor merge-gate review
-rejected the working tree. It is promoted back to
-`PRODUCTION_READINESS_REVIEW_PASSED` after the Critical and Major findings were
-repaired and final local validation passed on the remediated working tree.
-Remote CI on the pushed PR head and read-only Advisor merge approval remain
+PR #15 merged, but Phase 11B closure review rejected formal closure because
+Critical and High post-merge correctness defects remained. This PRR has passed
+for the repaired corrective working tree after focused and full local
+validation were rerun. Remote CI and read-only Advisor merge review remain
 separate required merge gates.
 
 ## Scope Reviewed
@@ -25,7 +27,13 @@ separate required merge gates.
 - Branch: `feature/phase-11b-communications-data-model`
 - Starting implementation commit:
   `577b102b4011978474cfb8efde1fd1d483eb40b8`
-- Final implementation commit: pending until PR #15 remediation commit is pushed.
+- PR #15 final implementation commit:
+  `63c41728d92309bf340f96dc8f416dae65f70b56`
+- PR #15 merge commit:
+  `bbbb75b0c3a4b9696f22f5e32052706b15ba30cf`
+- Active corrective branch:
+  `fix/phase-11b-postmerge-correctness`
+- Final corrective commit: pending until the corrective branch is committed.
 - Governing ADR: `docs/adr/0002-communications-data-model.md`
 - Governing plan:
   `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`
@@ -66,8 +74,8 @@ Disposition: PASSED
 
 Evidence:
 
-- Migration `0018` enforces tenant/card composite relationships and rejects
-  null-card bypass attempts through database triggers.
+- Migrations `0018` and `0019` enforce tenant/card composite relationships and
+  reject null-card bypass attempts through database triggers.
 - Command idempotency records require explicit card, tenant, or platform scope,
   actor type, authorization decision ID, required permission, permission
   version, and policy version. User card commands require authoritative tenant
@@ -75,7 +83,8 @@ Evidence:
   and platform commands require active Trust identities, explicit
   Communications kill-switch capabilities, exact operation/scope/request
   authorization-decision audit metadata, fixed Phase 11B permission/policy
-  versions, and cannot borrow user authorization fields.
+  versions, required metadata keys, null-safe comparisons, and cannot borrow
+  user authorization fields.
 - Consent policy and consent receipt compatibility is enforced by card,
   channel, purpose, effective window, and durable consent trust-evidence
   references. Consent evidence must match receipt, participant, policy,
@@ -102,9 +111,9 @@ Findings:
 
 - No production credentials, provider credentials, private keys, raw provider
   payloads, transcripts, or audio are added.
-- Known latest Critical and High local findings have been remediated in the
-  working tree and covered by focused and full local validation. Remote CI and
-  Advisor review remain required before merge.
+- Known prior Critical and High closure-gate findings are remediated in the
+  corrective working tree and covered by focused and full local validation.
+  Remote CI and Advisor review remain required before corrective merge.
 
 ## Data
 
@@ -115,12 +124,13 @@ Evidence:
 - Migration `0018` creates 18 Communications-owned tables with primary keys,
   foreign keys, tenant/card composite constraints, unique constraints, check
   constraints, append-only triggers, lifecycle sequencing, idempotency keys,
-  dispatch policy checks, and query indexes.
+  dispatch policy checks, and query indexes. Migration `0019` hardens the
+  existing guard triggers through a forward corrective roll-forward.
 - The named PostgreSQL gate
   `pnpm verify:communications-data-model:postgres` applies the complete
-  migration chain to a disposable or test schema, rolls back transactional
-  fixture data after verification, and uses a cleanup-safe completion path for
-  disposable Docker PostgreSQL runs.
+  migration chain to the exact local disposable database target, rolls back
+  transactional fixture data after verification, and uses a cleanup-safe
+  completion path for disposable Docker PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
 
@@ -178,8 +188,8 @@ Evidence:
   policy, safe summary evidence, failover evidence, Trust envelope/event
   compatibility and payload projection, raw payload rejection, provider
   dispatch disabled behavior, and prohibited credential/raw columns.
-- Full repository validation remains required against the final PR head before
-  merge.
+- Full repository validation passed against the repaired corrective working
+  tree. Remote CI and Advisor review remain required before corrective merge.
 
 Findings:
 
@@ -250,8 +260,8 @@ Evidence:
 
 ## Validation Evidence
 
-Final validation must be rerun after this PRR document is committed. The PRR
-may be considered passed only when the final PR #15 head has:
+Local validation has been rerun after the latest corrective repairs. Corrective
+merge readiness still requires the final pushed corrective branch to have:
 
 - passing local validation proportional to Phase 11B risk;
 - passing named PostgreSQL validation;
@@ -310,14 +320,24 @@ may be considered passed only when the final PR #15 head has:
 | 11B-PRR-044 | HIGH | Final merge-gate Advisor review found TypeScript Trust-reference contracts rejected valid consent projection fields while accepting null Trust event linkage. | Resolved by adding consent projection fields to the domain allowlist, requiring Trust event IDs, and checking domain/schema compatibility before persistence. | Phase 11B |
 | 11B-PRR-045 | HIGH | Final merge-gate Advisor review found the CI workflow file was not explicitly authorized in the Phase 11B PRR remediation scope. | Resolved by amending the implementation plan to list `.github/workflows/ci.yml` as PRR evidence-scope validation work. | Phase 11B |
 | 11B-PRR-046 | HIGH | Final merge-gate Advisor review found the reviewed tree was dirty and remote CI covered only the prior PR head. | Pending by design until the Executor commits, pushes, and GitHub CI passes on the final reviewed SHA. | Phase 11B |
+| 11B-PRR-047 | CRITICAL | Post-merge closure Advisor found authorization-decision metadata could omit required keys and bypass SQL `<>` comparisons through NULL. | Resolved in the corrective branch by migration `0019`, which requires keys and uses `IS DISTINCT FROM`; PostgreSQL verifier covers omitted operation, scope, permission, request hash, session, and grant metadata. | Phase 11B |
+| 11B-PRR-048 | CRITICAL | Post-merge closure Advisor found consent evidence could omit receipt, channel, purpose, participant, policy, status, or source fields and still qualify. | Resolved in the corrective branch by migration `0019` required-key checks and PostgreSQL omitted-field negatives. | Phase 11B |
+| 11B-PRR-049 | CRITICAL | Post-merge closure Advisor found Trust events could omit the cited `envelopeId`. | Resolved in the corrective branch by migration `0019` Trust event required-key and null-safe envelope comparison; PostgreSQL verifier covers omitted event envelope linkage. | Phase 11B |
+| 11B-PRR-050 | CRITICAL | Post-merge closure Advisor found caller-writable command `created_at` could be backdated to evade session or grant expiry. | Resolved in the corrective branch by migration `0019` database-owned command creation time and PostgreSQL backdated expired session/grant negatives. | Phase 11B |
+| 11B-PRR-051 | CRITICAL | Post-merge closure Advisor found the PostgreSQL verifier could target an unintended remote or production-like database before rollback. | Resolved in the corrective branch by exact local disposable database URL policy and pre-connection URL safety self-tests. | Phase 11B |
+| 11B-PRR-052 | HIGH | Post-merge closure Advisor found TypeScript metadata validation accepted nested runtime payloads before persistence. | Resolved in the corrective branch by rejecting non-primitive metadata values and adding nested object/array domain tests. | Phase 11B |
+| 11B-PRR-053 | CRITICAL | Corrective Advisor review found consent Trust evidence could carry JSON-null `policyVersion` and bypass nullable `<>` comparison. | Resolved in the corrective branch by using `IS DISTINCT FROM` for policy-version comparison and adding omitted/null policy-version PostgreSQL negatives. | Phase 11B |
+| 11B-PRR-054 | CRITICAL | Corrective Advisor review found transaction-start `now()` could stale-date command authorization inside a long-running transaction. | Resolved in the corrective branch by using database wall-clock `clock_timestamp()` for command creation and terminal completion timestamps and adding delayed-in-transaction expired session/grant negatives. | Phase 11B |
+| 11B-PRR-055 | HIGH | Corrective Advisor review found the implementation plan omitted itself from the corrective file-scope manifest. | Resolved by listing `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md` in the bounded post-merge corrective remediation scope. | Phase 11B |
 
 ## Formal PRR Decision
 
 - Decision: `PRODUCTION_READINESS_REVIEW_PASSED`
-- Scope: PR #15 Phase 11B Communications Data Model implementation merge
-  readiness only.
-- Merge condition: final PR #15 head CI and Advisor merge approval must remain
-  green before PR #15 can merge.
+- Scope: PR #15 Phase 11B Communications Data Model implementation and the
+  post-merge Phase 11B corrective remediation.
+- Merge condition: the corrective branch must pass final local validation,
+  remote CI, and read-only Advisor merge approval before it can merge.
 - Non-closure statement: This PRR does not formally close Phase 11B.
-- Next required record after implementation merge:
-  `docs/phase-11/PHASE_11B_CLOSURE_RECORD.md` on a separate closure branch.
+- Next required record after corrective merge:
+  a recreated `docs/phase-11/PHASE_11B_CLOSURE_RECORD.md` on a separate
+  closure branch from verified `main`.

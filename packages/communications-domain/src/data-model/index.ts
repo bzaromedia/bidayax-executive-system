@@ -260,6 +260,14 @@ function assertNonEmpty(label: string, value: string) {
 export function assertSafeCommunicationMetadata(
   metadata: SafeCommunicationMetadata
 ) {
+  if (
+    metadata === null ||
+    typeof metadata !== "object" ||
+    Array.isArray(metadata)
+  ) {
+    throw new Error("Communication metadata must be a safe JSON object.");
+  }
+
   for (const [key, value] of Object.entries(metadata)) {
     if (sensitiveCommunicationMetadataPattern.test(key)) {
       throw new Error(`Communication metadata key '${key}' is not safe.`);
@@ -270,6 +278,17 @@ export function assertSafeCommunicationMetadata(
       sensitiveCommunicationMetadataPattern.test(value)
     ) {
       throw new Error(`Communication metadata value for '${key}' is not safe.`);
+    }
+
+    if (
+      value !== null &&
+      typeof value !== "string" &&
+      typeof value !== "number" &&
+      typeof value !== "boolean"
+    ) {
+      throw new Error(
+        `Communication metadata value for '${key}' must be a primitive safe value.`
+      );
     }
   }
 }

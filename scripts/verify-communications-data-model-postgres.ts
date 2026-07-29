@@ -61,6 +61,10 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   adapter_health_prose_reason_code: /check constraint/i,
   adapter_health_oversized_reason_code: /check constraint/i,
   business_hours_sensitive_window: /safe|sensitive|check constraint/i,
+  command_backdated_expired_grant: /grant is not active|check constraint/i,
+  command_backdated_expired_session: /session is not active|check constraint/i,
+  command_long_transaction_expired_grant: /grant is not active|check constraint/i,
+  command_long_transaction_expired_session: /session is not active|check constraint/i,
   command_authorization_immutable: /immutable/i,
   command_auth_cross_operation_reuse: /authorization decision resource mismatch/i,
   command_direct_terminal_insert: /reserved state|terminal result/i,
@@ -70,13 +74,20 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   command_duplicate: /duplicate key|unique/i,
   command_persisted_replay: /check constraint|terminal command status/i,
   command_reserved_with_result: /reserved state|terminal result/i,
-  command_user_platform_kill_switch: /check constraint|platform kill-switch|actor mismatch/i,
+  command_user_platform_kill_switch: /check constraint|platform kill-switch|actor mismatch|user context mismatch/i,
   command_reopen_completed_result: /reserved to a terminal command status|immutable/i,
   command_service_cross_tenant: /active service identity|foreign key|tenant/i,
   command_service_disabled: /active service identity|foreign key/i,
   command_service_unprivileged: /tenant kill-switch capability/i,
   command_tenant_kill_switch_viewer: /owner or admin membership/i,
   command_platform_unprivileged: /platform kill-switch capability/i,
+  command_missing_authorization_card_grant_id: /authorization decision user context mismatch/i,
+  command_missing_authorization_operation: /authorization decision resource mismatch/i,
+  command_missing_authorization_request_hash: /authorization decision resource mismatch/i,
+  command_missing_authorization_required_permission: /authorization decision resource mismatch/i,
+  command_missing_authorization_scope_id: /authorization decision resource mismatch/i,
+  command_missing_authorization_scope_type: /authorization decision resource mismatch/i,
+  command_missing_authorization_session_id: /authorization decision user context mismatch/i,
   consent_append_only: /immutable|append-only/i,
   communication_direct_state_update: /lifecycle transition/i,
   communication_forged_lifecycle_setting: /lifecycle transition/i,
@@ -90,8 +101,17 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   consent_policy_append_only: /immutable|append-only/i,
   consent_policy_cross_card: /policy.*card|foreign key|card/i,
   consent_policy_purpose_channel_mismatch: /policy.*channel|policy.*purpose|channel does not match policy|purpose does not match policy/i,
+  consent_missing_policy_version_evidence: /policy version does not match cited policy|does not match receipt/i,
+  consent_null_policy_version_evidence: /policy version does not match cited policy|does not match receipt/i,
   consent_wrong_policy_version_evidence: /policy version does not match cited policy/i,
   consent_wrong_receipt_evidence: /does not match receipt/i,
+  consent_missing_channel_evidence: /does not match receipt/i,
+  consent_missing_participant_evidence: /does not match receipt/i,
+  consent_missing_policy_evidence: /does not match receipt/i,
+  consent_missing_purpose_evidence: /does not match receipt/i,
+  consent_missing_receipt_evidence: /does not match receipt/i,
+  consent_missing_source_evidence: /does not match receipt/i,
+  consent_missing_status_evidence: /does not match receipt/i,
   consent_missing_observed_time_evidence: /does not match receipt timing/i,
   consent_mismatched_observed_time_evidence: /does not match receipt timing/i,
   consent_mismatched_effective_time_evidence: /does not match receipt timing/i,
@@ -140,6 +160,7 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   suppression_scope_immutable: /scope and creation evidence is immutable/i,
   trust_domain_schema_mismatch: /domain and artifact schema|envelope is incompatible/i,
   trust_event_mismatch: /trust event is incompatible/i,
+  trust_event_missing_envelope_link: /trust event is incompatible/i,
   trust_missing_durable_link: /cryptographic envelope|not-null/i,
   trust_non_allowlisted_metadata: /allowlisted|check constraint/i,
   trust_null_card_bypass: /card scope|envelope is incompatible|not-null/i,
@@ -168,17 +189,82 @@ function finish(status: VerificationStatus, details: readonly string[]): never {
   throw new VerificationCompletion(status, line);
 }
 
-function safeDatabaseUrl(url: string) {
+function assertDisposableDatabaseUrl(url: string) {
   const parsedUrl = new URL(url);
   const databaseName = parsedUrl.pathname.replace(/^\//, "");
+  const host = parsedUrl.hostname.toLowerCase();
+  const safeLocalHosts = new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
 
-  if (!/test|ci|local/i.test(databaseName)) {
+  if (parsedUrl.searchParams.size > 0) {
     finish("failed", [
-      `Refusing to run against database '${databaseName}'. Use a disposable database name containing test, ci, or local.`
+      "Refusing to run against database URL with connection parameters. Use the exact local disposable PostgreSQL verifier target without query parameters."
+    ]);
+  }
+
+  if (!safeLocalHosts.has(host)) {
+    finish("failed", [
+      `Refusing to run against non-local database host '${parsedUrl.hostname}'. Use the disposable local PostgreSQL verifier target.`
+    ]);
+  }
+
+  if (databaseName !== disposableDatabaseName) {
+    finish("failed", [
+      `Refusing to run against database '${databaseName}'. Expected disposable database '${disposableDatabaseName}'.`
     ]);
   }
 
   return url;
+}
+
+function expectDisposableDatabaseUrlRejection(url: string) {
+  try {
+    assertDisposableDatabaseUrl(url);
+  } catch (error) {
+    if (error instanceof VerificationCompletion && error.status === "failed") {
+      return;
+    }
+
+    throw error;
+  }
+
+  throw new Error(`Unsafe database URL was accepted: ${url}`);
+}
+
+function verifyDatabaseUrlSafety() {
+  assertDisposableDatabaseUrl(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}`
+  );
+  assertDisposableDatabaseUrl(
+    `postgres://postgres:postgres@localhost:5432/${disposableDatabaseName}`
+  );
+
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@db.example.com:5432/${disposableDatabaseName}`
+  );
+  expectDisposableDatabaseUrlRejection(
+    "postgres://postgres:postgres@127.0.0.1:5432/production_ci"
+  );
+  expectDisposableDatabaseUrlRejection(
+    "postgres://postgres:postgres@127.0.0.1:5432/customer_local"
+  );
+  expectDisposableDatabaseUrlRejection(
+    "postgres://postgres:postgres@127.0.0.1:5432/test"
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?host=db.example.com`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?port=5432`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslcert=/tmp/client.crt`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslkey=/tmp/client.key`
+  );
+  expectDisposableDatabaseUrlRejection(
+    `postgres://postgres:postgres@127.0.0.1:5432/${disposableDatabaseName}?sslrootcert=/tmp/ca.crt`
+  );
 }
 
 function dockerIsLocal() {
@@ -245,7 +331,7 @@ async function waitForDatabaseReady(connectionString: string) {
 
 async function resolveConnectionString() {
   if (databaseUrl) {
-    return safeDatabaseUrl(databaseUrl);
+    return assertDisposableDatabaseUrl(databaseUrl);
   }
 
   if (!dockerIsLocal()) {
@@ -277,6 +363,7 @@ async function resolveConnectionString() {
   inspectDisposableHostPort();
 
   const connectionString = disposableConnectionString();
+  assertDisposableDatabaseUrl(connectionString);
   await waitForDatabaseReady(connectionString);
   return connectionString;
 }
@@ -391,7 +478,9 @@ async function insertConsentEvidence(
     readonly source?: string;
     readonly signedAtSql?: string;
     readonly status?: string;
+    readonly trustEventDetailsOverrides?: Record<string, unknown>;
     readonly trustEventType?: string;
+    readonly omitTrustEventDetailsFields?: readonly string[];
     readonly verificationValid?: boolean;
   } = {}
 ) {
@@ -416,6 +505,15 @@ async function insertConsentEvidence(
 
   for (const field of options.omitEvidenceFields ?? []) {
     delete evidenceFields[field];
+  }
+
+  const trustEventDetails = {
+    ...evidenceFields,
+    ...options.trustEventDetailsOverrides
+  };
+
+  for (const field of options.omitTrustEventDetailsFields ?? []) {
+    delete trustEventDetails[field];
   }
 
   await client.query(
@@ -461,7 +559,7 @@ async function insertConsentEvidence(
       trustEventId,
       `${trustEventId}-idempotency`,
       options.trustEventType ?? "communications.consent",
-      JSON.stringify(evidenceFields)
+      JSON.stringify(trustEventDetails)
     ]
   );
   await client.query(
@@ -551,6 +649,17 @@ function commandAuthorizationMetadata(options: {
     ...(options.sessionId ? { sessionId: options.sessionId } : {}),
     ...(options.cardGrantId ? { cardGrantId: options.cardGrantId } : {})
   };
+}
+
+function omitMetadataFields(
+  metadata: Record<string, string>,
+  fields: readonly string[]
+) {
+  const result = { ...metadata };
+  for (const field of fields) {
+    delete result[field];
+  }
+  return result;
 }
 
 function lifecycleAuthorizationMetadata(options: {
@@ -682,6 +791,9 @@ async function seedFoundation(client: PgClient) {
        ('session-revoked', repeat('e', 64), repeat('f', 64), 'user-test', 'tenant-test',
         'workos', 'provider-session-revoked', 'Passkey', now(), now(),
         now() + interval '30 minutes', now() + interval '8 hours', now()),
+       ('session-expired', repeat('8', 64), repeat('9', 64), 'user-test', 'tenant-test',
+        'workos', 'provider-session-expired', 'Passkey', now() - interval '2 days',
+        now() - interval '2 days', now() - interval '1 day', now() - interval '1 day', null),
        ('session-other', repeat('1', 64), repeat('2', 64), 'user-other', 'tenant-other',
         'workos', 'provider-session-other', 'Passkey', now(), now(),
         now() + interval '30 minutes', now() + interval '8 hours', null)`
@@ -1379,6 +1491,290 @@ async function runVerification(
     );
   });
 
+  const serviceCommandMetadataBase = commandAuthorizationMetadata({
+    operation: "apply_tenant_kill_switch",
+    requiredPermission: "communications:tenant:kill_switch",
+    requestHash: "d".repeat(64),
+    scopeId: "tenant-test",
+    scopeType: "tenant"
+  });
+
+  for (const [field, label] of [
+    ["operation", "command_missing_authorization_operation"],
+    ["scopeType", "command_missing_authorization_scope_type"],
+    ["scopeId", "command_missing_authorization_scope_id"],
+    ["requiredPermission", "command_missing_authorization_required_permission"],
+    ["requestHash", "command_missing_authorization_request_hash"]
+  ] as const) {
+    const auditEventId = `authz-missing-${field}`;
+    await insertAuthorizationDecision(client, {
+      actorType: "service",
+      actorServiceId: "communications-service",
+      auditEventId,
+      cardId: null,
+      communicationId: null,
+      metadata: omitMetadataFields(serviceCommandMetadataBase, [field]),
+      reasonCode: "COMMAND_ALLOWED"
+    });
+    await expectError(client, label, async () => {
+      await client.query(
+        `insert into communication_command_idempotency_keys (
+           tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+           request_hash, result_communication_id, actor_type, actor_user_id,
+           actor_service_id, actor_platform_id, session_id, card_grant_id,
+           authorization_decision_id, required_permission, permission_version,
+           policy_version, status, created_at, completed_at, expires_at
+         ) values (
+           'tenant-test', null, 'tenant', 'tenant-test',
+           'apply_tenant_kill_switch', $1, $2, null, 'service', null,
+           'communications-service', null, null, null, $3,
+           'communications:tenant:kill_switch',
+           'communications-permissions-v1', 'communications-policy-v1',
+           'reserved', now(), null, now() + interval '1 day'
+         )`,
+        [`command-${label}`, serviceCommandMetadataBase.requestHash, auditEventId]
+      );
+    });
+  }
+
+  const userTenantCommandMetadataBase = commandAuthorizationMetadata({
+    operation: "apply_tenant_kill_switch",
+    requiredPermission: "communications:tenant:kill_switch",
+    requestHash: "c".repeat(64),
+    scopeId: "tenant-test",
+    scopeType: "tenant",
+    sessionId: "session-test"
+  });
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-missing-sessionId",
+    cardId: null,
+    communicationId: null,
+    metadata: omitMetadataFields(userTenantCommandMetadataBase, ["sessionId"]),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_missing_authorization_session_id", async () => {
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', null, 'tenant', 'tenant-test',
+         'apply_tenant_kill_switch', 'command-missing-session-id',
+         repeat('c', 64), null, 'user', 'user-test', null, null,
+         'session-test', null, 'authz-missing-sessionId',
+         'communications:tenant:kill_switch', 'communications-permissions-v1',
+         'communications-policy-v1', 'reserved', now(), null,
+         now() + interval '1 day'
+       )`
+    );
+  });
+
+  const userCardCommandMetadataBase = commandAuthorizationMetadata({
+    operation: "request_callback",
+    requiredPermission: "communications:request_callback",
+    requestHash: "d".repeat(64),
+    scopeId: "card-test",
+    scopeType: "card",
+    sessionId: "session-test",
+    cardGrantId: "grant-test"
+  });
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-missing-cardGrantId",
+    cardId: null,
+    communicationId: null,
+    metadata: omitMetadataFields(userCardCommandMetadataBase, ["cardGrantId"]),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_missing_authorization_card_grant_id", async () => {
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'card', 'card-test', 'request_callback',
+         'command-missing-card-grant-id', repeat('d', 64), null, 'user',
+         'user-test', null, null, 'session-test', 'grant-test',
+         'authz-missing-cardGrantId', 'communications:request_callback',
+         'communications-permissions-v1', 'communications-policy-v1',
+         'reserved', now(), null, now() + interval '1 day'
+       )`
+    );
+  });
+
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-expired-session",
+    cardId: null,
+    communicationId: null,
+    metadata: commandAuthorizationMetadata({
+      operation: "request_callback",
+      requiredPermission: "communications:request_callback",
+      requestHash: "a".repeat(64),
+      scopeId: "card-test",
+      scopeType: "card",
+      sessionId: "session-expired",
+      cardGrantId: "grant-test"
+    }),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_backdated_expired_session", async () => {
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'card', 'card-test', 'request_callback',
+         'command-backdated-expired-session', repeat('a', 64), null, 'user',
+         'user-test', null, null, 'session-expired', 'grant-test',
+         'authz-expired-session', 'communications:request_callback',
+         'communications-permissions-v1', 'communications-policy-v1',
+         'reserved', now() - interval '2 days', null, now() + interval '1 day'
+      )`
+    );
+  });
+
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-long-transaction-session-expiry",
+    cardId: "card-test",
+    communicationId: "communication-test",
+    metadata: commandAuthorizationMetadata({
+      operation: "request_callback",
+      requiredPermission: "communications:request_callback",
+      requestHash: "8".repeat(64),
+      scopeId: "card-test",
+      scopeType: "card",
+      sessionId: "session-test",
+      cardGrantId: "grant-test"
+    }),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_long_transaction_expired_session", async () => {
+    await client.query(
+      `update application_sessions
+          set idle_expires_at = clock_timestamp() + interval '300 milliseconds',
+              absolute_expires_at = clock_timestamp() + interval '300 milliseconds'
+        where session_id = 'session-test'`
+    );
+    await delay(700);
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'card', 'card-test', 'request_callback',
+         'command-long-transaction-expired-session', repeat('8', 64), null,
+         'user', 'user-test', null, null, 'session-test', 'grant-test',
+         'authz-long-transaction-session-expiry',
+         'communications:request_callback', 'communications-permissions-v1',
+         'communications-policy-v1', 'reserved', now() - interval '2 days',
+         null, clock_timestamp() + interval '1 day'
+       )`
+    );
+  });
+
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-expired-grant",
+    cardId: "card-test",
+    communicationId: "communication-test",
+    metadata: commandAuthorizationMetadata({
+      operation: "request_callback",
+      requiredPermission: "communications:request_callback",
+      requestHash: "b".repeat(64),
+      scopeId: "card-test",
+      scopeType: "card",
+      sessionId: "session-test",
+      cardGrantId: "grant-test"
+    }),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_backdated_expired_grant", async () => {
+    await client.query(
+      `update card_access_grants
+          set expires_at = now() - interval '1 day'
+        where grant_id = 'grant-test'`
+    );
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'card', 'card-test', 'request_callback',
+         'command-backdated-expired-grant', repeat('b', 64), null, 'user',
+         'user-test', null, null, 'session-test', 'grant-test',
+         'authz-expired-grant', 'communications:request_callback',
+         'communications-permissions-v1', 'communications-policy-v1',
+         'reserved', now() - interval '2 days', null, now() + interval '1 day'
+      )`
+    );
+  });
+
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-long-transaction-grant-expiry",
+    cardId: "card-test",
+    communicationId: "communication-test",
+    metadata: commandAuthorizationMetadata({
+      operation: "request_callback",
+      requiredPermission: "communications:request_callback",
+      requestHash: "9".repeat(64),
+      scopeId: "card-test",
+      scopeType: "card",
+      sessionId: "session-test",
+      cardGrantId: "grant-test"
+    }),
+    reasonCode: "COMMAND_ALLOWED"
+  });
+  await expectError(client, "command_long_transaction_expired_grant", async () => {
+    await client.query(
+      `update card_access_grants
+          set expires_at = clock_timestamp() + interval '300 milliseconds'
+        where grant_id = 'grant-test'`
+    );
+    await delay(700);
+    await client.query(
+      `insert into communication_command_idempotency_keys (
+         tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+         request_hash, result_communication_id, actor_type, actor_user_id,
+         actor_service_id, actor_platform_id, session_id, card_grant_id,
+         authorization_decision_id, required_permission, permission_version,
+         policy_version, status, created_at, completed_at, expires_at
+       ) values (
+         'tenant-test', 'card-test', 'card', 'card-test', 'request_callback',
+         'command-long-transaction-expired-grant', repeat('9', 64), null,
+         'user', 'user-test', null, null, 'session-test', 'grant-test',
+         'authz-long-transaction-grant-expiry',
+         'communications:request_callback', 'communications-permissions-v1',
+         'communications-policy-v1', 'reserved', now() - interval '2 days',
+         null, clock_timestamp() + interval '1 day'
+       )`
+    );
+  });
+
   await expectError(client, "command_reopen_completed_result", async () => {
     await client.query(
       `update communication_command_idempotency_keys
@@ -1603,7 +1999,17 @@ async function runVerification(
          'envelope-consent-granted', null,
          '{"channel":"telephony","consentPolicyId":"consent-policy-test","consentReceiptId":"consent-granted","observedAt":"2026-07-25T10:00:00.000Z","effectiveAt":"2026-07-25T10:00:00.000Z","expiresAt":null,"revokedAt":null,"envelopeId":"envelope-consent-granted","participantId":"participant-test","policyVersion":"communications-consent-v1","purpose":"callback","source":"visitor","status":"granted"}'::jsonb,
          now()
-       )`
+      )`
+    );
+  });
+
+  await expectError(client, "trust_event_missing_envelope_link", async () => {
+    await insertConsentEvidence(
+      client,
+      "evidence-consent-missing-event-envelope",
+      "consent-missing-event-envelope",
+      "communications-consent-v1",
+      { omitTrustEventDetailsFields: ["envelopeId"] }
     );
   });
 
@@ -1633,6 +2039,85 @@ async function runVerification(
          'consent-wrong-receipt-evidence', 'tenant-test', 'card-test', 'participant-test',
          'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
          'evidence-consent-wrong-receipt', '2026-07-25T10:00:00.000Z'::timestamptz,
+         '2026-07-25T10:00:00.000Z'::timestamptz, null, null, '{}'::jsonb
+       )`
+    );
+  });
+
+  for (const [field, label] of [
+    ["consentReceiptId", "consent_missing_receipt_evidence"],
+    ["channel", "consent_missing_channel_evidence"],
+    ["purpose", "consent_missing_purpose_evidence"],
+    ["participantId", "consent_missing_participant_evidence"],
+    ["consentPolicyId", "consent_missing_policy_evidence"],
+    ["status", "consent_missing_status_evidence"],
+    ["source", "consent_missing_source_evidence"]
+  ] as const) {
+    await insertConsentEvidence(
+      client,
+      `evidence-${label}`,
+      label,
+      "communications-consent-v1",
+      { omitEvidenceFields: [field] }
+    );
+    await expectError(client, label, async () => {
+      await client.query(
+        `insert into communication_consent_receipts (
+           consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+           channel, purpose, status, source, evidence_reference_id, observed_at,
+           effective_at, expires_at, revoked_at, metadata
+         ) values (
+           $1, 'tenant-test', 'card-test', 'participant-test',
+           'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
+           $2, '2026-07-25T10:00:00.000Z'::timestamptz,
+           '2026-07-25T10:00:00.000Z'::timestamptz, null, null, '{}'::jsonb
+         )`,
+        [label, `evidence-${label}`]
+      );
+    });
+  }
+
+  await insertConsentEvidence(
+    client,
+    "evidence-consent-missing-policy-version",
+    "consent-missing-policy-version",
+    "communications-consent-v1",
+    { omitEvidenceFields: ["policyVersion"] }
+  );
+  await expectError(client, "consent_missing_policy_version_evidence", async () => {
+    await client.query(
+      `insert into communication_consent_receipts (
+         consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+         channel, purpose, status, source, evidence_reference_id, observed_at,
+         effective_at, expires_at, revoked_at, metadata
+       ) values (
+         'consent-missing-policy-version', 'tenant-test', 'card-test',
+         'participant-test', 'consent-policy-test', 'telephony', 'callback',
+         'granted', 'visitor', 'evidence-consent-missing-policy-version',
+         '2026-07-25T10:00:00.000Z'::timestamptz,
+         '2026-07-25T10:00:00.000Z'::timestamptz, null, null, '{}'::jsonb
+       )`
+    );
+  });
+
+  await insertConsentEvidence(
+    client,
+    "evidence-consent-null-policy-version",
+    "consent-null-policy-version",
+    "communications-consent-v1",
+    { evidenceOverrides: { policyVersion: null } }
+  );
+  await expectError(client, "consent_null_policy_version_evidence", async () => {
+    await client.query(
+      `insert into communication_consent_receipts (
+         consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+         channel, purpose, status, source, evidence_reference_id, observed_at,
+         effective_at, expires_at, revoked_at, metadata
+       ) values (
+         'consent-null-policy-version', 'tenant-test', 'card-test',
+         'participant-test', 'consent-policy-test', 'telephony', 'callback',
+         'granted', 'visitor', 'evidence-consent-null-policy-version',
+         '2026-07-25T10:00:00.000Z'::timestamptz,
          '2026-07-25T10:00:00.000Z'::timestamptz, null, null, '{}'::jsonb
        )`
     );
@@ -3191,6 +3676,7 @@ let verificationTransactionStarted = false;
 let completion: VerificationCompletion | null = null;
 
 try {
+  verifyDatabaseUrlSafety();
   connectionString = await resolveConnectionString();
   client = new Client({ connectionString });
   await client.connect();

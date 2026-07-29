@@ -16,6 +16,7 @@ import {
   communicationTrustEvidenceAllowedFields,
   telephonyTableOwnershipDecisions
 } from "../src/data-model";
+import type { SafeCommunicationMetadata } from "../src/data-model";
 
 const digest =
   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -133,6 +134,35 @@ describe("communications data model contract", () => {
         hint: "(555) 555-0123"
       })
     ).toThrow(/not safe/);
+    expect(() =>
+      assertSafeCommunicationMetadata(
+        "Bearer abc" as unknown as SafeCommunicationMetadata
+      )
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(42 as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(true as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(null as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata([
+        "SAFE_VALUE"
+      ] as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata({
+        wrapper: { email: "caller@example.test" }
+      } as unknown as SafeCommunicationMetadata)
+    ).toThrow(/primitive safe value/);
+    expect(() =>
+      assertSafeCommunicationMetadata({
+        evidence: ["caller@example.test"]
+      } as unknown as SafeCommunicationMetadata)
+    ).toThrow(/primitive safe value/);
   });
 
   it("requires hashed endpoints instead of raw phone or email values", () => {
