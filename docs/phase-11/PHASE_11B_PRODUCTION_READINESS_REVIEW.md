@@ -129,14 +129,18 @@ Evidence:
   dispatch policy checks, and query indexes. Migration `0019` hardens the
   existing guard triggers through a forward corrective roll-forward, rechecks
   existing metadata/evidence rows before the hardened predicates become
-  authoritative, and fails closed if pre-existing Phase 11B rows violate the
-  hardened constraints.
+  authoritative, rejects untrusted pre-0019 command idempotency rows that
+  cannot be retroactively reauthorized because `created_at` was caller
+  controlled, and fails closed if pre-existing Phase 11B consent, Trust, or
+  metadata rows violate the hardened constraints.
 - The named PostgreSQL gate
   `pnpm verify:communications-data-model:postgres` applies the complete
   migration chain to the exact local disposable database target, validates the
   0018-to-0019 upgrade path with representative valid and invalid 0018-era
-  rows, rolls back transactional fixture data after verification, and uses a
-  cleanup-safe completion path for disposable Docker PostgreSQL runs.
+  rows for metadata, consent evidence, Trust event envelope linkage, and
+  command idempotency evidence, rolls back transactional fixture data after
+  verification, and uses a cleanup-safe completion path for disposable Docker
+  PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
 
@@ -340,6 +344,8 @@ merge readiness still requires the final pushed corrective branch to have:
 | 11B-PRR-057 | HIGH | Corrective merge Advisor found TypeScript accepted malformed values for SQL hash-designated metadata fields: `requestHash`, `payloadHash`, `digest`, and `checksumSha256`. | Resolved by enforcing lowercase SHA-256 hex digests for those metadata keys in TypeScript, tightening SQL named metadata-field handling in migration `0019`, and adding domain plus PostgreSQL verifier negatives. | Phase 11B |
 | 11B-PRR-058 | HIGH | Corrective merge Advisor found SQL hash-designated metadata still accepted non-string JSON primitives before hash validation. | Resolved by evaluating `requestHash`, `payloadHash`, `digest`, and `checksumSha256` before generic primitive acceptance in `communication_metadata_value_is_safe_v1`, requiring lowercase SHA-256 JSON strings, and adding domain plus PostgreSQL negatives for null, number, boolean, object, array, empty, malformed, and uppercase values across audit metadata and Trust reference payload hashes. | Phase 11B |
 | 11B-PRR-059 | HIGH | Corrective merge Advisor found migration `0019` lacked a genuine 0018-to-0019 upgrade-path and constraint-revalidation gate. | Resolved by adding migration-time fail-closed scans across existing Communications metadata/evidence columns and by expanding `pnpm verify:communications-data-model:postgres` to apply through migration `0018`, seed representative valid and invalid 0018-era adapter-health metadata, apply `0019`, verify valid rows survive, verify invalid legacy rows fail the upgrade, verify metadata constraints are validated, and verify invalid post-0019 writes fail. | Phase 11B |
+| 11B-PRR-060 | CRITICAL | Final-head Advisor review at `5cfb7c3` found existing 0018 authorization, consent, Trust, and timestamp evidence was not revalidated by migration `0019`, allowing under-bound legacy commands to survive and complete. | Resolved by adding a locked migration-time legacy scan that rejects all pre-0019 command idempotency rows for explicit reauthorization, validates existing Trust evidence references against active envelopes, signing keys, verification receipts, signed payload equality, and Trust event `envelopeId` linkage, and validates consent receipts against required evidence fields, exact receipt identity, timing, chronology, and cited policy version. | Phase 11B |
+| 11B-PRR-061 | HIGH | Final-head Advisor review at `5cfb7c3` found the PostgreSQL upgrade gate only covered adapter-health hash metadata and not legacy authorization, command timestamp, consent, or Trust evidence paths. | Resolved by expanding the `0018` to `0019` verifier to preserve valid legacy metadata and consent evidence, reject legacy command rows that require reauthorization, reject missing consent evidence fields, reject missing Trust event envelope linkage, reject invalid legacy hash metadata, and verify invalid post-0019 writes still fail. | Phase 11B |
 
 ## Formal PRR Decision
 

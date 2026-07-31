@@ -609,3 +609,155 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DO $$
+BEGIN
+  LOCK TABLE
+    communication_command_idempotency_keys,
+    communication_audit_events,
+    communication_consent_receipts,
+    communication_consent_policies,
+    communication_trust_evidence_references,
+    communications,
+    cryptographic_envelopes,
+    trust_events,
+    trust_keys,
+    trust_verification_receipts
+  IN ACCESS EXCLUSIVE MODE;
+
+  IF EXISTS (SELECT 1 FROM communication_command_idempotency_keys) THEN
+    RAISE EXCEPTION 'migration 0019 requires reauthorization of legacy communication command idempotency rows';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_trust_evidence_references reference
+      LEFT JOIN cryptographic_envelopes envelope
+        ON envelope.tenant_id = reference.tenant_id
+       AND envelope.envelope_id = reference.envelope_id
+      LEFT JOIN trust_keys signing_key
+        ON signing_key.tenant_id = reference.tenant_id
+       AND signing_key.key_id = envelope.key_id
+       AND signing_key.key_version = envelope.key_version
+       AND signing_key.purpose = envelope.key_purpose
+      LEFT JOIN LATERAL (
+        SELECT receipt_id
+          FROM trust_verification_receipts verification
+         WHERE verification.tenant_id = reference.tenant_id
+           AND verification.envelope_id = reference.envelope_id
+           AND verification.valid = TRUE
+           AND verification.verified_at >= envelope.signed_at
+           AND verification.verified_at <= reference.recorded_at
+         ORDER BY verification.verified_at DESC
+         LIMIT 1
+      ) verification ON TRUE
+      LEFT JOIN trust_events trust_event
+        ON trust_event.tenant_id = reference.tenant_id
+       AND trust_event.event_id = reference.trust_event_id
+     WHERE NOT (
+       (reference.domain = 'communications.lifecycle' AND reference.artifact_schema = 'communication-lifecycle-v1')
+       OR (reference.domain = 'communications.consent' AND reference.artifact_schema = 'communication-consent-v1')
+       OR (reference.domain = 'communications.suppression' AND reference.artifact_schema = 'communication-suppression-v1')
+       OR (reference.domain = 'communications.routing' AND reference.artifact_schema = 'communication-routing-v1')
+       OR (reference.domain = 'communications.audit' AND reference.artifact_schema = 'communication-audit-v1')
+       OR (reference.domain = 'communications.webhook' AND reference.artifact_schema = 'communication-webhook-evidence-v1')
+     )
+        OR reference.envelope_id IS NULL
+        OR envelope.envelope_id IS NULL
+        OR envelope.domain IS DISTINCT FROM reference.domain
+        OR envelope.schema_version IS DISTINCT FROM reference.artifact_schema
+        OR envelope.canonicalization_version IS DISTINCT FROM reference.canonicalization_version
+        OR envelope.key_purpose IS DISTINCT FROM reference.key_purpose
+        OR envelope.artifact_id IS DISTINCT FROM reference.communication_id
+        OR envelope.card_id IS DISTINCT FROM reference.card_id
+        OR envelope.status IS DISTINCT FROM 'active'
+        OR envelope.signed_at > reference.recorded_at
+        OR (envelope.expires_at IS NOT NULL AND envelope.expires_at <= reference.recorded_at)
+        OR signing_key.key_id IS NULL
+        OR signing_key.status IS DISTINCT FROM 'active'
+        OR signing_key.revoked_at IS NOT NULL
+        OR signing_key.compromised_at IS NOT NULL
+        OR envelope.signed_at < signing_key.valid_from
+        OR (signing_key.valid_until IS NOT NULL AND envelope.signed_at > signing_key.valid_until)
+        OR verification.receipt_id IS NULL
+        OR envelope.payload IS DISTINCT FROM reference.evidence_fields
+        OR trust_event.event_id IS NULL
+        OR trust_event.event_type IS DISTINCT FROM reference.domain
+        OR trust_event.subject_id IS DISTINCT FROM reference.communication_id
+        OR trust_event.subject_type IS DISTINCT FROM reference.domain
+        OR NOT (trust_event.details ? 'envelopeId')
+        OR trust_event.details->>'envelopeId' IS DISTINCT FROM reference.envelope_id
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication trust evidence references';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_consent_receipts receipt
+      LEFT JOIN communication_trust_evidence_references reference
+        ON reference.tenant_id = receipt.tenant_id
+       AND reference.trust_evidence_reference_id = receipt.evidence_reference_id
+       AND reference.domain = 'communications.consent'
+       AND reference.artifact_schema = 'communication-consent-v1'
+       AND reference.card_id IS NOT DISTINCT FROM receipt.card_id
+      LEFT JOIN communication_consent_policies policy
+        ON policy.tenant_id = receipt.tenant_id
+       AND policy.consent_policy_id = receipt.consent_policy_id
+     WHERE reference.trust_evidence_reference_id IS NULL
+        OR NOT (reference.evidence_fields ? 'consentReceiptId')
+        OR NOT (reference.evidence_fields ? 'channel')
+        OR NOT (reference.evidence_fields ? 'purpose')
+        OR NOT (reference.evidence_fields ? 'participantId')
+        OR NOT (reference.evidence_fields ? 'consentPolicyId')
+        OR NOT (reference.evidence_fields ? 'status')
+        OR NOT (reference.evidence_fields ? 'source')
+        OR NOT (reference.evidence_fields ? 'policyVersion')
+        OR reference.evidence_fields->>'consentReceiptId' IS DISTINCT FROM receipt.consent_receipt_id
+        OR reference.evidence_fields->>'channel' IS DISTINCT FROM receipt.channel
+        OR reference.evidence_fields->>'purpose' IS DISTINCT FROM receipt.purpose
+        OR reference.evidence_fields->>'participantId' IS DISTINCT FROM receipt.participant_id
+        OR reference.evidence_fields->>'consentPolicyId' IS DISTINCT FROM receipt.consent_policy_id
+        OR reference.evidence_fields->>'status' IS DISTINCT FROM receipt.status
+        OR reference.evidence_fields->>'source' IS DISTINCT FROM receipt.source
+        OR receipt.effective_at > receipt.observed_at
+        OR (receipt.expires_at IS NOT NULL AND receipt.expires_at <= receipt.effective_at)
+        OR (receipt.revoked_at IS NOT NULL AND receipt.revoked_at < receipt.effective_at)
+        OR NOT communication_evidence_timestamptz_matches_v1(
+          reference.evidence_fields->>'observedAt',
+          receipt.observed_at
+        )
+        OR NOT communication_evidence_timestamptz_matches_v1(
+          reference.evidence_fields->>'effectiveAt',
+          receipt.effective_at
+        )
+        OR NOT (reference.evidence_fields ? 'expiresAt')
+        OR (
+          receipt.expires_at IS NULL
+          AND reference.evidence_fields->'expiresAt' <> 'null'::jsonb
+        )
+        OR (
+          receipt.expires_at IS NOT NULL
+          AND NOT communication_evidence_timestamptz_matches_v1(
+            reference.evidence_fields->>'expiresAt',
+            receipt.expires_at
+          )
+        )
+        OR NOT (reference.evidence_fields ? 'revokedAt')
+        OR (
+          receipt.revoked_at IS NULL
+          AND reference.evidence_fields->'revokedAt' <> 'null'::jsonb
+        )
+        OR (
+          receipt.revoked_at IS NOT NULL
+          AND NOT communication_evidence_timestamptz_matches_v1(
+            reference.evidence_fields->>'revokedAt',
+            receipt.revoked_at
+          )
+        )
+        OR policy.consent_policy_id IS NULL
+        OR reference.evidence_fields->>'policyVersion' IS DISTINCT FROM policy.policy_version
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication consent evidence';
+  END IF;
+END;
+$$;

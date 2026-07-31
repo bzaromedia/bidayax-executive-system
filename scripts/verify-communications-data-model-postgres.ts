@@ -177,7 +177,10 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_sensitive_metadata: /safe|sensitive|check constraint/i,
   trust_signed_after_recorded: /active unexpired envelope/i,
   trust_wrong_key_purpose: /key_purpose|check constraint|envelope is incompatible/i,
+  upgrade_invalid_0018_command_evidence: /reauthorization of legacy communication command/i,
+  upgrade_invalid_0018_consent_evidence: /invalid legacy communication consent evidence/i,
   upgrade_invalid_0018_hash_metadata: /unsafe metadata/i,
+  upgrade_invalid_0018_trust_event_evidence: /invalid legacy communication trust evidence/i,
   webhook_null_card_bypass: /card scope|not-null|null/i,
   webhook_raw_body: /durable payload|durable_payload_retention/i,
   webhook_sensitive_metadata: /safe|sensitive|check constraint/i
@@ -573,6 +576,101 @@ async function seedUpgradeAdapterHealth(
   );
 }
 
+async function seedUpgradeCommunicationCore(client: PgClient) {
+  await seedFoundation(client);
+  await client.query(
+    `insert into communication_participants (
+       participant_id, tenant_id, card_id, kind, display_name_hash, locale,
+       trust_reference_id, created_at, updated_at
+     ) values (
+       'participant-test', 'tenant-test', 'card-test', 'external_contact',
+       repeat('a', 64), 'en-US', null, now(), now()
+     )`
+  );
+  await client.query(
+    `insert into communication_consent_policies (
+       consent_policy_id, tenant_id, card_id, policy_version, jurisdiction,
+       channel, purpose, disclosure_required, recording_allowed,
+       transcription_allowed, retention_class, effective_at, expires_at
+     ) values (
+       'consent-policy-test', 'tenant-test', 'card-test',
+       'communications-consent-v1', 'US', 'telephony', 'callback',
+       true, false, false, 'consent',
+       '2026-07-20T00:00:00.000Z'::timestamptz, null
+     )`
+  );
+  await client.query(
+    `insert into communications (
+       communication_id, tenant_id, card_id, structure_version, channel,
+       direction, current_state, state_version, request_reason,
+       data_classification, retention_class, adapter_reference_id, metadata,
+       created_at, updated_at
+     ) values (
+       'communication-test', 'tenant-test', 'card-test', '1', 'telephony',
+       'outbound', 'requested', 0, 'callback_requested',
+       'internal_operational_metadata', 'operational', null, '{}'::jsonb,
+       now(), now()
+     )`
+  );
+}
+
+async function seedUpgradeConsentReceipt(
+  client: PgClient,
+  evidenceReferenceId: string,
+  consentReceiptId: string,
+  options: Parameters<typeof insertConsentEvidence>[4] = {}
+) {
+  await insertConsentEvidence(
+    client,
+    evidenceReferenceId,
+    consentReceiptId,
+    "communications-consent-v1",
+    options
+  );
+  await client.query(
+    `insert into communication_consent_receipts (
+       consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+       channel, purpose, status, source, evidence_reference_id, observed_at,
+       effective_at, expires_at, revoked_at, metadata
+     ) values (
+       $1, 'tenant-test', 'card-test', 'participant-test',
+       'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
+       $2, '2026-07-25T10:00:00.000Z'::timestamptz,
+       '2026-07-25T10:00:00.000Z'::timestamptz, null, null,
+       '{"reasonCode":"CONSENT_GRANTED"}'::jsonb
+     )`,
+    [consentReceiptId, evidenceReferenceId]
+  );
+}
+
+async function seedUpgradeInvalidCommandEvidence(client: PgClient) {
+  await insertAuthorizationDecision(client, {
+    actorType: "service",
+    actorServiceId: "communications-service",
+    auditEventId: "upgrade-authz-empty",
+    cardId: null,
+    communicationId: null,
+    metadata: {},
+    reasonCode: "UPGRADE_EMPTY_AUTHORIZATION_METADATA"
+  });
+  await client.query(
+    `insert into communication_command_idempotency_keys (
+       tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+       request_hash, result_communication_id, actor_type, actor_user_id,
+       actor_service_id, actor_platform_id, session_id, card_grant_id,
+       authorization_decision_id, required_permission, permission_version,
+       policy_version, status, created_at, completed_at, expires_at
+     ) values (
+       'tenant-test', null, 'tenant', 'tenant-test', 'apply_tenant_kill_switch',
+       'upgrade-command-invalid', repeat('4', 64), null, 'service',
+       null, 'communications-service', null, null, null, 'upgrade-authz-empty',
+       'communications:tenant:kill_switch', 'communications-permissions-v1',
+       'communications-policy-v1', 'reserved', now() - interval '30 days',
+       null, now() + interval '1 day'
+     )`
+  );
+}
+
 async function assertMetadataConstraintsValidated(client: PgClient) {
   const result = await client.query<{ invalid_count: string }>(
     `select count(*)::text as invalid_count
@@ -605,6 +703,12 @@ async function verify0018To0019UpgradePath(
     metadata:
       '{"requestHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
   });
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeConsentReceipt(
+    client,
+    "upgrade-evidence-valid",
+    "upgrade-consent-valid"
+  );
   await applyMigrationFiles(client, afterTarget);
   await assertMetadataConstraintsValidated(client);
 
@@ -616,6 +720,15 @@ async function verify0018To0019UpgradePath(
   );
   if (survivingRows.rows[0]?.count !== "1") {
     throw new Error("Valid 0018-era adapter-health metadata did not survive migration 0019.");
+  }
+  const survivingConsentRows = await client.query<{ count: string }>(
+    `select count(*)::text as count
+       from communication_consent_receipts
+      where consent_receipt_id = 'upgrade-consent-valid'
+        and tenant_id = 'tenant-test'`
+  );
+  if (survivingConsentRows.rows[0]?.count !== "1") {
+    throw new Error("Valid 0018-era consent evidence did not survive migration 0019.");
   }
 
   await client.query("BEGIN");
@@ -641,6 +754,46 @@ async function verify0018To0019UpgradePath(
   });
 
   await expectActionError("upgrade_invalid_0018_hash_metadata", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeInvalidCommandEvidence(client);
+
+  await expectActionError("upgrade_invalid_0018_command_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeConsentReceipt(
+    client,
+    "upgrade-evidence-invalid-consent",
+    "upgrade-consent-invalid",
+    { omitEvidenceFields: ["participantId"] }
+  );
+
+  await expectActionError("upgrade_invalid_0018_consent_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeConsentReceipt(
+    client,
+    "upgrade-evidence-invalid-trust",
+    "upgrade-consent-invalid-trust",
+    { omitTrustEventDetailsFields: ["envelopeId"] }
+  );
+
+  await expectActionError("upgrade_invalid_0018_trust_event_evidence", async () => {
     await applyMigrationFiles(client, afterTarget);
   });
   await client.query("ROLLBACK").catch(() => undefined);
@@ -3965,7 +4118,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
-    "0018-to-0019 upgrade path preserves valid metadata, fails closed on legacy invalid hash metadata, and enforces post-upgrade metadata constraints",
+    "0018-to-0019 upgrade path preserves valid metadata and consent evidence, fails closed on legacy command, consent, Trust-event, and hash defects, and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",
