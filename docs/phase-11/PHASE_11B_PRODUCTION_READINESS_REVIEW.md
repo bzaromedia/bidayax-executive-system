@@ -127,12 +127,16 @@ Evidence:
   foreign keys, tenant/card composite constraints, unique constraints, check
   constraints, append-only triggers, lifecycle sequencing, idempotency keys,
   dispatch policy checks, and query indexes. Migration `0019` hardens the
-  existing guard triggers through a forward corrective roll-forward.
+  existing guard triggers through a forward corrective roll-forward, rechecks
+  existing metadata/evidence rows before the hardened predicates become
+  authoritative, and fails closed if pre-existing Phase 11B rows violate the
+  hardened constraints.
 - The named PostgreSQL gate
   `pnpm verify:communications-data-model:postgres` applies the complete
-  migration chain to the exact local disposable database target, rolls back
-  transactional fixture data after verification, and uses a cleanup-safe
-  completion path for disposable Docker PostgreSQL runs.
+  migration chain to the exact local disposable database target, validates the
+  0018-to-0019 upgrade path with representative valid and invalid 0018-era
+  rows, rolls back transactional fixture data after verification, and uses a
+  cleanup-safe completion path for disposable Docker PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
 
@@ -188,7 +192,8 @@ Evidence:
   policy-lock behavior, lifecycle sequencing and chronology, append-only
   evidence, adapter-health reason-code structure and privacy, business-hours
   policy, safe summary evidence, failover evidence, Trust envelope/event
-  compatibility and payload projection, raw payload rejection, provider
+  compatibility and payload projection, raw payload rejection, hash-designated
+  metadata string enforcement, 0018-to-0019 upgrade-path behavior, provider
   dispatch disabled behavior, and prohibited credential/raw columns.
 - Full repository validation passed against the repaired corrective working
   tree. Remote CI and Advisor review remain required before corrective merge.
@@ -333,6 +338,8 @@ merge readiness still requires the final pushed corrective branch to have:
 | 11B-PRR-055 | HIGH | Corrective Advisor review found the implementation plan omitted itself from the corrective file-scope manifest. | Resolved by listing `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md` in the bounded post-merge corrective remediation scope. | Phase 11B |
 | 11B-PRR-056 | CRITICAL | Corrective merge Advisor found the PostgreSQL verifier accepted native `socket:` URLs because the URL guard did not restrict protocols. | Resolved by allowing only `postgres:` and `postgresql:` protocols, adding native `socket:` and unrelated-scheme rejection self-tests, and proving `socket://localhost/bidayax_phase11b_test` is rejected before connection. | Phase 11B |
 | 11B-PRR-057 | HIGH | Corrective merge Advisor found TypeScript accepted malformed values for SQL hash-designated metadata fields: `requestHash`, `payloadHash`, `digest`, and `checksumSha256`. | Resolved by enforcing lowercase SHA-256 hex digests for those metadata keys in TypeScript, tightening SQL named metadata-field handling in migration `0019`, and adding domain plus PostgreSQL verifier negatives. | Phase 11B |
+| 11B-PRR-058 | HIGH | Corrective merge Advisor found SQL hash-designated metadata still accepted non-string JSON primitives before hash validation. | Resolved by evaluating `requestHash`, `payloadHash`, `digest`, and `checksumSha256` before generic primitive acceptance in `communication_metadata_value_is_safe_v1`, requiring lowercase SHA-256 JSON strings, and adding domain plus PostgreSQL negatives for null, number, boolean, object, array, empty, malformed, and uppercase values across audit metadata and Trust reference payload hashes. | Phase 11B |
+| 11B-PRR-059 | HIGH | Corrective merge Advisor found migration `0019` lacked a genuine 0018-to-0019 upgrade-path and constraint-revalidation gate. | Resolved by adding migration-time fail-closed scans across existing Communications metadata/evidence columns and by expanding `pnpm verify:communications-data-model:postgres` to apply through migration `0018`, seed representative valid and invalid 0018-era adapter-health metadata, apply `0019`, verify valid rows survive, verify invalid legacy rows fail the upgrade, verify metadata constraints are validated, and verify invalid post-0019 writes fail. | Phase 11B |
 
 ## Formal PRR Decision
 

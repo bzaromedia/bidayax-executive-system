@@ -3,6 +3,15 @@ RETURNS BOOLEAN AS $$
 DECLARE
   text_value TEXT;
 BEGIN
+  IF field_name IN ('requestHash', 'payloadHash', 'digest', 'checksumSha256') THEN
+    IF field_value IS NULL OR jsonb_typeof(field_value) <> 'string' THEN
+      RETURN FALSE;
+    END IF;
+
+    text_value := field_value #>> '{}';
+    RETURN text_value ~ '^[0-9a-f]{64}$';
+  END IF;
+
   IF field_value IS NULL THEN
     RETURN TRUE;
   END IF;
@@ -21,13 +30,106 @@ BEGIN
 
   text_value := field_value #>> '{}';
 
-  IF field_name IN ('requestHash', 'payloadHash', 'digest', 'checksumSha256') THEN
-    RETURN text_value ~ '^[0-9a-f]{64}$';
-  END IF;
-
   RETURN text_value !~* '(@|authorization|bearer|token|secret|password|private[ _-]?key|raw[ _-]?(body|payload|transcript|audio)|transcript|recording|audio|e164|phone|email|\+?[0-9][0-9 .()]{6,}[0-9]|\([0-9]{3}\)[0-9 ._-]{3,}[0-9]|(\+?1[- .]?)?\(?[2-9][0-9]{2}\)?[- .][0-9]{3}[- .][0-9]{4}|[0-9]{10,})';
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM communications
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communications.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_consent_receipts
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_consent_receipts.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_lifecycle_transitions
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_lifecycle_transitions.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_webhook_evidence
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_webhook_evidence.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_routing_policies
+     WHERE jsonb_typeof(condition) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(condition)
+        OR jsonb_typeof(action) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(action)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_routing_policies condition/action';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_business_hours_policies
+     WHERE jsonb_typeof(weekly_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(weekly_windows)
+        OR jsonb_typeof(exception_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(exception_windows)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_business_hours_policies windows';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_summaries
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_summaries.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_failover_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_failover_events.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_adapter_health
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_adapter_health.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_trust_evidence_references
+     WHERE jsonb_typeof(evidence_fields) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(evidence_fields)
+        OR NOT communication_trust_fields_are_allowlisted_v1(evidence_fields)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_trust_evidence_references.evidence_fields';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_audit_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_audit_events.metadata';
+  END IF;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION enforce_communication_authorization_evidence_v1()
 RETURNS TRIGGER AS $$

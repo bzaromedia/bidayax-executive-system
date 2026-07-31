@@ -56,6 +56,7 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   audit_invalid_checksum_sha256_metadata: /safe|check constraint/i,
   audit_invalid_digest_metadata: /safe|check constraint/i,
   audit_invalid_payload_hash_metadata: /safe|check constraint/i,
+  audit_invalid_request_hash_number_metadata: /safe|check constraint/i,
   audit_invalid_request_hash_metadata: /safe|check constraint/i,
   audit_nested_metadata: /safe|check constraint/i,
   audit_sensitive_metadata: /safe|sensitive|check constraint/i,
@@ -176,6 +177,7 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_sensitive_metadata: /safe|sensitive|check constraint/i,
   trust_signed_after_recorded: /active unexpired envelope/i,
   trust_wrong_key_purpose: /key_purpose|check constraint|envelope is incompatible/i,
+  upgrade_invalid_0018_hash_metadata: /unsafe metadata/i,
   webhook_null_card_bypass: /card scope|not-null|null/i,
   webhook_raw_body: /durable payload|durable_payload_retention/i,
   webhook_sensitive_metadata: /safe|sensitive|check constraint/i
@@ -436,18 +438,49 @@ async function resolveConnectionString() {
   return connectionString;
 }
 
-async function applyMigrations(client: PgClient) {
+async function getMigrationFiles() {
   const migrationsDirectory = join(process.cwd(), "database", "migrations");
-  const migrationFiles = (await readdir(migrationsDirectory))
+  return (await readdir(migrationsDirectory))
     .filter((file) => /^\d+_.*\.sql$/.test(file))
     .sort();
+}
+
+async function applyMigrationFiles(client: PgClient, migrationFiles: readonly string[]) {
+  const migrationsDirectory = join(process.cwd(), "database", "migrations");
 
   for (const file of migrationFiles) {
     const sql = await readFile(join(migrationsDirectory, file), "utf8");
     await client.query(sql);
   }
+}
+
+async function applyMigrations(client: PgClient) {
+  const migrationFiles = await getMigrationFiles();
+  await applyMigrationFiles(client, migrationFiles);
 
   return migrationFiles;
+}
+
+function splitMigrationsAt(
+  migrationFiles: readonly string[],
+  targetMigration: string
+) {
+  const targetIndex = migrationFiles.indexOf(targetMigration);
+  if (targetIndex === -1) {
+    throw new Error(`${targetMigration} was not found in migration sequence.`);
+  }
+
+  return {
+    throughTarget: migrationFiles.slice(0, targetIndex + 1),
+    afterTarget: migrationFiles.slice(targetIndex + 1)
+  };
+}
+
+async function resetPublicSchema(client: PgClient) {
+  await client.query("DROP SCHEMA IF EXISTS public CASCADE");
+  await client.query("CREATE SCHEMA public");
+  await client.query("GRANT ALL ON SCHEMA public TO postgres");
+  await client.query("GRANT ALL ON SCHEMA public TO public");
 }
 
 async function expectError(
@@ -481,6 +514,136 @@ async function expectError(
   } finally {
     await client.query(`RELEASE SAVEPOINT ${label}`);
   }
+}
+
+async function expectActionError(
+  label: string,
+  action: () => Promise<void>
+) {
+  const expectedPattern = expectedFailurePatterns[label];
+  if (!expectedPattern) {
+    throw new Error(`${label} does not declare an expected failure pattern.`);
+  }
+
+  try {
+    await action();
+    throw new Error(`${label} did not fail as expected.`);
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("did not fail")) {
+      throw error;
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    if (!expectedPattern.test(message)) {
+      throw new Error(
+        `${label} failed for an unexpected reason. Expected ${expectedPattern}, got: ${message}`
+      );
+    }
+  }
+}
+
+async function seedUpgradeTenant(client: PgClient, tenantId: string) {
+  await client.query(
+    `insert into tenants (
+       tenant_id, company_name, owner_email, status, created_at, updated_at
+     ) values (
+       $1, 'Phase 11B Upgrade Tenant', 'upgrade@example.test', 'active', now(), now()
+     )`,
+    [tenantId]
+  );
+}
+
+async function seedUpgradeAdapterHealth(
+  client: PgClient,
+  options: {
+    readonly adapterHealthId: string;
+    readonly tenantId: string;
+    readonly metadata: string;
+  }
+) {
+  await client.query(
+    `insert into communication_adapter_health (
+       adapter_health_id, tenant_id, adapter_id, channel, status,
+       checked_at, reason_codes, sanitized_metadata
+     ) values (
+       $1, $2, 'phase-11b-upgrade-adapter', 'telephony', 'healthy',
+       now(), '["UPGRADE_CHECK"]'::jsonb, $3::jsonb
+     )`,
+    [options.adapterHealthId, options.tenantId, options.metadata]
+  );
+}
+
+async function assertMetadataConstraintsValidated(client: PgClient) {
+  const result = await client.query<{ invalid_count: string }>(
+    `select count(*)::text as invalid_count
+       from pg_constraint
+      where contype = 'c'
+        and pg_get_constraintdef(oid) like '%communication_metadata_is_safe_v1%'
+        and not convalidated`
+  );
+
+  if (result.rows[0]?.invalid_count !== "0") {
+    throw new Error("One or more communication metadata constraints are not validated.");
+  }
+}
+
+async function verify0018To0019UpgradePath(
+  client: PgClient,
+  migrationFiles: readonly string[]
+) {
+  const { throughTarget, afterTarget } = splitMigrationsAt(
+    migrationFiles,
+    "0018_create_communications_data_model.sql"
+  );
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeTenant(client, "tenant-upgrade-valid");
+  await seedUpgradeAdapterHealth(client, {
+    adapterHealthId: "adapter-health-upgrade-valid",
+    tenantId: "tenant-upgrade-valid",
+    metadata:
+      '{"requestHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+  });
+  await applyMigrationFiles(client, afterTarget);
+  await assertMetadataConstraintsValidated(client);
+
+  const survivingRows = await client.query<{ count: string }>(
+    `select count(*)::text as count
+       from communication_adapter_health
+      where adapter_health_id = 'adapter-health-upgrade-valid'
+        and tenant_id = 'tenant-upgrade-valid'`
+  );
+  if (survivingRows.rows[0]?.count !== "1") {
+    throw new Error("Valid 0018-era adapter-health metadata did not survive migration 0019.");
+  }
+
+  await client.query("BEGIN");
+  try {
+    await expectError(client, "audit_invalid_request_hash_number_metadata", async () => {
+      await seedUpgradeAdapterHealth(client, {
+        adapterHealthId: "adapter-health-post-0019-invalid",
+        tenantId: "tenant-upgrade-valid",
+        metadata: '{"requestHash":42}'
+      });
+    });
+  } finally {
+    await client.query("ROLLBACK");
+  }
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeTenant(client, "tenant-upgrade-invalid");
+  await seedUpgradeAdapterHealth(client, {
+    adapterHealthId: "adapter-health-upgrade-invalid",
+    tenantId: "tenant-upgrade-invalid",
+    metadata: '{"requestHash":42}'
+  });
+
+  await expectActionError("upgrade_invalid_0018_hash_metadata", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
 }
 
 async function expectPolicyLockContention(client: PgClient, connectionString: string) {
@@ -3660,33 +3823,72 @@ async function runVerification(
     );
   });
 
-  for (const [field, label] of [
+  const invalidHashMetadataValues = [
+    ["null", "null"],
+    ["number", "42"],
+    ["boolean", "true"],
+    ["object", '{"safe":"value"}'],
+    ["array", '["SAFE_VALUE"]'],
+    ["empty_string", '""'],
+    ["malformed_string", '"not-a-sha256-digest"'],
+    ["uppercase_string", `"${"a".repeat(64).toUpperCase()}"`]
+  ] as const;
+
+  for (const [field, baseLabel] of [
     ["requestHash", "audit_invalid_request_hash_metadata"],
     ["payloadHash", "audit_invalid_payload_hash_metadata"],
     ["digest", "audit_invalid_digest_metadata"],
     ["checksumSha256", "audit_invalid_checksum_sha256_metadata"]
   ] as const) {
+    for (const [caseName, jsonValue] of invalidHashMetadataValues) {
+      const label = `${baseLabel}_${caseName}`;
+      expectedFailurePatterns[label] = /safe|check constraint/i;
+
+      await expectError(client, label, async () => {
+        await client.query(
+          `insert into communication_audit_events (
+             audit_event_id, tenant_id, card_id, communication_id, event_type,
+             actor_type, actor_user_id, actor_service_id, actor_platform_id,
+             authorization_decision_id, permission_version, policy_version, result,
+             reason_code, occurred_at, metadata
+            ) values (
+              $1, 'tenant-test', 'card-test', 'communication-test',
+              'communication.denied', 'user', 'user-test', null, null,
+              'authz-deny', 'communications-permissions-v1',
+              'communications-policy-v1', 'denied', 'INVALID_HASH_REJECTED',
+              now(),
+              jsonb_build_object(
+                'sessionId', 'session-test',
+                'cardGrantId', 'grant-test',
+                'requiredPermission', 'communications:request_callback',
+                $2::text, $3::jsonb
+              )
+            )`,
+          [label.replace(/_/g, "-"), field, jsonValue]
+        );
+      });
+    }
+  }
+
+  for (const [caseName, jsonValue] of invalidHashMetadataValues) {
+    const label = `trust_invalid_payload_hash_metadata_${caseName}`;
+    expectedFailurePatterns[label] = /safe|check constraint|projection/i;
+
     await expectError(client, label, async () => {
       await client.query(
-        `insert into communication_audit_events (
-           audit_event_id, tenant_id, card_id, communication_id, event_type,
-           actor_type, actor_user_id, actor_service_id, actor_platform_id,
-           authorization_decision_id, permission_version, policy_version, result,
-           reason_code, occurred_at, metadata
-          ) values (
-            $1, 'tenant-test', 'card-test', 'communication-test',
-            'communication.denied', 'user', 'user-test', null, null,
-            'authz-deny', 'communications-permissions-v1',
-            'communications-policy-v1', 'denied', 'INVALID_HASH_REJECTED',
-            now(),
-            jsonb_build_object(
-              'sessionId', 'session-test',
-              'cardGrantId', 'grant-test',
-              'requiredPermission', 'communications:request_callback',
-              $2::text, 'not-a-sha256-digest'
-            )
-          )`,
-        [label.replace(/_/g, "-"), field]
+        `insert into communication_trust_evidence_references (
+           trust_evidence_reference_id, tenant_id, card_id, communication_id,
+           domain, artifact_schema, canonicalization_version, key_purpose,
+           envelope_id, trust_event_id, evidence_fields, recorded_at
+         ) values (
+           $1, 'tenant-test', 'card-test', 'communication-test',
+           'communications.webhook', 'communication-webhook-evidence-v1',
+           'bidayax-c14n-1', 'tenant_artifact_signing',
+           'envelope-test', 'trust-event-test',
+           jsonb_build_object('payloadHash', $2::jsonb),
+           now()
+         )`,
+        [label.replace(/_/g, "-"), jsonValue]
       );
     });
   }
@@ -3763,6 +3965,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
+    "0018-to-0019 upgrade path preserves valid metadata, fails closed on legacy invalid hash metadata, and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",
@@ -3796,7 +3999,10 @@ try {
   connectionString = await resolveConnectionString();
   client = new Client({ connectionString });
   await client.connect();
-  const migrationFiles = await applyMigrations(client);
+  const migrationFiles = await getMigrationFiles();
+  await verify0018To0019UpgradePath(client, migrationFiles);
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, migrationFiles);
   await client.query("BEGIN");
   verificationTransactionStarted = true;
   const details = await runVerification(client, migrationFiles, connectionString);

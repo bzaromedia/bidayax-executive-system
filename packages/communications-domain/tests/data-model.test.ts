@@ -140,16 +140,22 @@ describe("communications data model contract", () => {
       "digest",
       "checksumSha256"
     ]) {
-      expect(() =>
-        assertSafeCommunicationMetadata({
-          [field]: "not-a-sha256-digest"
-        })
-      ).toThrow(/SHA-256 hex digest/);
-      expect(() =>
-        assertSafeCommunicationMetadata({
-          [field]: digest.toUpperCase()
-        })
-      ).toThrow(/SHA-256 hex digest/);
+      for (const invalidValue of [
+        null,
+        42,
+        true,
+        {},
+        ["SAFE_VALUE"],
+        "",
+        "not-a-sha256-digest",
+        digest.toUpperCase()
+      ]) {
+        expect(() =>
+          assertSafeCommunicationMetadata({
+            [field]: invalidValue
+          } as unknown as SafeCommunicationMetadata)
+        ).toThrow(/SHA-256 hex digest/);
+      }
     }
     expect(() =>
       assertSafeCommunicationMetadata(
