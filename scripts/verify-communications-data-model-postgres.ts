@@ -177,10 +177,10 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_sensitive_metadata: /safe|sensitive|check constraint/i,
   trust_signed_after_recorded: /active unexpired envelope/i,
   trust_wrong_key_purpose: /key_purpose|check constraint|envelope is incompatible/i,
-  upgrade_invalid_0018_command_evidence: /reauthorization of legacy communication command/i,
   upgrade_invalid_0018_consent_evidence: /invalid legacy communication consent evidence/i,
   upgrade_invalid_0018_hash_metadata: /unsafe metadata/i,
   upgrade_invalid_0018_trust_event_evidence: /invalid legacy communication trust evidence/i,
+  upgrade_legacy_command_mutation: /legacy invalidated communication command/i,
   webhook_null_card_bypass: /card scope|not-null|null/i,
   webhook_raw_body: /durable payload|durable_payload_retention/i,
   webhook_sensitive_metadata: /safe|sensitive|check constraint/i
@@ -643,6 +643,40 @@ async function seedUpgradeConsentReceipt(
   );
 }
 
+async function seedUpgradeValidCommandEvidence(client: PgClient) {
+  await insertAuthorizationDecision(client, {
+    actorType: "service",
+    actorServiceId: "communications-service",
+    auditEventId: "upgrade-authz-valid",
+    cardId: null,
+    communicationId: null,
+    metadata: commandAuthorizationMetadata({
+      operation: "apply_tenant_kill_switch",
+      scopeType: "tenant",
+      scopeId: "tenant-test",
+      requiredPermission: "communications:tenant:kill_switch",
+      requestHash: "4444444444444444444444444444444444444444444444444444444444444444"
+    }),
+    reasonCode: "UPGRADE_VALID_AUTHORIZATION_METADATA"
+  });
+  await client.query(
+    `insert into communication_command_idempotency_keys (
+       tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+       request_hash, result_communication_id, actor_type, actor_user_id,
+       actor_service_id, actor_platform_id, session_id, card_grant_id,
+       authorization_decision_id, required_permission, permission_version,
+       policy_version, status, created_at, completed_at, expires_at
+     ) values (
+       'tenant-test', null, 'tenant', 'tenant-test', 'apply_tenant_kill_switch',
+       'upgrade-command-valid', repeat('4', 64), null, 'service',
+       null, 'communications-service', null, null, null, 'upgrade-authz-valid',
+       'communications:tenant:kill_switch', 'communications-permissions-v1',
+       'communications-policy-v1', 'reserved', now() - interval '5 minutes',
+       null, now() + interval '1 day'
+     )`
+  );
+}
+
 async function seedUpgradeInvalidCommandEvidence(client: PgClient) {
   await insertAuthorizationDecision(client, {
     actorType: "service",
@@ -671,6 +705,50 @@ async function seedUpgradeInvalidCommandEvidence(client: PgClient) {
   );
 }
 
+async function assertLegacyCommandsInvalidated(
+  client: PgClient,
+  idempotencyKeys: readonly string[]
+) {
+  const result = await client.query<{
+    idempotency_key: string;
+    status: string;
+    reason: string | null;
+    invalidated: boolean;
+    completed: boolean;
+    result_communication_id: string | null;
+  }>(
+    `select idempotency_key,
+            status,
+            legacy_invalidation_reason as reason,
+            (legacy_invalidated_at is not null) as invalidated,
+            (completed_at is not null) as completed,
+            result_communication_id
+       from communication_command_idempotency_keys
+      where tenant_id = 'tenant-test'
+        and idempotency_key = any($1::text[])
+      order by idempotency_key`,
+    [idempotencyKeys]
+  );
+
+  if (result.rowCount !== idempotencyKeys.length) {
+    throw new Error("Expected legacy command idempotency rows were not preserved.");
+  }
+
+  for (const row of result.rows) {
+    if (
+      row.status !== "failed" ||
+      row.reason !== "phase11b_0019_reauthorization_required" ||
+      !row.invalidated ||
+      !row.completed ||
+      row.result_communication_id !== null
+    ) {
+      throw new Error(
+        `Legacy command ${row.idempotency_key} was not evidence-preserving invalidated.`
+      );
+    }
+  }
+}
+
 async function assertMetadataConstraintsValidated(client: PgClient) {
   const result = await client.query<{ invalid_count: string }>(
     `select count(*)::text as invalid_count
@@ -687,7 +765,8 @@ async function assertMetadataConstraintsValidated(client: PgClient) {
 
 async function verify0018To0019UpgradePath(
   client: PgClient,
-  migrationFiles: readonly string[]
+  migrationFiles: readonly string[],
+  connectionString: string
 ) {
   const { throughTarget, afterTarget } = splitMigrationsAt(
     migrationFiles,
@@ -709,6 +788,8 @@ async function verify0018To0019UpgradePath(
     "upgrade-evidence-valid",
     "upgrade-consent-valid"
   );
+  await seedUpgradeValidCommandEvidence(client);
+  await seedUpgradeInvalidCommandEvidence(client);
   await applyMigrationFiles(client, afterTarget);
   await assertMetadataConstraintsValidated(client);
 
@@ -729,6 +810,25 @@ async function verify0018To0019UpgradePath(
   );
   if (survivingConsentRows.rows[0]?.count !== "1") {
     throw new Error("Valid 0018-era consent evidence did not survive migration 0019.");
+  }
+  await assertLegacyCommandsInvalidated(client, [
+    "upgrade-command-invalid",
+    "upgrade-command-valid"
+  ]);
+
+  await client.query("BEGIN");
+  try {
+    await expectError(client, "upgrade_legacy_command_mutation", async () => {
+      await client.query(
+        `update communication_command_idempotency_keys
+            set status = 'completed',
+                result_communication_id = null
+          where tenant_id = 'tenant-test'
+            and idempotency_key = 'upgrade-command-valid'`
+      );
+    });
+  } finally {
+    await client.query("ROLLBACK");
   }
 
   await client.query("BEGIN");
@@ -760,12 +860,27 @@ async function verify0018To0019UpgradePath(
 
   await resetPublicSchema(client);
   await applyMigrationFiles(client, throughTarget);
-  await seedUpgradeCommunicationCore(client);
-  await seedUpgradeInvalidCommandEvidence(client);
+  await seedUpgradeTenant(client, "tenant-upgrade-race");
+  const contender = new Client({ connectionString });
+  await contender.connect();
+  try {
+    await contender.query("BEGIN");
+    await seedUpgradeAdapterHealth(contender, {
+      adapterHealthId: "adapter-health-upgrade-race-invalid",
+      tenantId: "tenant-upgrade-race",
+      metadata: '{"requestHash":42}'
+    });
 
-  await expectActionError("upgrade_invalid_0018_command_evidence", async () => {
-    await applyMigrationFiles(client, afterTarget);
-  });
+    await expectActionError("upgrade_invalid_0018_hash_metadata", async () => {
+      const migration = applyMigrationFiles(client, afterTarget);
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      await contender.query("COMMIT");
+      await migration;
+    });
+  } finally {
+    await contender.query("ROLLBACK").catch(() => undefined);
+    await contender.end().catch(() => undefined);
+  }
   await client.query("ROLLBACK").catch(() => undefined);
 
   await resetPublicSchema(client);
@@ -4118,7 +4233,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
-    "0018-to-0019 upgrade path preserves valid metadata and consent evidence, fails closed on legacy command, consent, Trust-event, and hash defects, and enforces post-upgrade metadata constraints",
+    "0018-to-0019 upgrade path preserves valid metadata and consent evidence, invalidates legacy command evidence for fresh reauthorization, fails closed on legacy consent, Trust-event, hash, and concurrent old-writer defects, and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",
@@ -4153,7 +4268,7 @@ try {
   client = new Client({ connectionString });
   await client.connect();
   const migrationFiles = await getMigrationFiles();
-  await verify0018To0019UpgradePath(client, migrationFiles);
+  await verify0018To0019UpgradePath(client, migrationFiles, connectionString);
   await resetPublicSchema(client);
   await applyMigrationFiles(client, migrationFiles);
   await client.query("BEGIN");

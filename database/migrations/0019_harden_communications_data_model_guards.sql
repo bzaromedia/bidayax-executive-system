@@ -34,103 +34,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql IMMUTABLE;
 
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1 FROM communications
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communications.metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_consent_receipts
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_consent_receipts.metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_lifecycle_transitions
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_lifecycle_transitions.metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_webhook_evidence
-     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_webhook_evidence.sanitized_metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_routing_policies
-     WHERE jsonb_typeof(condition) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(condition)
-        OR jsonb_typeof(action) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(action)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_routing_policies condition/action';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_business_hours_policies
-     WHERE jsonb_typeof(weekly_windows) <> 'array'
-        OR NOT communication_metadata_is_safe_v1(weekly_windows)
-        OR jsonb_typeof(exception_windows) <> 'array'
-        OR NOT communication_metadata_is_safe_v1(exception_windows)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_business_hours_policies windows';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_summaries
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_summaries.metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_failover_events
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_failover_events.metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_adapter_health
-     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_adapter_health.sanitized_metadata';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_trust_evidence_references
-     WHERE jsonb_typeof(evidence_fields) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(evidence_fields)
-        OR NOT communication_trust_fields_are_allowlisted_v1(evidence_fields)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_trust_evidence_references.evidence_fields';
-  END IF;
-
-  IF EXISTS (
-    SELECT 1 FROM communication_audit_events
-     WHERE jsonb_typeof(metadata) <> 'object'
-        OR NOT communication_metadata_is_safe_v1(metadata)
-  ) THEN
-    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_audit_events.metadata';
-  END IF;
-END;
-$$;
-
 CREATE OR REPLACE FUNCTION enforce_communication_authorization_evidence_v1()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -457,11 +360,70 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+ALTER TABLE communication_command_idempotency_keys
+  ADD COLUMN IF NOT EXISTS legacy_invalidated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS legacy_invalidation_reason TEXT;
+
+ALTER TABLE communication_command_idempotency_keys
+  DROP CONSTRAINT IF EXISTS communication_command_legacy_invalidation_reason;
+
+ALTER TABLE communication_command_idempotency_keys
+  ADD CONSTRAINT communication_command_legacy_invalidation_reason CHECK (
+    (
+      legacy_invalidated_at IS NULL
+      AND legacy_invalidation_reason IS NULL
+    )
+    OR (
+      legacy_invalidated_at IS NOT NULL
+      AND legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+    )
+  );
+
 CREATE OR REPLACE FUNCTION enforce_communication_command_result_update_v1()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'communication command evidence cannot be deleted';
+  END IF;
+
+  IF current_setting('bidayax.communication_legacy_command_invalidation', true) = 'true'
+     AND OLD.legacy_invalidated_at IS NULL
+     AND NEW.legacy_invalidated_at IS NOT NULL THEN
+    IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+       OR NEW.card_id IS DISTINCT FROM OLD.card_id
+       OR NEW.scope_type IS DISTINCT FROM OLD.scope_type
+       OR NEW.scope_id IS DISTINCT FROM OLD.scope_id
+       OR NEW.operation IS DISTINCT FROM OLD.operation
+       OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
+       OR NEW.request_hash IS DISTINCT FROM OLD.request_hash
+       OR NEW.actor_type IS DISTINCT FROM OLD.actor_type
+       OR NEW.actor_user_id IS DISTINCT FROM OLD.actor_user_id
+       OR NEW.actor_service_id IS DISTINCT FROM OLD.actor_service_id
+       OR NEW.actor_platform_id IS DISTINCT FROM OLD.actor_platform_id
+       OR NEW.session_id IS DISTINCT FROM OLD.session_id
+       OR NEW.card_grant_id IS DISTINCT FROM OLD.card_grant_id
+       OR NEW.authorization_decision_id IS DISTINCT FROM OLD.authorization_decision_id
+       OR NEW.required_permission IS DISTINCT FROM OLD.required_permission
+       OR NEW.permission_version IS DISTINCT FROM OLD.permission_version
+       OR NEW.policy_version IS DISTINCT FROM OLD.policy_version
+       OR NEW.created_at IS DISTINCT FROM OLD.created_at
+       OR NEW.expires_at IS DISTINCT FROM OLD.expires_at THEN
+      RAISE EXCEPTION 'legacy communication command invalidation cannot alter authorization or request evidence';
+    END IF;
+
+    IF NEW.status <> 'failed'
+       OR NEW.result_communication_id IS NOT NULL
+       OR NEW.completed_at IS NULL
+       OR NEW.completed_at < NEW.created_at
+       OR NEW.legacy_invalidation_reason IS DISTINCT FROM 'phase11b_0019_reauthorization_required' THEN
+      RAISE EXCEPTION 'legacy communication command invalidation must require fresh reauthorization';
+    END IF;
+
+    RETURN NEW;
+  END IF;
+
+  IF OLD.legacy_invalidated_at IS NOT NULL THEN
+    RAISE EXCEPTION 'legacy invalidated communication command cannot be mutated or replayed';
   END IF;
 
   IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
@@ -610,13 +572,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE INDEX IF NOT EXISTS idx_trust_verification_receipts_valid_envelope
+  ON trust_verification_receipts(tenant_id, envelope_id, verified_at DESC)
+  WHERE valid = TRUE;
+
 DO $$
+DECLARE
+  legacy_command_invalidated_at TIMESTAMPTZ := clock_timestamp();
 BEGIN
   LOCK TABLE
     communication_command_idempotency_keys,
     communication_audit_events,
     communication_consent_receipts,
     communication_consent_policies,
+    communication_lifecycle_transitions,
+    communication_webhook_evidence,
+    communication_routing_policies,
+    communication_business_hours_policies,
+    communication_summaries,
+    communication_failover_events,
+    communication_adapter_health,
+    communication_dispatch_attempts,
+    communication_participants,
+    communication_participant_endpoints,
+    communication_suppressions,
+    communication_receptionist_sessions,
     communication_trust_evidence_references,
     communications,
     cryptographic_envelopes,
@@ -625,8 +605,97 @@ BEGIN
     trust_verification_receipts
   IN ACCESS EXCLUSIVE MODE;
 
-  IF EXISTS (SELECT 1 FROM communication_command_idempotency_keys) THEN
-    RAISE EXCEPTION 'migration 0019 requires reauthorization of legacy communication command idempotency rows';
+  IF EXISTS (
+    SELECT 1 FROM communications
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communications.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_consent_receipts
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_consent_receipts.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_lifecycle_transitions
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_lifecycle_transitions.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_webhook_evidence
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_webhook_evidence.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_routing_policies
+     WHERE jsonb_typeof(condition) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(condition)
+        OR jsonb_typeof(action) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(action)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_routing_policies condition/action';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_business_hours_policies
+     WHERE jsonb_typeof(weekly_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(weekly_windows)
+        OR jsonb_typeof(exception_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(exception_windows)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_business_hours_policies windows';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_summaries
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_summaries.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_failover_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_failover_events.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_adapter_health
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_adapter_health.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_trust_evidence_references
+     WHERE jsonb_typeof(evidence_fields) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(evidence_fields)
+        OR NOT communication_trust_fields_are_allowlisted_v1(evidence_fields)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_trust_evidence_references.evidence_fields';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_audit_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_audit_events.metadata';
   END IF;
 
   IF EXISTS (
@@ -759,5 +828,17 @@ BEGIN
   ) THEN
     RAISE EXCEPTION 'migration 0019 found invalid legacy communication consent evidence';
   END IF;
+
+  PERFORM set_config('bidayax.communication_legacy_command_invalidation', 'true', true);
+
+  UPDATE communication_command_idempotency_keys
+     SET status = 'failed',
+         result_communication_id = NULL,
+         completed_at = legacy_command_invalidated_at,
+         legacy_invalidated_at = legacy_command_invalidated_at,
+         legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+   WHERE legacy_invalidated_at IS NULL;
+
+  PERFORM set_config('bidayax.communication_legacy_command_invalidation', 'false', true);
 END;
 $$;
