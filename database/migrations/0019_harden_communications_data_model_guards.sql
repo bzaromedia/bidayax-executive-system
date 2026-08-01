@@ -168,7 +168,12 @@ DECLARE
   key_record trust_keys%ROWTYPE;
   trust_event_record trust_events%ROWTYPE;
   verification_record trust_verification_receipts%ROWTYPE;
+  evaluation_time TIMESTAMPTZ := clock_timestamp();
 BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.recorded_at := evaluation_time;
+  END IF;
+
   IF NOT (
     (NEW.domain = 'communications.lifecycle' AND NEW.artifact_schema = 'communication-lifecycle-v1')
     OR (NEW.domain = 'communications.consent' AND NEW.artifact_schema = 'communication-consent-v1')

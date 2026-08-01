@@ -174,6 +174,8 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_missing_durable_link: /cryptographic envelope|not-null/i,
   trust_non_allowlisted_metadata: /allowlisted|check constraint/i,
   trust_null_card_bypass: /card scope|envelope is incompatible|not-null/i,
+  trust_post_compromise_backdated_reference: /historically valid uncompromised signing key/i,
+  trust_post_revocation_backdated_reference: /historically valid uncompromised signing key/i,
   trust_payload_projection_mismatch: /projection must match signed envelope payload/i,
   trust_expired_envelope: /active unexpired envelope/i,
   trust_revoked_envelope: /active unexpired envelope/i,
@@ -4306,6 +4308,58 @@ async function runVerification(
       )`
   );
 
+  await expectError(client, "trust_post_compromise_backdated_reference", async () => {
+    await client.query(
+      `update trust_keys
+          set status = 'compromised',
+              status_changed_at = clock_timestamp() - interval '1 second',
+              compromised_at = clock_timestamp() - interval '1 second'
+        where tenant_id = 'tenant-test'
+          and key_id = 'communications-trust-key'
+          and key_version = 1`
+    );
+    await client.query(
+      `insert into communication_trust_evidence_references (
+         trust_evidence_reference_id, tenant_id, card_id, communication_id,
+         domain, artifact_schema, canonicalization_version, key_purpose,
+         envelope_id, trust_event_id, evidence_fields, recorded_at
+        ) values (
+          'trust-ref-post-compromise-backdated', 'tenant-test', 'card-test',
+          'communication-test', 'communications.webhook',
+          'communication-webhook-evidence-v1', 'bidayax-c14n-1',
+          'tenant_artifact_signing', 'envelope-test', 'trust-event-test',
+          '{"payloadHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb,
+          clock_timestamp() - interval '2 seconds'
+        )`
+    );
+  });
+
+  await expectError(client, "trust_post_revocation_backdated_reference", async () => {
+    await client.query(
+      `update trust_keys
+          set status = 'revoked',
+              status_changed_at = clock_timestamp() - interval '1 second',
+              revoked_at = clock_timestamp() - interval '1 second'
+        where tenant_id = 'tenant-test'
+          and key_id = 'communications-trust-key'
+          and key_version = 1`
+    );
+    await client.query(
+      `insert into communication_trust_evidence_references (
+         trust_evidence_reference_id, tenant_id, card_id, communication_id,
+         domain, artifact_schema, canonicalization_version, key_purpose,
+         envelope_id, trust_event_id, evidence_fields, recorded_at
+        ) values (
+          'trust-ref-post-revocation-backdated', 'tenant-test', 'card-test',
+          'communication-test', 'communications.webhook',
+          'communication-webhook-evidence-v1', 'bidayax-c14n-1',
+          'tenant_artifact_signing', 'envelope-test', 'trust-event-test',
+          '{"payloadHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb,
+          clock_timestamp() - interval '2 seconds'
+        )`
+    );
+  });
+
   await client.query(
     `insert into cryptographic_envelopes (
        envelope_id, tenant_id, structure_version, envelope_version, card_id,
@@ -4745,7 +4799,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
-    "0018-to-0019 upgrade path preserves valid metadata, lifecycle, suppression, consent, terminal command, and historical Trust-key evidence; invalidates reserved legacy command evidence for fresh reauthorization; fails closed on legacy lifecycle, suppression, consent, Trust-event, compromised-key, hash, and concurrent old-writer defects; rejects forged legacy command invalidation; and enforces post-upgrade metadata constraints",
+    "0018-to-0019 upgrade path preserves valid metadata, lifecycle, suppression, consent, terminal command, and historical Trust-key evidence; invalidates reserved legacy command evidence for fresh reauthorization; fails closed on legacy lifecycle, suppression, consent, Trust-event, compromised-key, hash, and concurrent old-writer defects; rejects forged legacy command invalidation and post-migration revoked/compromised Trust-reference backdating; and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",

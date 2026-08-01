@@ -1,7 +1,7 @@
 # Phase 11B Production Readiness Review
 
 Status: Reopened for post-merge Phase 11B corrective remediation
-Date (America/Los_Angeles): 2026-07-28
+Date (America/Los_Angeles): 2026-08-01
 
 This review covered PR #15, the Phase 11B Communications Data Model
 implementation package, and is reopened for the post-merge Phase 11B
@@ -101,9 +101,10 @@ Evidence:
   values, and secret-like fields.
 - Trust evidence references use explicit Communications domains, artifact
   schemas, canonicalization version, the accepted tenant artifact signing key
-  purpose, active unexpired Trust envelopes, historically valid uncompromised
-  signing-key evidence, valid verification receipts, compatible Trust events,
-  and allowlisted fields that must match the signed envelope payload.
+  purpose, database-owned post-0019 reference recording time, active
+  unexpired Trust envelopes, historically valid uncompromised signing-key
+  evidence, valid verification receipts, compatible Trust events, and
+  allowlisted fields that must match the signed envelope payload.
 - Audit, lifecycle, consent policy, consent receipt, command, webhook, summary,
   failover, and trust evidence are append-only where required. Suppression
   evidence permits only one controlled active-to-released transition with
@@ -133,7 +134,9 @@ Evidence:
   marks only pre-0019 reserved command rows terminal `failed` with a
   fresh-authorization-required reason, and fails closed if pre-existing Phase
   11B lifecycle, suppression, consent, Trust, or metadata rows violate the
-  hardened constraints.
+  hardened constraints. New post-0019 Trust references cannot manufacture
+  pre-revocation or pre-compromise history because the trigger owns
+  `recorded_at` through database wall-clock time.
 - The named PostgreSQL gate
   `pnpm verify:communications-data-model:postgres` applies the complete
   migration chain to the exact local disposable database target, validates the
@@ -141,8 +144,9 @@ Evidence:
   rows for metadata, lifecycle authorization evidence, suppression-release
   evidence, consent evidence, Trust event envelope linkage, command
   idempotency invalidation, historical Trust key lifecycle evidence, and
-  concurrent old-writer rejection, rolls back transactional fixture data after
-  verification, and uses a cleanup-safe completion path for disposable Docker
+  concurrent old-writer rejection; rejects post-0019 revoked/compromised
+  Trust-key backdating attempts; rolls back transactional fixture data after
+  verification; and uses a cleanup-safe completion path for disposable Docker
   PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
@@ -358,6 +362,8 @@ merge readiness still requires the final pushed corrective branch to have:
 | 11B-PRR-066 | CRITICAL | Final-head Advisor review at `1810cb3` found lifecycle and suppression authorization evidence still failed open under SQL NULL semantics. | Resolved by replacing both trigger functions in migration `0019` with required-key checks and null-safe `IS DISTINCT FROM` comparisons, adding locked legacy scans for lifecycle transitions and released suppressions, and adding post-0019 plus 0018-to-0019 missing/null evidence regression tests. | Phase 11B |
 | 11B-PRR-067 | HIGH | Final-head Advisor review at `1810cb3` found the legacy command invalidation bypass was client-forgeable through a custom session setting and allowed contradictory inserted rows. | Resolved by removing the persistent GUC bypass, performing reserved-row invalidation while the result-update trigger is dropped inside the locked migration block, strengthening the legacy-field constraint, preserving terminal legacy outcomes, and adding forged-setting plus direct-insert regression tests. | Phase 11B |
 | 11B-PRR-068 | HIGH | Final-head Advisor review at `1810cb3` found legitimate Trust key lifecycle history could create an unrecoverable migration dead end. | Resolved by validating historical signing-key validity rather than current active-key status only, permitting retired/retiring and later revoked/compromised keys only when signed and recorded before the effective lifecycle boundary, and adding upgrade fixtures for those states plus an invalid compromised-before-recorded case. | Phase 11B |
+| 11B-PRR-069 | CRITICAL | Final-head Advisor review at `2cb7fca` found post-compromise Trust-reference creation could be forged by caller-supplied `recorded_at`, allowing a writer to manufacture pre-compromise history after a key was compromised. | Resolved by making migration `0019` own new Trust-reference `recorded_at` values with `clock_timestamp()` on insert while preserving legitimate 0018-era history through the locked legacy scan. | Phase 11B |
+| 11B-PRR-070 | HIGH | Final-head Advisor review at `2cb7fca` found PRR and traceability overstated the Trust-key remediation before the post-0019 timestamp-forgery path was closed. | Resolved by recording the `2cb7fca` rejection, documenting the database-owned Trust-reference timestamp control, and adding revoked/compromised post-migration backdating regression evidence. | Phase 11B |
 
 ## Formal PRR Decision
 

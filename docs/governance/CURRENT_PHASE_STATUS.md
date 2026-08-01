@@ -1,7 +1,7 @@
 # Current Phase Status
 
 Status: Active governance
-Date (America/Los_Angeles): 2026-07-28
+Date (America/Los_Angeles): 2026-08-01
 
 ## Determination
 
