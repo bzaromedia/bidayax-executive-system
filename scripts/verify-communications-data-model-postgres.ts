@@ -146,7 +146,9 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   invalid_transition: /invalid communication lifecycle transition/i,
   lifecycle_append_only: /immutable|append-only/i,
   lifecycle_backdated_transition: /backdate aggregate chronology/i,
+  lifecycle_missing_authorization_operation: /authorization decision resource mismatch/i,
   lifecycle_missing_authz: /authorization decision/i,
+  lifecycle_null_authorization_operation: /authorization decision resource mismatch/i,
   lifecycle_wrong_operation_authz: /authorization decision resource mismatch/i,
   lifecycle_cross_card: /card scope|card mismatch|foreign key/i,
   lifecycle_null_card_bypass: /card scope|not-null|null/i,
@@ -160,6 +162,8 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   summary_null_card_bypass: /card scope|not-null|null/i,
   suppression_double_release: /update must release one active suppression|immutable|audit evidence does not match/i,
   suppression_release_audit_reuse: /duplicate key|release audit/i,
+  suppression_release_missing_suppression_id: /audit evidence does not match suppression resource/i,
+  suppression_release_null_suppression_id: /audit evidence does not match suppression resource/i,
   suppression_release_wrong_reason: /audit evidence does not match suppression resource/i,
   suppression_null_card_bypass: /card scope|not-null|null/i,
   suppression_release_missing_audit: /matching release audit evidence|audit evidence|foreign key/i,
@@ -179,7 +183,12 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_wrong_key_purpose: /key_purpose|check constraint|envelope is incompatible/i,
   upgrade_invalid_0018_consent_evidence: /invalid legacy communication consent evidence/i,
   upgrade_invalid_0018_hash_metadata: /unsafe metadata/i,
+  upgrade_invalid_0018_lifecycle_evidence: /invalid legacy communication lifecycle authorization evidence/i,
+  upgrade_invalid_0018_suppression_evidence: /invalid legacy communication suppression release evidence/i,
   upgrade_invalid_0018_trust_event_evidence: /invalid legacy communication trust evidence/i,
+  upgrade_invalid_compromised_trust_key_evidence: /invalid legacy communication trust evidence/i,
+  upgrade_legacy_command_direct_insert: /check constraint/i,
+  upgrade_legacy_command_forged_setting: /immutable|legacy invalidated/i,
   upgrade_legacy_command_mutation: /legacy invalidated communication command/i,
   webhook_null_card_bypass: /card scope|not-null|null/i,
   webhook_raw_body: /durable payload|durable_payload_retention/i,
@@ -705,6 +714,171 @@ async function seedUpgradeInvalidCommandEvidence(client: PgClient) {
   );
 }
 
+async function seedUpgradeTerminalCommandEvidence(client: PgClient) {
+  await insertAuthorizationDecision(client, {
+    actorType: "service",
+    actorServiceId: "communications-service",
+    auditEventId: "upgrade-authz-terminal",
+    cardId: null,
+    communicationId: null,
+    metadata: commandAuthorizationMetadata({
+      operation: "apply_tenant_kill_switch",
+      scopeType: "tenant",
+      scopeId: "tenant-test",
+      requiredPermission: "communications:tenant:kill_switch",
+      requestHash: "6666666666666666666666666666666666666666666666666666666666666666"
+    }),
+    reasonCode: "UPGRADE_TERMINAL_AUTHORIZATION_METADATA"
+  });
+  await client.query(
+    `insert into communication_command_idempotency_keys (
+       tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+       request_hash, result_communication_id, actor_type, actor_user_id,
+       actor_service_id, actor_platform_id, session_id, card_grant_id,
+       authorization_decision_id, required_permission, permission_version,
+       policy_version, status, created_at, completed_at, expires_at
+     ) values (
+       'tenant-test', null, 'tenant', 'tenant-test', 'apply_tenant_kill_switch',
+       'upgrade-command-terminal', repeat('6', 64), null, 'service',
+       null, 'communications-service', null, null, null, 'upgrade-authz-terminal',
+       'communications:tenant:kill_switch', 'communications-permissions-v1',
+       'communications-policy-v1', 'reserved', now() - interval '2 hours',
+       null, now() + interval '1 day'
+     )`
+  );
+  await client.query(
+    `update communication_command_idempotency_keys
+        set status = 'failed',
+            completed_at = now() - interval '1 hour'
+      where tenant_id = 'tenant-test'
+        and idempotency_key = 'upgrade-command-terminal'`
+  );
+}
+
+async function seedUpgradeLifecycleEvidence(
+  client: PgClient,
+  options: {
+    readonly auditEventId: string;
+    readonly metadata: Record<string, unknown>;
+  }
+) {
+  await client.query(
+    `insert into communication_audit_events (
+       audit_event_id, tenant_id, card_id, communication_id, event_type,
+       actor_type, actor_user_id, actor_service_id, actor_platform_id,
+       authorization_decision_id, permission_version, policy_version, result,
+       reason_code, occurred_at, metadata
+     ) values (
+       $1, 'tenant-test', 'card-test', 'communication-test',
+       'communication.authorization_decision', 'user', 'user-test', null, null,
+       $1, 'communications-permissions-v1', 'communications-policy-v1',
+       'succeeded', 'UPGRADE_LIFECYCLE_AUTHORIZATION', now(), $2::jsonb
+     )`,
+    [options.auditEventId, JSON.stringify(options.metadata)]
+  );
+  await client.query(
+    `insert into communication_lifecycle_transitions (
+       transition_id, tenant_id, card_id, communication_id, sequence_number,
+       from_state, to_state, reason_code, actor_user_id,
+       authorization_decision_id, occurred_at, metadata
+     ) values (
+       $1, 'tenant-test', 'card-test', 'communication-test', 1,
+       'requested', 'policy_checking', 'UPGRADE_POLICY_CHECKING', 'user-test',
+       $2, now(), '{}'::jsonb
+     )`,
+    [`transition-${options.auditEventId}`, options.auditEventId]
+  );
+}
+
+async function seedUpgradeSuppressionReleaseEvidence(
+  client: PgClient,
+  options: {
+    readonly auditEventId: string;
+    readonly metadata: Record<string, unknown>;
+  }
+) {
+  await client.query(
+    `insert into communication_suppressions (
+       suppression_id, tenant_id, card_id, participant_id, channel, purpose,
+       status, reason_code, created_by_actor_id, released_by_actor_id,
+       created_at, expires_at, released_at, release_reason, audit_event_id
+     ) values (
+       'suppression-upgrade', 'tenant-test', 'card-test', 'participant-test',
+       'telephony', 'callback', 'active', 'USER_SUPPRESSED', 'user-test',
+       null, now() - interval '30 minutes', now() + interval '1 day', null, null, null
+     )`
+  );
+  await client.query(
+    `insert into communication_audit_events (
+       audit_event_id, tenant_id, card_id, communication_id, event_type,
+       actor_type, actor_user_id, actor_service_id, actor_platform_id,
+       authorization_decision_id, permission_version, policy_version, result,
+       reason_code, occurred_at, metadata
+     ) values (
+       $1, 'tenant-test', 'card-test', 'communication-test',
+       'communication.suppression_released', 'user', 'user-test', null, null,
+       'authz-release_suppression', 'communications-permissions-v1',
+       'communications-policy-v1', 'succeeded', 'SUPPRESSION_RELEASED',
+       now() - interval '5 minutes', $2::jsonb
+     )`,
+    [options.auditEventId, JSON.stringify(options.metadata)]
+  );
+  await client.query(
+    `update communication_suppressions
+        set status = 'released',
+            released_by_actor_id = 'user-test',
+            released_at = now(),
+            release_reason = 'owner verified callback preference changed',
+            audit_event_id = $1
+      where suppression_id = 'suppression-upgrade'`,
+    [options.auditEventId]
+  );
+}
+
+async function markUpgradeTrustKeyStatus(
+  client: PgClient,
+  status: "retiring" | "retired" | "revoked" | "compromised",
+  effectiveAtSql: string
+) {
+  if (status === "retiring") {
+    await client.query(
+      `update trust_keys
+          set status = 'retiring',
+              valid_until = ${effectiveAtSql},
+              status_changed_at = ${effectiveAtSql}
+        where tenant_id = 'tenant-test'
+          and key_id = 'communications-trust-key'
+          and key_version = 1`
+    );
+    return;
+  }
+
+  if (status === "retired") {
+    await markUpgradeTrustKeyStatus(client, "retiring", effectiveAtSql);
+    await client.query(
+      `update trust_keys
+          set status = 'retired',
+              status_changed_at = ${effectiveAtSql} + interval '1 second'
+        where tenant_id = 'tenant-test'
+          and key_id = 'communications-trust-key'
+          and key_version = 1`
+    );
+    return;
+  }
+
+  await client.query(
+    `update trust_keys
+        set status = $1,
+            status_changed_at = ${effectiveAtSql},
+            revoked_at = case when $1 = 'revoked' then ${effectiveAtSql} else revoked_at end,
+            compromised_at = case when $1 = 'compromised' then ${effectiveAtSql} else compromised_at end
+      where tenant_id = 'tenant-test'
+        and key_id = 'communications-trust-key'
+        and key_version = 1`,
+    [status]
+  );
+}
+
 async function assertLegacyCommandsInvalidated(
   client: PgClient,
   idempotencyKeys: readonly string[]
@@ -749,6 +923,28 @@ async function assertLegacyCommandsInvalidated(
   }
 }
 
+async function assertTerminalLegacyCommandPreserved(client: PgClient) {
+  const result = await client.query<{
+    status: string;
+    reason: string | null;
+    invalidated: boolean;
+    completed: boolean;
+  }>(
+    `select status,
+            legacy_invalidation_reason as reason,
+            (legacy_invalidated_at is not null) as invalidated,
+            (completed_at is not null) as completed
+       from communication_command_idempotency_keys
+      where tenant_id = 'tenant-test'
+        and idempotency_key = 'upgrade-command-terminal'`
+  );
+
+  const row = result.rows[0];
+  if (!row || row.status !== "failed" || row.reason !== null || row.invalidated || !row.completed) {
+    throw new Error("Terminal legacy command outcome was not preserved across migration 0019.");
+  }
+}
+
 async function assertMetadataConstraintsValidated(client: PgClient) {
   const result = await client.query<{ invalid_count: string }>(
     `select count(*)::text as invalid_count
@@ -788,8 +984,30 @@ async function verify0018To0019UpgradePath(
     "upgrade-evidence-valid",
     "upgrade-consent-valid"
   );
+  await seedUpgradeLifecycleEvidence(client, {
+    auditEventId: "upgrade-authz-lifecycle-valid",
+    metadata: lifecycleAuthorizationMetadata({
+      communicationId: "communication-test",
+      fromState: "requested",
+      toState: "policy_checking"
+    })
+  });
+  await seedUpgradeSuppressionReleaseEvidence(client, {
+    auditEventId: "upgrade-audit-suppression-valid",
+    metadata: {
+      reasonCode: "SUPPRESSION_RELEASED",
+      sessionId: "session-test",
+      cardGrantId: "grant-test",
+      requiredPermission: "communications:release_suppression",
+      suppressionId: "suppression-upgrade",
+      releaseReason: "owner verified callback preference changed",
+      decisionId: "authz-release_suppression"
+    }
+  });
   await seedUpgradeValidCommandEvidence(client);
   await seedUpgradeInvalidCommandEvidence(client);
+  await seedUpgradeTerminalCommandEvidence(client);
+  await markUpgradeTrustKeyStatus(client, "retired", "now() + interval '1 hour'");
   await applyMigrationFiles(client, afterTarget);
   await assertMetadataConstraintsValidated(client);
 
@@ -815,6 +1033,7 @@ async function verify0018To0019UpgradePath(
     "upgrade-command-invalid",
     "upgrade-command-valid"
   ]);
+  await assertTerminalLegacyCommandPreserved(client);
 
   await client.query("BEGIN");
   try {
@@ -825,6 +1044,49 @@ async function verify0018To0019UpgradePath(
                 result_communication_id = null
           where tenant_id = 'tenant-test'
             and idempotency_key = 'upgrade-command-valid'`
+      );
+    });
+  } finally {
+    await client.query("ROLLBACK");
+  }
+
+  await client.query("BEGIN");
+  try {
+    await expectError(client, "upgrade_legacy_command_forged_setting", async () => {
+      await client.query(
+        "select set_config('bidayax.communication_legacy_command_invalidation', 'true', true)"
+      );
+      await client.query(
+        `update communication_command_idempotency_keys
+            set legacy_invalidated_at = now(),
+                legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+          where tenant_id = 'tenant-test'
+            and idempotency_key = 'upgrade-command-terminal'`
+      );
+    });
+  } finally {
+    await client.query("ROLLBACK");
+  }
+
+  await client.query("BEGIN");
+  try {
+    await expectError(client, "upgrade_legacy_command_direct_insert", async () => {
+      await client.query(
+        `insert into communication_command_idempotency_keys (
+           tenant_id, card_id, scope_type, scope_id, operation, idempotency_key,
+           request_hash, result_communication_id, actor_type, actor_user_id,
+           actor_service_id, actor_platform_id, session_id, card_grant_id,
+           authorization_decision_id, required_permission, permission_version,
+           policy_version, status, created_at, completed_at, expires_at,
+           legacy_invalidated_at, legacy_invalidation_reason
+         ) values (
+           'tenant-test', null, 'tenant', 'tenant-test', 'apply_tenant_kill_switch',
+           'upgrade-command-direct-legacy-insert', repeat('4', 64), null, 'service',
+           null, 'communications-service', null, null, null, 'upgrade-authz-valid',
+           'communications:tenant:kill_switch', 'communications-permissions-v1',
+           'communications-policy-v1', 'reserved', now(), null, now() + interval '1 day',
+           now(), 'phase11b_0019_reauthorization_required'
+         )`
       );
     });
   } finally {
@@ -901,6 +1163,91 @@ async function verify0018To0019UpgradePath(
   await resetPublicSchema(client);
   await applyMigrationFiles(client, throughTarget);
   await seedUpgradeCommunicationCore(client);
+  await seedUpgradeLifecycleEvidence(client, {
+    auditEventId: "upgrade-authz-lifecycle-missing-operation",
+    metadata: omitMetadataFields(
+      lifecycleAuthorizationMetadata({
+        communicationId: "communication-test",
+        fromState: "requested",
+        toState: "policy_checking"
+      }),
+      ["operation"]
+    )
+  });
+
+  await expectActionError("upgrade_invalid_0018_lifecycle_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeLifecycleEvidence(client, {
+    auditEventId: "upgrade-authz-lifecycle-null-operation",
+    metadata: {
+      ...lifecycleAuthorizationMetadata({
+        communicationId: "communication-test",
+        fromState: "requested",
+        toState: "policy_checking"
+      }),
+      operation: null
+    }
+  });
+
+  await expectActionError("upgrade_invalid_0018_lifecycle_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeSuppressionReleaseEvidence(client, {
+    auditEventId: "upgrade-audit-suppression-missing-id",
+    metadata: omitMetadataFields(
+      {
+        reasonCode: "SUPPRESSION_RELEASED",
+        sessionId: "session-test",
+        cardGrantId: "grant-test",
+        requiredPermission: "communications:release_suppression",
+        suppressionId: "suppression-upgrade",
+        releaseReason: "owner verified callback preference changed",
+        decisionId: "authz-release_suppression"
+      },
+      ["suppressionId"]
+    )
+  });
+
+  await expectActionError("upgrade_invalid_0018_suppression_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeSuppressionReleaseEvidence(client, {
+    auditEventId: "upgrade-audit-suppression-null-id",
+    metadata: {
+      reasonCode: "SUPPRESSION_RELEASED",
+      sessionId: "session-test",
+      cardGrantId: "grant-test",
+      requiredPermission: "communications:release_suppression",
+      suppressionId: null,
+      releaseReason: "owner verified callback preference changed",
+      decisionId: "authz-release_suppression"
+    }
+  });
+
+  await expectActionError("upgrade_invalid_0018_suppression_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
   await seedUpgradeConsentReceipt(
     client,
     "upgrade-evidence-invalid-trust",
@@ -909,6 +1256,36 @@ async function verify0018To0019UpgradePath(
   );
 
   await expectActionError("upgrade_invalid_0018_trust_event_evidence", async () => {
+    await applyMigrationFiles(client, afterTarget);
+  });
+  await client.query("ROLLBACK").catch(() => undefined);
+
+  for (const status of ["retiring", "revoked", "compromised"] as const) {
+    await resetPublicSchema(client);
+    await applyMigrationFiles(client, throughTarget);
+    await seedUpgradeCommunicationCore(client);
+    await seedUpgradeConsentReceipt(
+      client,
+      `upgrade-evidence-${status}-key`,
+      `upgrade-consent-${status}-key`,
+      { signedAtSql: "now() - interval '1 hour'" }
+    );
+    await markUpgradeTrustKeyStatus(client, status, "now() + interval '1 hour'");
+    await applyMigrationFiles(client, afterTarget);
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+
+  await resetPublicSchema(client);
+  await applyMigrationFiles(client, throughTarget);
+  await seedUpgradeCommunicationCore(client);
+  await seedUpgradeConsentReceipt(
+    client,
+    "upgrade-evidence-compromised-before-recorded",
+    "upgrade-consent-compromised-before-recorded"
+  );
+  await markUpgradeTrustKeyStatus(client, "compromised", "now() - interval '1 minute'");
+
+  await expectActionError("upgrade_invalid_compromised_trust_key_evidence", async () => {
     await applyMigrationFiles(client, afterTarget);
   });
   await client.query("ROLLBACK").catch(() => undefined);
@@ -2929,6 +3306,67 @@ async function runVerification(
     );
   });
 
+  await insertAuthorizationDecision(client, {
+    actorType: "user",
+    actorUserId: "user-test",
+    auditEventId: "authz-lifecycle-missing-operation",
+    cardId: "card-test",
+    communicationId: "communication-test",
+    metadata: omitMetadataFields(
+      lifecycleAuthorizationMetadata({
+        communicationId: "communication-test",
+        fromState: "policy_checking",
+        toState: "authorized"
+      }),
+      ["operation"]
+    ),
+    reasonCode: "LIFECYCLE_MISSING_OPERATION"
+  });
+  await expectError(client, "lifecycle_missing_authorization_operation", async () => {
+    await client.query(
+      `insert into communication_lifecycle_transitions (
+         transition_id, tenant_id, card_id, communication_id, sequence_number,
+         from_state, to_state, reason_code, actor_user_id,
+         authorization_decision_id, occurred_at, metadata
+       ) values (
+         'transition-missing-operation-authz', 'tenant-test', 'card-test',
+         'communication-test', 2, 'policy_checking', 'authorized',
+         'MISSING_OPERATION_AUTHZ', 'user-test',
+         'authz-lifecycle-missing-operation', now(), '{}'::jsonb
+       )`
+    );
+  });
+
+  await client.query(
+    `insert into communication_audit_events (
+       audit_event_id, tenant_id, card_id, communication_id, event_type,
+       actor_type, actor_user_id, actor_service_id, actor_platform_id,
+       authorization_decision_id, permission_version, policy_version, result,
+       reason_code, occurred_at, metadata
+     ) values (
+       'authz-lifecycle-null-operation', 'tenant-test', 'card-test',
+       'communication-test', 'communication.authorization_decision', 'user',
+       'user-test', null, null, 'authz-lifecycle-null-operation',
+       'communications-permissions-v1', 'communications-policy-v1',
+       'succeeded', 'LIFECYCLE_NULL_OPERATION', now(),
+       '{"operation":null,"resourceType":"communication_lifecycle_transition","communicationId":"communication-test","fromState":"policy_checking","toState":"authorized","requiredPermission":"communications:advance_lifecycle","sessionId":"session-test","cardGrantId":"grant-test"}'::jsonb
+     )`
+  );
+  await expectError(client, "lifecycle_null_authorization_operation", async () => {
+    await client.query(
+      `insert into communication_lifecycle_transitions (
+         transition_id, tenant_id, card_id, communication_id, sequence_number,
+         from_state, to_state, reason_code, actor_user_id,
+         authorization_decision_id, occurred_at, metadata
+       ) values (
+         'transition-null-operation-authz', 'tenant-test', 'card-test',
+         'communication-test', 2, 'policy_checking', 'authorized',
+         'NULL_OPERATION_AUTHZ', 'user-test',
+         'authz-lifecycle-null-operation', now(), '{}'::jsonb
+       )`
+    );
+  });
+
   await expectError(client, "lifecycle_null_card_bypass", async () => {
     await client.query(
       `insert into communication_lifecycle_transitions (
@@ -3321,6 +3759,80 @@ async function runVerification(
               release_reason = 'owner verified callback preference changed',
               audit_event_id = 'audit-suppression-wrong-reason'
         where suppression_id = 'suppression-wrong-reason'`
+    );
+  });
+
+  await expectError(client, "suppression_release_missing_suppression_id", async () => {
+    await client.query(
+      `insert into communication_suppressions (
+         suppression_id, tenant_id, card_id, participant_id, channel, purpose,
+         status, reason_code, created_by_actor_id, released_by_actor_id,
+         created_at, expires_at, released_at, release_reason, audit_event_id
+       ) values (
+         'suppression-missing-id', 'tenant-test', 'card-test', 'participant-test',
+         'telephony', 'callback', 'active', 'USER_SUPPRESSED', 'user-test',
+         null, now(), now() + interval '1 day', null, null, null
+       )`
+    );
+    await client.query(
+      `insert into communication_audit_events (
+         audit_event_id, tenant_id, card_id, communication_id, event_type,
+         actor_type, actor_user_id, actor_service_id, actor_platform_id,
+         authorization_decision_id, permission_version, policy_version, result,
+         reason_code, occurred_at, metadata
+        ) values (
+          'audit-suppression-missing-id', 'tenant-test', 'card-test', 'communication-test',
+          'communication.suppression_released', 'user', 'user-test', null, null,
+          'authz-release_suppression', 'communications-permissions-v1',
+          'communications-policy-v1', 'succeeded', 'SUPPRESSION_RELEASED', now(),
+          '{"reasonCode":"SUPPRESSION_RELEASED","sessionId":"session-test","cardGrantId":"grant-test","requiredPermission":"communications:release_suppression","releaseReason":"owner verified callback preference changed","decisionId":"authz-release_suppression"}'::jsonb
+        )`
+    );
+    await client.query(
+      `update communication_suppressions
+          set status = 'released',
+              released_by_actor_id = 'user-test',
+              released_at = now(),
+              release_reason = 'owner verified callback preference changed',
+              audit_event_id = 'audit-suppression-missing-id'
+        where suppression_id = 'suppression-missing-id'`
+    );
+  });
+
+  await expectError(client, "suppression_release_null_suppression_id", async () => {
+    await client.query(
+      `insert into communication_suppressions (
+         suppression_id, tenant_id, card_id, participant_id, channel, purpose,
+         status, reason_code, created_by_actor_id, released_by_actor_id,
+         created_at, expires_at, released_at, release_reason, audit_event_id
+       ) values (
+         'suppression-null-id', 'tenant-test', 'card-test', 'participant-test',
+         'telephony', 'callback', 'active', 'USER_SUPPRESSED', 'user-test',
+         null, now(), now() + interval '1 day', null, null, null
+       )`
+    );
+    await client.query(
+      `insert into communication_audit_events (
+         audit_event_id, tenant_id, card_id, communication_id, event_type,
+         actor_type, actor_user_id, actor_service_id, actor_platform_id,
+         authorization_decision_id, permission_version, policy_version, result,
+         reason_code, occurred_at, metadata
+        ) values (
+          'audit-suppression-null-id', 'tenant-test', 'card-test', 'communication-test',
+          'communication.suppression_released', 'user', 'user-test', null, null,
+          'authz-release_suppression', 'communications-permissions-v1',
+          'communications-policy-v1', 'succeeded', 'SUPPRESSION_RELEASED', now(),
+          '{"reasonCode":"SUPPRESSION_RELEASED","sessionId":"session-test","cardGrantId":"grant-test","requiredPermission":"communications:release_suppression","suppressionId":null,"releaseReason":"owner verified callback preference changed","decisionId":"authz-release_suppression"}'::jsonb
+        )`
+    );
+    await client.query(
+      `update communication_suppressions
+          set status = 'released',
+              released_by_actor_id = 'user-test',
+              released_at = now(),
+              release_reason = 'owner verified callback preference changed',
+              audit_event_id = 'audit-suppression-null-id'
+        where suppression_id = 'suppression-null-id'`
     );
   });
 
@@ -4233,7 +4745,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
-    "0018-to-0019 upgrade path preserves valid metadata and consent evidence, invalidates legacy command evidence for fresh reauthorization, fails closed on legacy consent, Trust-event, hash, and concurrent old-writer defects, and enforces post-upgrade metadata constraints",
+    "0018-to-0019 upgrade path preserves valid metadata, lifecycle, suppression, consent, terminal command, and historical Trust-key evidence; invalidates reserved legacy command evidence for fresh reauthorization; fails closed on legacy lifecycle, suppression, consent, Trust-event, compromised-key, hash, and concurrent old-writer defects; rejects forged legacy command invalidation; and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",

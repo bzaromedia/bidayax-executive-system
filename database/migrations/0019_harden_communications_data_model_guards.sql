@@ -216,12 +216,38 @@ BEGIN
      AND purpose = envelope_record.key_purpose;
 
   IF key_record.key_id IS NULL
-     OR key_record.status <> 'active'
-     OR key_record.revoked_at IS NOT NULL
-     OR key_record.compromised_at IS NOT NULL
+     OR key_record.status = 'pending'
      OR envelope_record.signed_at < key_record.valid_from
-     OR (key_record.valid_until IS NOT NULL AND envelope_record.signed_at > key_record.valid_until) THEN
-    RAISE EXCEPTION 'communication trust reference requires active uncompromised signing key';
+     OR (key_record.valid_until IS NOT NULL AND envelope_record.signed_at > key_record.valid_until)
+     OR (
+       key_record.status IN ('active', 'retiring', 'retired')
+       AND (key_record.revoked_at IS NOT NULL OR key_record.compromised_at IS NOT NULL)
+     )
+     OR (
+       key_record.status = 'revoked'
+       AND (
+         key_record.revoked_at IS NULL
+         OR key_record.compromised_at IS NOT NULL
+         OR envelope_record.signed_at >= key_record.revoked_at
+         OR NEW.recorded_at >= key_record.revoked_at
+       )
+     )
+     OR (
+       key_record.status = 'compromised'
+       AND (
+         key_record.compromised_at IS NULL
+         OR envelope_record.signed_at >= key_record.compromised_at
+         OR NEW.recorded_at >= key_record.compromised_at
+         OR (
+           key_record.revoked_at IS NOT NULL
+           AND (
+             envelope_record.signed_at >= key_record.revoked_at
+             OR NEW.recorded_at >= key_record.revoked_at
+           )
+         )
+       )
+     ) THEN
+    RAISE EXCEPTION 'communication trust reference requires historically valid uncompromised signing key evidence';
   END IF;
 
   SELECT * INTO verification_record
@@ -360,6 +386,164 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION enforce_communication_suppression_actor_evidence_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  creator_membership tenant_memberships%ROWTYPE;
+  releaser_membership tenant_memberships%ROWTYPE;
+  release_audit_record communication_audit_events%ROWTYPE;
+BEGIN
+  SELECT * INTO creator_membership
+    FROM tenant_memberships
+   WHERE tenant_id = NEW.tenant_id
+     AND user_id = NEW.created_by_actor_id
+     AND status = 'active';
+
+  IF creator_membership.membership_id IS NULL
+     OR creator_membership.role = 'viewer' THEN
+    RAISE EXCEPTION 'communication suppression creator requires active non-viewer membership';
+  END IF;
+
+  IF TG_OP = 'INSERT' AND NEW.status <> 'active' THEN
+    RAISE EXCEPTION 'communication suppression rows must be inserted active and released through a controlled transition';
+  END IF;
+
+  IF NEW.status = 'released' THEN
+    SELECT * INTO releaser_membership
+      FROM tenant_memberships
+     WHERE tenant_id = NEW.tenant_id
+       AND user_id = NEW.released_by_actor_id
+       AND status = 'active';
+
+    IF releaser_membership.membership_id IS NULL
+       OR releaser_membership.role NOT IN ('tenant_owner', 'tenant_admin', 'receptionist_manager') THEN
+      RAISE EXCEPTION 'communication suppression release requires authorized active membership';
+    END IF;
+
+    SELECT * INTO release_audit_record
+      FROM communication_audit_events
+     WHERE tenant_id = NEW.tenant_id
+       AND audit_event_id = NEW.audit_event_id
+       AND event_type = 'communication.suppression_released'
+       AND result = 'succeeded'
+       AND card_id IS NOT DISTINCT FROM NEW.card_id
+       AND actor_type = 'user'
+       AND actor_user_id = NEW.released_by_actor_id;
+
+    IF release_audit_record.audit_event_id IS NULL THEN
+      RAISE EXCEPTION 'communication suppression release requires matching release audit evidence';
+    END IF;
+
+    IF NOT (release_audit_record.metadata ? 'suppressionId')
+       OR NOT (release_audit_record.metadata ? 'releaseReason')
+       OR NOT (release_audit_record.metadata ? 'requiredPermission')
+       OR NOT (release_audit_record.metadata ? 'decisionId')
+       OR release_audit_record.metadata->>'suppressionId' IS DISTINCT FROM NEW.suppression_id
+       OR release_audit_record.metadata->>'releaseReason' IS DISTINCT FROM NEW.release_reason
+       OR release_audit_record.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:release_suppression'
+       OR release_audit_record.metadata->>'decisionId' IS DISTINCT FROM release_audit_record.authorization_decision_id THEN
+      RAISE EXCEPTION 'communication suppression release audit evidence does not match suppression resource';
+    END IF;
+
+    IF release_audit_record.occurred_at < NEW.created_at
+       OR release_audit_record.occurred_at > NEW.released_at THEN
+      RAISE EXCEPTION 'communication suppression release audit chronology is invalid';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_lifecycle_transition_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_communication communications%ROWTYPE;
+  decision_record communication_audit_events%ROWTYPE;
+BEGIN
+  SELECT * INTO current_communication
+    FROM communications
+   WHERE tenant_id = NEW.tenant_id
+     AND communication_id = NEW.communication_id
+   FOR UPDATE;
+
+  IF current_communication.communication_id IS NULL THEN
+    RAISE EXCEPTION 'communication lifecycle transition requires an existing communication';
+  END IF;
+
+  IF NEW.card_id IS DISTINCT FROM current_communication.card_id THEN
+    RAISE EXCEPTION 'communication lifecycle transition card scope does not match communication';
+  END IF;
+
+  IF NEW.from_state <> current_communication.current_state THEN
+    RAISE EXCEPTION 'communication lifecycle transition does not match current state';
+  END IF;
+
+  IF NEW.sequence_number <> current_communication.state_version + 1 THEN
+    RAISE EXCEPTION 'communication lifecycle transition sequence must increment by one';
+  END IF;
+
+  IF NEW.occurred_at < current_communication.updated_at THEN
+    RAISE EXCEPTION 'communication lifecycle transition cannot backdate aggregate chronology';
+  END IF;
+
+  SELECT * INTO decision_record
+    FROM communication_audit_events
+   WHERE tenant_id = NEW.tenant_id
+     AND audit_event_id = NEW.authorization_decision_id
+     AND event_type = 'communication.authorization_decision'
+     AND result = 'succeeded'
+     AND card_id IS NOT DISTINCT FROM NEW.card_id
+     AND communication_id IS NOT DISTINCT FROM NEW.communication_id
+     AND actor_type = 'user'
+     AND actor_user_id IS NOT DISTINCT FROM NEW.actor_user_id;
+
+  IF decision_record.audit_event_id IS NULL THEN
+    RAISE EXCEPTION 'communication lifecycle transition requires durable authorization decision evidence';
+  END IF;
+
+  IF NOT (decision_record.metadata ? 'operation')
+     OR NOT (decision_record.metadata ? 'resourceType')
+     OR NOT (decision_record.metadata ? 'communicationId')
+     OR NOT (decision_record.metadata ? 'fromState')
+     OR NOT (decision_record.metadata ? 'toState')
+     OR NOT (decision_record.metadata ? 'requiredPermission')
+     OR decision_record.metadata->>'operation' IS DISTINCT FROM 'advance_lifecycle'
+     OR decision_record.metadata->>'resourceType' IS DISTINCT FROM 'communication_lifecycle_transition'
+     OR decision_record.metadata->>'communicationId' IS DISTINCT FROM NEW.communication_id
+     OR decision_record.metadata->>'fromState' IS DISTINCT FROM NEW.from_state
+     OR decision_record.metadata->>'toState' IS DISTINCT FROM NEW.to_state
+     OR decision_record.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:advance_lifecycle' THEN
+    RAISE EXCEPTION 'communication lifecycle transition authorization decision resource mismatch';
+  END IF;
+
+  IF NOT (
+    (NEW.from_state = 'requested' AND NEW.to_state IN ('policy_checking', 'blocked', 'suppressed', 'cancelled'))
+    OR (NEW.from_state = 'policy_checking' AND NEW.to_state IN ('authorized', 'blocked', 'suppressed', 'expired'))
+    OR (NEW.from_state = 'authorized' AND NEW.to_state IN ('queued', 'blocked', 'suppressed', 'cancelled'))
+    OR (NEW.from_state = 'queued' AND NEW.to_state IN ('dispatching', 'cancelled', 'expired', 'suppressed'))
+    OR (NEW.from_state = 'dispatching' AND NEW.to_state IN ('accepted', 'failed', 'terminated'))
+    OR (NEW.from_state = 'accepted' AND NEW.to_state IN ('active', 'completed', 'failed', 'terminated'))
+    OR (NEW.from_state = 'active' AND NEW.to_state IN ('completed', 'failed', 'terminated'))
+  ) THEN
+    RAISE EXCEPTION 'invalid communication lifecycle transition from % to %', NEW.from_state, NEW.to_state;
+  END IF;
+
+  PERFORM set_config('bidayax.communication_lifecycle_transition', 'true', true);
+
+  UPDATE communications
+     SET current_state = NEW.to_state,
+         state_version = NEW.sequence_number,
+         updated_at = NEW.occurred_at
+   WHERE tenant_id = NEW.tenant_id
+     AND communication_id = NEW.communication_id;
+
+  PERFORM set_config('bidayax.communication_lifecycle_transition', 'false', true);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 ALTER TABLE communication_command_idempotency_keys
   ADD COLUMN IF NOT EXISTS legacy_invalidated_at TIMESTAMPTZ,
   ADD COLUMN IF NOT EXISTS legacy_invalidation_reason TEXT;
@@ -376,6 +560,10 @@ ALTER TABLE communication_command_idempotency_keys
     OR (
       legacy_invalidated_at IS NOT NULL
       AND legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+      AND status = 'failed'
+      AND result_communication_id IS NULL
+      AND completed_at IS NOT NULL
+      AND completed_at >= created_at
     )
   );
 
@@ -384,42 +572,6 @@ RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
     RAISE EXCEPTION 'communication command evidence cannot be deleted';
-  END IF;
-
-  IF current_setting('bidayax.communication_legacy_command_invalidation', true) = 'true'
-     AND OLD.legacy_invalidated_at IS NULL
-     AND NEW.legacy_invalidated_at IS NOT NULL THEN
-    IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
-       OR NEW.card_id IS DISTINCT FROM OLD.card_id
-       OR NEW.scope_type IS DISTINCT FROM OLD.scope_type
-       OR NEW.scope_id IS DISTINCT FROM OLD.scope_id
-       OR NEW.operation IS DISTINCT FROM OLD.operation
-       OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
-       OR NEW.request_hash IS DISTINCT FROM OLD.request_hash
-       OR NEW.actor_type IS DISTINCT FROM OLD.actor_type
-       OR NEW.actor_user_id IS DISTINCT FROM OLD.actor_user_id
-       OR NEW.actor_service_id IS DISTINCT FROM OLD.actor_service_id
-       OR NEW.actor_platform_id IS DISTINCT FROM OLD.actor_platform_id
-       OR NEW.session_id IS DISTINCT FROM OLD.session_id
-       OR NEW.card_grant_id IS DISTINCT FROM OLD.card_grant_id
-       OR NEW.authorization_decision_id IS DISTINCT FROM OLD.authorization_decision_id
-       OR NEW.required_permission IS DISTINCT FROM OLD.required_permission
-       OR NEW.permission_version IS DISTINCT FROM OLD.permission_version
-       OR NEW.policy_version IS DISTINCT FROM OLD.policy_version
-       OR NEW.created_at IS DISTINCT FROM OLD.created_at
-       OR NEW.expires_at IS DISTINCT FROM OLD.expires_at THEN
-      RAISE EXCEPTION 'legacy communication command invalidation cannot alter authorization or request evidence';
-    END IF;
-
-    IF NEW.status <> 'failed'
-       OR NEW.result_communication_id IS NOT NULL
-       OR NEW.completed_at IS NULL
-       OR NEW.completed_at < NEW.created_at
-       OR NEW.legacy_invalidation_reason IS DISTINCT FROM 'phase11b_0019_reauthorization_required' THEN
-      RAISE EXCEPTION 'legacy communication command invalidation must require fresh reauthorization';
-    END IF;
-
-    RETURN NEW;
   END IF;
 
   IF OLD.legacy_invalidated_at IS NOT NULL THEN
@@ -444,7 +596,9 @@ BEGIN
      OR NEW.permission_version IS DISTINCT FROM OLD.permission_version
      OR NEW.policy_version IS DISTINCT FROM OLD.policy_version
      OR NEW.created_at IS DISTINCT FROM OLD.created_at
-     OR NEW.expires_at IS DISTINCT FROM OLD.expires_at THEN
+     OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
+     OR NEW.legacy_invalidated_at IS DISTINCT FROM OLD.legacy_invalidated_at
+     OR NEW.legacy_invalidation_reason IS DISTINCT FROM OLD.legacy_invalidation_reason THEN
     RAISE EXCEPTION 'communication command authorization and request evidence is immutable';
   END IF;
 
@@ -743,11 +897,37 @@ BEGIN
         OR envelope.signed_at > reference.recorded_at
         OR (envelope.expires_at IS NOT NULL AND envelope.expires_at <= reference.recorded_at)
         OR signing_key.key_id IS NULL
-        OR signing_key.status IS DISTINCT FROM 'active'
-        OR signing_key.revoked_at IS NOT NULL
-        OR signing_key.compromised_at IS NOT NULL
+        OR signing_key.status = 'pending'
         OR envelope.signed_at < signing_key.valid_from
         OR (signing_key.valid_until IS NOT NULL AND envelope.signed_at > signing_key.valid_until)
+        OR (
+          signing_key.status IN ('active', 'retiring', 'retired')
+          AND (signing_key.revoked_at IS NOT NULL OR signing_key.compromised_at IS NOT NULL)
+        )
+        OR (
+          signing_key.status = 'revoked'
+          AND (
+            signing_key.revoked_at IS NULL
+            OR signing_key.compromised_at IS NOT NULL
+            OR envelope.signed_at >= signing_key.revoked_at
+            OR reference.recorded_at >= signing_key.revoked_at
+          )
+        )
+        OR (
+          signing_key.status = 'compromised'
+          AND (
+            signing_key.compromised_at IS NULL
+            OR envelope.signed_at >= signing_key.compromised_at
+            OR reference.recorded_at >= signing_key.compromised_at
+            OR (
+              signing_key.revoked_at IS NOT NULL
+              AND (
+                envelope.signed_at >= signing_key.revoked_at
+                OR reference.recorded_at >= signing_key.revoked_at
+              )
+            )
+          )
+        )
         OR verification.receipt_id IS NULL
         OR envelope.payload IS DISTINCT FROM reference.evidence_fields
         OR trust_event.event_id IS NULL
@@ -758,6 +938,64 @@ BEGIN
         OR trust_event.details->>'envelopeId' IS DISTINCT FROM reference.envelope_id
   ) THEN
     RAISE EXCEPTION 'migration 0019 found invalid legacy communication trust evidence references';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_lifecycle_transitions transition
+      LEFT JOIN communication_audit_events decision
+        ON decision.tenant_id = transition.tenant_id
+       AND decision.audit_event_id = transition.authorization_decision_id
+       AND decision.event_type = 'communication.authorization_decision'
+       AND decision.result = 'succeeded'
+       AND decision.card_id IS NOT DISTINCT FROM transition.card_id
+       AND decision.communication_id IS NOT DISTINCT FROM transition.communication_id
+       AND decision.actor_type = 'user'
+       AND decision.actor_user_id IS NOT DISTINCT FROM transition.actor_user_id
+     WHERE decision.audit_event_id IS NULL
+        OR NOT (decision.metadata ? 'operation')
+        OR NOT (decision.metadata ? 'resourceType')
+        OR NOT (decision.metadata ? 'communicationId')
+        OR NOT (decision.metadata ? 'fromState')
+        OR NOT (decision.metadata ? 'toState')
+        OR NOT (decision.metadata ? 'requiredPermission')
+        OR decision.metadata->>'operation' IS DISTINCT FROM 'advance_lifecycle'
+        OR decision.metadata->>'resourceType' IS DISTINCT FROM 'communication_lifecycle_transition'
+        OR decision.metadata->>'communicationId' IS DISTINCT FROM transition.communication_id
+        OR decision.metadata->>'fromState' IS DISTINCT FROM transition.from_state
+        OR decision.metadata->>'toState' IS DISTINCT FROM transition.to_state
+        OR decision.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:advance_lifecycle'
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication lifecycle authorization evidence';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_suppressions suppression
+      LEFT JOIN communication_audit_events release_audit
+        ON release_audit.tenant_id = suppression.tenant_id
+       AND release_audit.audit_event_id = suppression.audit_event_id
+       AND release_audit.event_type = 'communication.suppression_released'
+       AND release_audit.result = 'succeeded'
+       AND release_audit.card_id IS NOT DISTINCT FROM suppression.card_id
+       AND release_audit.actor_type = 'user'
+       AND release_audit.actor_user_id = suppression.released_by_actor_id
+     WHERE suppression.status = 'released'
+       AND (
+         release_audit.audit_event_id IS NULL
+         OR NOT (release_audit.metadata ? 'suppressionId')
+         OR NOT (release_audit.metadata ? 'releaseReason')
+         OR NOT (release_audit.metadata ? 'requiredPermission')
+         OR NOT (release_audit.metadata ? 'decisionId')
+         OR release_audit.metadata->>'suppressionId' IS DISTINCT FROM suppression.suppression_id
+         OR release_audit.metadata->>'releaseReason' IS DISTINCT FROM suppression.release_reason
+         OR release_audit.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:release_suppression'
+         OR release_audit.metadata->>'decisionId' IS DISTINCT FROM release_audit.authorization_decision_id
+         OR release_audit.occurred_at < suppression.created_at
+         OR release_audit.occurred_at > suppression.released_at
+       )
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication suppression release evidence';
   END IF;
 
   IF EXISTS (
@@ -829,16 +1067,20 @@ BEGIN
     RAISE EXCEPTION 'migration 0019 found invalid legacy communication consent evidence';
   END IF;
 
-  PERFORM set_config('bidayax.communication_legacy_command_invalidation', 'true', true);
+  DROP TRIGGER IF EXISTS trg_communication_command_idempotency_result_update
+    ON communication_command_idempotency_keys;
 
   UPDATE communication_command_idempotency_keys
      SET status = 'failed',
          result_communication_id = NULL,
-         completed_at = legacy_command_invalidated_at,
-         legacy_invalidated_at = legacy_command_invalidated_at,
+         completed_at = GREATEST(legacy_command_invalidated_at, created_at),
+         legacy_invalidated_at = GREATEST(legacy_command_invalidated_at, created_at),
          legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
-   WHERE legacy_invalidated_at IS NULL;
+   WHERE legacy_invalidated_at IS NULL
+     AND status = 'reserved';
 
-  PERFORM set_config('bidayax.communication_legacy_command_invalidation', 'false', true);
+  CREATE TRIGGER trg_communication_command_idempotency_result_update
+    BEFORE UPDATE OR DELETE ON communication_command_idempotency_keys
+    FOR EACH ROW EXECUTE FUNCTION enforce_communication_command_result_update_v1();
 END;
 $$;
