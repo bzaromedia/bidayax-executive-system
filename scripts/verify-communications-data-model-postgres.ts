@@ -104,6 +104,8 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   consent_null_trust_event_evidence: /trust_event_id|check constraint|trust event/i,
   consent_invalid_verification_receipt: /valid envelope verification receipt/i,
   consent_revoked_envelope_evidence: /active unexpired envelope/i,
+  consent_compromised_key_authority: /currently authoritative Trust evidence/i,
+  consent_revoked_key_authority: /currently authoritative Trust evidence/i,
   consent_policy_append_only: /immutable|append-only/i,
   consent_policy_cross_card: /policy.*card|foreign key|card/i,
   consent_policy_purpose_channel_mismatch: /policy.*channel|policy.*purpose|channel does not match policy|purpose does not match policy/i,
@@ -111,10 +113,10 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   consent_null_policy_version_evidence: /policy version does not match cited policy|does not match receipt/i,
   consent_wrong_policy_version_evidence: /policy version does not match cited policy/i,
   consent_wrong_receipt_evidence: /does not match receipt/i,
-  consent_missing_channel_evidence: /does not match receipt/i,
-  consent_missing_participant_evidence: /does not match receipt/i,
+  consent_missing_channel_evidence: /does not match receipt|policy lock tuple/i,
+  consent_missing_participant_evidence: /does not match receipt|policy lock tuple/i,
   consent_missing_policy_evidence: /does not match receipt/i,
-  consent_missing_purpose_evidence: /does not match receipt/i,
+  consent_missing_purpose_evidence: /does not match receipt|policy lock tuple/i,
   consent_missing_receipt_evidence: /does not match receipt/i,
   consent_missing_source_evidence: /does not match receipt/i,
   consent_missing_status_evidence: /does not match receipt/i,
@@ -132,7 +134,9 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   dispatch_missing_consent: /active cited consent|consent/i,
   dispatch_null_card_bypass: /card scope|not-null|null/i,
   dispatch_provider_enabled: /provider dispatch/i,
+  dispatch_compromised_key_authority: /currently authoritative consent Trust evidence/i,
   dispatch_revoked_consent: /revoked|active cited consent/i,
+  dispatch_revoked_key_authority: /currently authoritative consent Trust evidence/i,
   dispatch_stale_policy: /policy|expired|active cited consent/i,
   dispatch_suppressed: /suppression|active cited consent/i,
   dispatch_update_missing_consent: /active cited consent|consent/i,
@@ -183,11 +187,16 @@ const expectedFailurePatterns: Record<string, RegExp> = {
   trust_sensitive_metadata: /safe|sensitive|check constraint/i,
   trust_signed_after_recorded: /active unexpired envelope/i,
   trust_wrong_key_purpose: /key_purpose|check constraint|envelope is incompatible/i,
-  upgrade_invalid_0018_consent_evidence: /invalid legacy communication consent evidence/i,
+  trust_event_numeric_envelope_link: /trust event is incompatible/i,
+  trust_event_null_envelope_link: /trust event is incompatible/i,
+  trust_event_object_envelope_link: /trust event is incompatible/i,
+  trust_event_array_envelope_link: /trust event is incompatible/i,
+  upgrade_invalid_0018_consent_evidence: /invalid legacy communication consent evidence|unsafe metadata/i,
   upgrade_invalid_0018_hash_metadata: /unsafe metadata/i,
   upgrade_invalid_0018_lifecycle_evidence: /invalid legacy communication lifecycle authorization evidence/i,
   upgrade_invalid_0018_suppression_evidence: /invalid legacy communication suppression release evidence/i,
   upgrade_invalid_0018_trust_event_evidence: /invalid legacy communication trust evidence/i,
+  upgrade_invalid_0018_trust_event_envelope_type: /invalid legacy communication trust evidence/i,
   upgrade_invalid_compromised_trust_key_evidence: /invalid legacy communication trust evidence/i,
   upgrade_legacy_command_direct_insert: /check constraint/i,
   upgrade_legacy_command_forged_setting: /immutable|legacy invalidated/i,
@@ -464,7 +473,12 @@ async function applyMigrationFiles(client: PgClient, migrationFiles: readonly st
 
   for (const file of migrationFiles) {
     const sql = await readFile(join(migrationsDirectory, file), "utf8");
-    await client.query(sql);
+    try {
+      await client.query(sql);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${file} failed: ${message}`);
+    }
   }
 }
 
@@ -556,6 +570,39 @@ async function expectActionError(
   }
 }
 
+async function waitForBlockedBy(
+  inspector: PgClient,
+  blockedPid: number,
+  blockerPid: number,
+  label: string
+) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < 5000) {
+    const blockingResult = await inspector.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [blockedPid, blockerPid]
+    );
+
+    if (blockingResult.rows[0]?.blocked_by_owner) {
+      return;
+    }
+
+    await delay(50);
+  }
+
+  throw new Error(`${label} was not blocked by the expected transaction.`);
+}
+
+async function runVerifierStep(label: string, action: () => Promise<void>) {
+  try {
+    await action();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${label} failed: ${message}`);
+  }
+}
+
 async function seedUpgradeTenant(client: PgClient, tenantId: string) {
   await client.query(
     `insert into tenants (
@@ -643,14 +690,14 @@ async function seedUpgradeConsentReceipt(
        consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
        channel, purpose, status, source, evidence_reference_id, observed_at,
        effective_at, expires_at, revoked_at, metadata
-     ) values (
-       $1, 'tenant-test', 'card-test', 'participant-test',
-       'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
-       $2, '2026-07-25T10:00:00.000Z'::timestamptz,
-       '2026-07-25T10:00:00.000Z'::timestamptz, null, null,
-       '{"reasonCode":"CONSENT_GRANTED"}'::jsonb
-     )`,
-    [consentReceiptId, evidenceReferenceId]
+      ) values (
+        $1, 'tenant-test', 'card-test', $3,
+        'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
+        $2, '2026-07-25T10:00:00.000Z'::timestamptz,
+        '2026-07-25T10:00:00.000Z'::timestamptz, null, null,
+        '{"reasonCode":"CONSENT_GRANTED"}'::jsonb
+      )`,
+    [consentReceiptId, evidenceReferenceId, options.receiptParticipantId ?? "participant-test"]
   );
 }
 
@@ -1162,6 +1209,65 @@ async function verify0018To0019UpgradePath(
   });
   await client.query("ROLLBACK").catch(() => undefined);
 
+  for (const fieldName of [
+    "channel",
+    "consentPolicyId",
+    "consentReceiptId",
+    "participantId",
+    "purpose",
+    "source",
+    "status"
+  ] as const) {
+    await resetPublicSchema(client);
+    await applyMigrationFiles(client, throughTarget);
+    await seedUpgradeCommunicationCore(client);
+    await seedUpgradeConsentReceipt(
+      client,
+      `upgrade-evidence-invalid-consent-null-${fieldName}`,
+      `upgrade-consent-invalid-null-${fieldName}`,
+      { evidenceOverrides: { [fieldName]: null } }
+    );
+
+    await expectActionError("upgrade_invalid_0018_consent_evidence", async () => {
+      await applyMigrationFiles(client, afterTarget);
+    });
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+
+  for (const [caseName, participantValue, receiptParticipantId] of [
+    ["participant-number", 123, "123"],
+    ["participant-object", {}, "{}"],
+    ["participant-array", [], "[]"]
+  ] as const) {
+    await resetPublicSchema(client);
+    await applyMigrationFiles(client, throughTarget);
+    await seedUpgradeCommunicationCore(client);
+    await client.query(
+      `insert into communication_participants (
+         participant_id, tenant_id, card_id, kind, display_name_hash, locale,
+         trust_reference_id, created_at, updated_at
+       ) values (
+         $1, 'tenant-test', 'card-test', 'external_contact', repeat('a', 64),
+         'en-US', null, now(), now()
+       )`,
+      [receiptParticipantId]
+    );
+    await seedUpgradeConsentReceipt(
+      client,
+      `upgrade-evidence-invalid-consent-${caseName}`,
+      `upgrade-consent-invalid-${caseName}`,
+      {
+        evidenceOverrides: { participantId: participantValue },
+        receiptParticipantId
+      }
+    );
+
+    await expectActionError("upgrade_invalid_0018_consent_evidence", async () => {
+      await applyMigrationFiles(client, afterTarget);
+    });
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+
   await resetPublicSchema(client);
   await applyMigrationFiles(client, throughTarget);
   await seedUpgradeCommunicationCore(client);
@@ -1262,6 +1368,30 @@ async function verify0018To0019UpgradePath(
   });
   await client.query("ROLLBACK").catch(() => undefined);
 
+  for (const [caseName, envelopeId, trustEventEnvelopeId] of [
+    ["numeric", "123", 123],
+    ["object", "{}", {}],
+    ["array", "[]", []]
+  ] as const) {
+    await resetPublicSchema(client);
+    await applyMigrationFiles(client, throughTarget);
+    await seedUpgradeCommunicationCore(client);
+    await seedUpgradeConsentReceipt(
+      client,
+      `upgrade-evidence-invalid-trust-event-${caseName}`,
+      `upgrade-consent-invalid-trust-event-${caseName}`,
+      {
+        envelopeId,
+        trustEventDetailsOverrides: { envelopeId: trustEventEnvelopeId }
+      }
+    );
+
+    await expectActionError("upgrade_invalid_0018_trust_event_envelope_type", async () => {
+      await applyMigrationFiles(client, afterTarget);
+    });
+    await client.query("ROLLBACK").catch(() => undefined);
+  }
+
   for (const status of ["retiring", "revoked", "compromised"] as const) {
     await resetPublicSchema(client);
     await applyMigrationFiles(client, throughTarget);
@@ -1336,6 +1466,967 @@ async function expectPolicyLockContention(client: PgClient, connectionString: st
   }
 }
 
+async function seedTrustReferenceConcurrencyFixture(
+  client: PgClient,
+  fixtureName: string
+) {
+  const keyId = `communications-trust-key-${fixtureName}`;
+  const envelopeId = `envelope-${fixtureName}`;
+  const trustEventId = `trust-event-${fixtureName}`;
+
+  await client.query(
+    `insert into trust_keys (
+       key_id, key_version, tenant_id, structure_version, identity_id,
+       algorithm, operation, public_key, public_key_encoding, purpose,
+       scope_id, provider_type, provider_key_reference, status, valid_from,
+       valid_until, status_changed_at, replaces_key_id, replaces_key_version,
+       revoked_at, compromised_at, metadata, created_at
+     ) values (
+       $1, 1, 'tenant-test', '1', 'communications-service',
+       'Ed25519', 'signature',
+       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-',
+       'spki-der-base64url', 'tenant_artifact_signing', $2,
+       'kms', $3, 'active', now() - interval '1 day', null,
+       now() - interval '1 day', null, null, null, null, '{}'::jsonb, now()
+     )`,
+    [keyId, keyId, `${keyId}-reference`]
+  );
+  await client.query(
+    `insert into cryptographic_envelopes (
+       envelope_id, tenant_id, structure_version, envelope_version, card_id,
+       artifact_type, artifact_id, artifact_version, domain, schema_version,
+       canonicalization_version, algorithm_policy_version, digest_algorithm,
+       digest_operation, digest, signature_algorithm, signature_operation,
+       key_id, key_version, key_purpose, signer_type, signer_id, signed_at,
+       expires_at, previous_envelope_id, previous_digest, provenance_manifest_id,
+       metadata, status, payload, signature, immutable, created_at
+     ) values (
+       $1, 'tenant-test', '1', '1', 'card-test',
+       'communication-webhook-evidence-v1', 'communication-test', '1',
+       'communications.webhook', 'communication-webhook-evidence-v1',
+       'bidayax-c14n-1', 'trust-algorithm-policy-1', 'SHA-256',
+       'digest', repeat('f', 64), 'Ed25519', 'signature',
+       $2, 1, 'tenant_artifact_signing', 'system',
+       'communications-service', now() - interval '1 minute',
+       null, null, null, null, '{}'::jsonb, 'active',
+       '{"payloadHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb,
+       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-', true, now()
+     )`,
+    [envelopeId, keyId]
+  );
+  await client.query(
+    `insert into trust_events (
+       event_id, tenant_id, structure_version, stream_id, event_type,
+       provenance_lifecycle, subject_type, subject_id, actor_identity_id,
+       occurred_at, idempotency_key, details
+     ) values (
+       $1, 'tenant-test', '1', 'communications-trust',
+       'communications.webhook', 'created', 'communications.webhook',
+       'communication-test', 'communications-service', now(),
+       $2, $3::jsonb
+     )`,
+    [
+      trustEventId,
+      `${trustEventId}-idempotency`,
+      JSON.stringify({
+        envelopeId,
+        payloadHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      })
+    ]
+  );
+  await client.query(
+    `insert into trust_verification_receipts (
+       receipt_id, tenant_id, structure_version, envelope_id, verifier_identity_id,
+       verified_at, valid, components, reason_codes, warnings, idempotency_key
+     ) values (
+       $1, 'tenant-test', '1', $2, 'communications-service', now(), true,
+       '{"signature":"valid","domain":"communications.webhook"}'::jsonb,
+       '["VALID"]'::jsonb, '[]'::jsonb, $3
+     )`,
+    [
+      `verification-${fixtureName}`,
+      envelopeId,
+      `verification-${fixtureName}-idempotency`
+    ]
+  );
+
+  return { envelopeId, keyId, trustEventId };
+}
+
+async function expectTrustKeyLifecycleReferenceContention(
+  client: PgClient,
+  connectionString: string,
+  lifecycle: "compromised" | "revoked"
+) {
+  const contender = new Client({ connectionString });
+  const fixture = await seedTrustReferenceConcurrencyFixture(
+    client,
+    `concurrent-${lifecycle}`
+  );
+  const referenceId = `trust-ref-concurrent-${lifecycle}`;
+
+  await contender.connect();
+  await client.query("BEGIN");
+
+  let contenderSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await contender.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error(`trust_${lifecycle}_lifecycle_contention could not read backend pids.`);
+    }
+
+    await client.query(
+      `select 1
+         from trust_keys
+        where tenant_id = 'tenant-test'
+          and key_id = $1
+          and key_version = 1
+        for update`,
+      [fixture.keyId]
+    );
+
+    await contender.query("BEGIN");
+    await contender.query("SET LOCAL statement_timeout = '5s'");
+    const contenderInsert = contender
+      .query(
+        `insert into communication_trust_evidence_references (
+           trust_evidence_reference_id, tenant_id, card_id, communication_id,
+           domain, artifact_schema, canonicalization_version, key_purpose,
+           envelope_id, trust_event_id, evidence_fields, recorded_at
+         ) values (
+           $1, 'tenant-test', 'card-test', 'communication-test',
+           'communications.webhook', 'communication-webhook-evidence-v1',
+           'bidayax-c14n-1', 'tenant_artifact_signing',
+           $2, $3,
+           '{"payloadHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb,
+           clock_timestamp() - interval '2 seconds'
+         )`,
+        [referenceId, fixture.envelopeId, fixture.trustEventId]
+      )
+      .then(() => {
+        contenderSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        contenderSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (contenderSettled) {
+      const earlyResult = await contenderInsert;
+      throw new Error(
+        `trust_${lifecycle}_lifecycle_contention did not block on Trust key lifecycle update: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error(`trust_${lifecycle}_lifecycle_contention was not blocked by the Trust key owner transaction.`);
+    }
+
+    await client.query(
+      `update trust_keys
+          set status = $1,
+              status_changed_at = clock_timestamp(),
+              compromised_at = case when $1 = 'compromised' then clock_timestamp() else compromised_at end,
+              revoked_at = case when $1 = 'revoked' then clock_timestamp() else revoked_at end
+        where tenant_id = 'tenant-test'
+          and key_id = $2
+          and key_version = 1`,
+      [lifecycle, fixture.keyId]
+    );
+
+    await client.query("COMMIT");
+    const result = await contenderInsert;
+    if (result.accepted) {
+      throw new Error(`trust_${lifecycle}_lifecycle_contention accepted a stale Trust key reference.`);
+    }
+    if (!/historically valid uncompromised signing key/i.test(result.message)) {
+      throw new Error(
+        `trust_${lifecycle}_lifecycle_contention failed for an unexpected reason: ${result.message}`
+      );
+    }
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await contender.query("ROLLBACK").catch(() => undefined);
+    await contender.end().catch(() => undefined);
+  }
+}
+
+async function expectTrustReferenceBeforeLifecycleAccepted(
+  client: PgClient,
+  connectionString: string,
+  lifecycle: "compromised" | "revoked"
+) {
+  const contender = new Client({ connectionString });
+  const fixture = await seedTrustReferenceConcurrencyFixture(
+    client,
+    `before-${lifecycle}-lifecycle`
+  );
+  const referenceId = `trust-ref-before-${lifecycle}-lifecycle`;
+
+  await contender.connect();
+  await client.query("BEGIN");
+
+  let lifecycleSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await contender.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error(`trust_reference_before_${lifecycle}_lifecycle could not read backend pids.`);
+    }
+
+    await client.query(
+      `insert into communication_trust_evidence_references (
+         trust_evidence_reference_id, tenant_id, card_id, communication_id,
+         domain, artifact_schema, canonicalization_version, key_purpose,
+         envelope_id, trust_event_id, evidence_fields, recorded_at
+       ) values (
+         $1, 'tenant-test', 'card-test', 'communication-test',
+         'communications.webhook', 'communication-webhook-evidence-v1',
+         'bidayax-c14n-1', 'tenant_artifact_signing', $2, $3,
+         '{"payloadHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'::jsonb,
+         clock_timestamp()
+       )`,
+      [referenceId, fixture.envelopeId, fixture.trustEventId]
+    );
+
+    await contender.query("BEGIN");
+    await contender.query("SET LOCAL statement_timeout = '5s'");
+    const lifecycleUpdate = contender
+      .query(
+        `update trust_keys
+            set status = $1,
+                status_changed_at = clock_timestamp(),
+                compromised_at = case when $1 = 'compromised' then clock_timestamp() else compromised_at end,
+                revoked_at = case when $1 = 'revoked' then clock_timestamp() else revoked_at end
+          where tenant_id = 'tenant-test'
+            and key_id = $2
+            and key_version = 1`,
+        [lifecycle, fixture.keyId]
+      )
+      .then(() => {
+        lifecycleSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        lifecycleSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (lifecycleSettled) {
+      const earlyResult = await lifecycleUpdate;
+      throw new Error(
+        `trust_reference_before_${lifecycle}_lifecycle did not block lifecycle update: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error(`trust_reference_before_${lifecycle}_lifecycle update was not blocked by the Trust-reference owner transaction.`);
+    }
+
+    await client.query("COMMIT");
+    const updateResult = await lifecycleUpdate;
+    if (!updateResult.accepted) {
+      throw new Error(
+        `trust_reference_before_${lifecycle}_lifecycle update failed unexpectedly: ${updateResult.message}`
+      );
+    }
+    await contender.query("COMMIT");
+
+    const result = await client.query<{ valid_order: boolean }>(
+      `select reference.recorded_at < case
+                when $2 = 'compromised' then signing_key.compromised_at
+                else signing_key.revoked_at
+              end as valid_order
+         from communication_trust_evidence_references reference
+         join trust_keys signing_key
+           on signing_key.tenant_id = reference.tenant_id
+          and signing_key.key_id = $1
+          and signing_key.key_version = 1
+        where reference.trust_evidence_reference_id = $3`,
+      [fixture.keyId, lifecycle, referenceId]
+    );
+
+    if (!result.rows[0]?.valid_order) {
+      throw new Error(`Pre-${lifecycle} Trust reference was not recorded before key lifecycle change.`);
+    }
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await contender.query("ROLLBACK").catch(() => undefined);
+    await contender.end().catch(() => undefined);
+  }
+}
+
+async function insertGrantedConsentReceipt(
+  client: PgClient,
+  consentReceiptId: string,
+  evidenceReferenceId: string,
+  status: "granted" | "revoked" = "granted"
+) {
+  await client.query(
+    `insert into communication_consent_receipts (
+       consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+       channel, purpose, status, source, evidence_reference_id, observed_at,
+       effective_at, expires_at, revoked_at, metadata
+     ) values (
+       $1, 'tenant-test', 'card-test', 'participant-test',
+       'consent-policy-test', 'telephony', 'callback', $3, 'visitor',
+       $2, '2026-07-25T10:00:00.000Z'::timestamptz,
+       '2026-07-25T10:00:00.000Z'::timestamptz, null,
+       case when $3 = 'revoked' then '2026-07-26T10:00:00.000Z'::timestamptz else null end,
+       case
+         when $3 = 'revoked' then '{"reasonCode":"CONSENT_REVOKED"}'::jsonb
+         else '{"reasonCode":"CONSENT_GRANTED"}'::jsonb
+       end
+     )`,
+    [consentReceiptId, evidenceReferenceId, status]
+  );
+}
+
+async function insertQueuedDispatchAttempt(
+  client: PgClient,
+  attemptId: string,
+  consentReceiptId = "consent-granted"
+) {
+  await client.query(
+    `insert into communication_dispatch_attempts (
+       attempt_id, tenant_id, card_id, communication_id, participant_id,
+       purpose, consent_receipt_id, suppression_id, command_operation,
+       command_idempotency_key, adapter_id, channel, state, retry_count,
+       provider_dispatch_enabled, provider_reference_id, failure_reason_code,
+       next_retry_at, created_at, updated_at
+     ) values (
+       $1, 'tenant-test', 'card-test', 'communication-test',
+       'participant-test', 'callback', $2, null,
+       'request_callback', 'command-test', 'telephony-adapter-disabled',
+       'telephony', 'queued', 0, false, null, null, null, now(), now()
+     )`,
+    [attemptId, consentReceiptId]
+  );
+}
+
+async function expectConsentDispatchLockOrder(
+  client: PgClient,
+  connectionString: string
+) {
+  const contender = new Client({ connectionString });
+  await insertConsentEvidence(
+    client,
+    "evidence-consent-lock-order",
+    "consent-lock-order",
+    "communications-consent-v1"
+  );
+
+  await contender.connect();
+  await client.query("BEGIN");
+
+  let consentSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await contender.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("consent_dispatch_lock_order could not read backend pids.");
+    }
+
+    await client.query(
+      `select lock_communication_policy_subject_hierarchy_v1(
+         'tenant-test', 'card-test', 'participant-test', 'telephony', 'callback'
+       )`
+    );
+
+    await contender.query("BEGIN");
+    await contender.query("SET LOCAL statement_timeout = '5s'");
+    const contenderConsent = contender
+      .query(
+        `insert into communication_consent_receipts (
+           consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+           channel, purpose, status, source, evidence_reference_id, observed_at,
+           effective_at, expires_at, revoked_at, metadata
+         ) values (
+           'consent-lock-order', 'tenant-test', 'card-test', 'participant-test',
+           'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
+           'evidence-consent-lock-order', '2026-07-25T10:00:00.000Z'::timestamptz,
+           '2026-07-25T10:00:00.000Z'::timestamptz, null, null,
+           '{"reasonCode":"CONSENT_GRANTED"}'::jsonb
+         )`
+      )
+      .then(() => {
+        consentSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        consentSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (consentSettled) {
+      const earlyResult = await contenderConsent;
+      throw new Error(
+        `consent_dispatch_lock_order did not block consent insert on policy lock: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error("consent_dispatch_lock_order consent insert was not blocked by the policy owner transaction.");
+    }
+
+    await insertQueuedDispatchAttempt(client, "dispatch-lock-order-owner");
+    await client.query("COMMIT");
+
+    const consentResult = await contenderConsent;
+    if (!consentResult.accepted) {
+      throw new Error(
+        `consent_dispatch_lock_order consent insert failed unexpectedly: ${consentResult.message}`
+      );
+    }
+    await contender.query("ROLLBACK");
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await contender.query("ROLLBACK").catch(() => undefined);
+    await contender.end().catch(() => undefined);
+  }
+
+  const consentBeforeDispatch = new Client({ connectionString });
+  await insertConsentEvidence(
+    client,
+    "evidence-consent-lock-order-owner",
+    "consent-lock-order-owner",
+    "communications-consent-v1",
+    { status: "revoked", revokedAt: "2026-07-26T10:00:00.000Z" }
+  );
+
+  await consentBeforeDispatch.connect();
+  await client.query("BEGIN");
+
+  let dispatchSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await consentBeforeDispatch.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("consent_before_dispatch_lock_order could not read backend pids.");
+    }
+
+    await insertGrantedConsentReceipt(
+      client,
+      "consent-lock-order-owner",
+      "evidence-consent-lock-order-owner",
+      "revoked"
+    );
+
+    await consentBeforeDispatch.query("BEGIN");
+    await consentBeforeDispatch.query("SET LOCAL statement_timeout = '5s'");
+    const contenderDispatch = insertQueuedDispatchAttempt(
+      consentBeforeDispatch,
+      "dispatch-lock-order-contender",
+      "consent-granted"
+    )
+      .then(() => {
+        dispatchSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        dispatchSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (dispatchSettled) {
+      const earlyResult = await contenderDispatch;
+      throw new Error(
+        `consent_before_dispatch_lock_order did not block dispatch insert: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error("consent_before_dispatch_lock_order dispatch insert was not blocked by the consent owner transaction.");
+    }
+
+    await client.query("ROLLBACK");
+    const dispatchResult = await contenderDispatch;
+    if (!dispatchResult.accepted) {
+      throw new Error(
+        `consent_before_dispatch_lock_order dispatch insert failed unexpectedly: ${dispatchResult.message}`
+      );
+    }
+    await consentBeforeDispatch.query("COMMIT");
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await consentBeforeDispatch.query("ROLLBACK").catch(() => undefined);
+    await consentBeforeDispatch.end().catch(() => undefined);
+  }
+
+  const atomicConsentContender = new Client({ connectionString });
+  await atomicConsentContender.connect();
+  await client.query("BEGIN");
+
+  let atomicDispatchSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await atomicConsentContender.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("atomic_consent_dispatch_lock_order could not read backend pids.");
+    }
+
+    await insertConsentEvidence(
+      client,
+      "evidence-consent-atomic-lock-order",
+      "consent-atomic-lock-order",
+      "communications-consent-v1",
+      { status: "revoked", revokedAt: "2026-07-26T10:00:00.000Z" }
+    );
+    await insertGrantedConsentReceipt(
+      client,
+      "consent-atomic-lock-order",
+      "evidence-consent-atomic-lock-order",
+      "revoked"
+    );
+
+    await atomicConsentContender.query("BEGIN");
+    await atomicConsentContender.query("SET LOCAL statement_timeout = '5s'");
+    const contenderDispatch = insertQueuedDispatchAttempt(
+      atomicConsentContender,
+      "dispatch-atomic-consent-lock-order",
+      "consent-granted"
+    )
+      .then(() => {
+        atomicDispatchSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        atomicDispatchSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (atomicDispatchSettled) {
+      const earlyResult = await contenderDispatch;
+      throw new Error(
+        `atomic_consent_dispatch_lock_order did not block dispatch insert: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error("atomic_consent_dispatch_lock_order dispatch insert was not blocked by the atomic consent owner transaction.");
+    }
+
+    await client.query("ROLLBACK");
+    const dispatchResult = await contenderDispatch;
+    if (!dispatchResult.accepted) {
+      throw new Error(
+        `atomic_consent_dispatch_lock_order dispatch insert failed unexpectedly: ${dispatchResult.message}`
+      );
+    }
+    await atomicConsentContender.query("ROLLBACK");
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await atomicConsentContender.query("ROLLBACK").catch(() => undefined);
+    await atomicConsentContender.end().catch(() => undefined);
+  }
+
+  const dispatchBeforeAtomicConsent = new Client({ connectionString });
+  await dispatchBeforeAtomicConsent.connect();
+  await client.query("BEGIN");
+
+  let atomicConsentSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await dispatchBeforeAtomicConsent.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("dispatch_before_atomic_consent_lock_order could not read backend pids.");
+    }
+
+    await insertQueuedDispatchAttempt(
+      client,
+      "dispatch-before-atomic-consent-lock-order",
+      "consent-granted"
+    );
+
+    await dispatchBeforeAtomicConsent.query("BEGIN");
+    await dispatchBeforeAtomicConsent.query("SET LOCAL statement_timeout = '5s'");
+    const contenderConsent = (async () => {
+      await insertConsentEvidence(
+        dispatchBeforeAtomicConsent,
+        "evidence-consent-atomic-contender",
+        "consent-atomic-contender",
+        "communications-consent-v1",
+        { status: "revoked", revokedAt: "2026-07-26T10:00:00.000Z" }
+      );
+      await insertGrantedConsentReceipt(
+        dispatchBeforeAtomicConsent,
+        "consent-atomic-contender",
+        "evidence-consent-atomic-contender",
+        "revoked"
+      );
+    })()
+      .then(() => {
+        atomicConsentSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        atomicConsentSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (atomicConsentSettled) {
+      const earlyResult = await contenderConsent;
+      throw new Error(
+        `dispatch_before_atomic_consent_lock_order did not block consent insert: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error("dispatch_before_atomic_consent_lock_order consent insert was not blocked by the dispatch owner transaction.");
+    }
+
+    await client.query("ROLLBACK");
+    const consentResult = await contenderConsent;
+    if (!consentResult.accepted) {
+      throw new Error(
+        `dispatch_before_atomic_consent_lock_order consent insert failed unexpectedly: ${consentResult.message}`
+      );
+    }
+    await dispatchBeforeAtomicConsent.query("ROLLBACK");
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await dispatchBeforeAtomicConsent.query("ROLLBACK").catch(() => undefined);
+    await dispatchBeforeAtomicConsent.end().catch(() => undefined);
+  }
+
+  const envelopeBeforeDispatch = new Client({ connectionString });
+  await envelopeBeforeDispatch.connect();
+  await client.query("BEGIN");
+
+  let envelopeReferenceSettled = false;
+  let envelopeReferenceInsert:
+    | Promise<{ readonly accepted: boolean; readonly message: string }>
+    | null = null;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await envelopeBeforeDispatch.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("consent_envelope_dispatch_lock_order could not read backend pids.");
+    }
+
+    const evidenceFields = await insertConsentEvidence(
+      client,
+      "evidence-consent-envelope-dispatch-lock-order",
+      "consent-envelope-dispatch-lock-order",
+      "communications-consent-v1",
+      { skipReference: true }
+    );
+
+    await envelopeBeforeDispatch.query("BEGIN");
+    await envelopeBeforeDispatch.query("SET LOCAL statement_timeout = '5s'");
+    await insertQueuedDispatchAttempt(
+      envelopeBeforeDispatch,
+      "dispatch-envelope-policy-lock-order",
+      "consent-granted"
+    );
+
+    envelopeReferenceInsert = client
+      .query(
+        `insert into communication_trust_evidence_references (
+           trust_evidence_reference_id, tenant_id, card_id, communication_id,
+           domain, artifact_schema, canonicalization_version, key_purpose,
+           envelope_id, trust_event_id, evidence_fields, recorded_at
+         ) values (
+           'evidence-consent-envelope-dispatch-lock-order', 'tenant-test',
+           'card-test', 'communication-test', 'communications.consent',
+           'communication-consent-v1', 'bidayax-c14n-1',
+           'tenant_artifact_signing',
+           'envelope-evidence-consent-envelope-dispatch-lock-order',
+           'trust-event-evidence-consent-envelope-dispatch-lock-order',
+           $1::jsonb, now()
+         )`,
+        [JSON.stringify(evidenceFields)]
+      )
+      .then(() => {
+        envelopeReferenceSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        envelopeReferenceSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await waitForBlockedBy(
+      envelopeBeforeDispatch,
+      ownerPid,
+      contenderPid,
+      "consent_envelope_dispatch_lock_order"
+    );
+
+    if (envelopeReferenceSettled) {
+      const earlyResult = await envelopeReferenceInsert;
+      throw new Error(
+        `consent_envelope_dispatch_lock_order did not block on dispatch policy lock: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+
+    await envelopeBeforeDispatch.query("ROLLBACK");
+    const referenceResult = await envelopeReferenceInsert;
+    if (!referenceResult.accepted) {
+      throw new Error(
+        `consent_envelope_dispatch_lock_order Trust reference failed unexpectedly: ${referenceResult.message}`
+      );
+    }
+  } finally {
+    await envelopeBeforeDispatch.query("ROLLBACK").catch(() => undefined);
+    if (envelopeReferenceInsert && !envelopeReferenceSettled) {
+      await envelopeReferenceInsert.catch(() => undefined);
+    }
+    await client.query("ROLLBACK").catch(() => undefined);
+    await envelopeBeforeDispatch.end().catch(() => undefined);
+  }
+
+  const malformedConsentReference = new Client({ connectionString });
+  await malformedConsentReference.connect();
+  await client.query("BEGIN");
+
+  try {
+    await insertQueuedDispatchAttempt(
+      client,
+      "dispatch-before-malformed-consent-reference",
+      "consent-granted"
+    );
+
+    await malformedConsentReference.query("BEGIN");
+    await malformedConsentReference.query("SET LOCAL statement_timeout = '5s'");
+    const malformedResult = await malformedConsentReference
+      .query(
+        `insert into communication_trust_evidence_references (
+           trust_evidence_reference_id, tenant_id, card_id, communication_id,
+           domain, artifact_schema, canonicalization_version, key_purpose,
+           envelope_id, trust_event_id, evidence_fields, recorded_at
+         ) values (
+           'evidence-consent-malformed-lock-order', 'tenant-test', 'card-test',
+           'communication-test', 'communications.consent', 'communication-consent-v1',
+           'bidayax-c14n-1', 'tenant_artifact_signing',
+           'envelope-consent-granted', 'trust-event-consent-granted',
+           '{"channel":"telephony","consentPolicyId":"consent-policy-test","consentReceiptId":"consent-malformed-lock-order","observedAt":"2026-07-25T10:00:00.000Z","effectiveAt":"2026-07-25T10:00:00.000Z","expiresAt":null,"revokedAt":null,"envelopeId":"envelope-consent-granted","policyVersion":"communications-consent-v1","purpose":"callback","source":"visitor","status":"granted"}'::jsonb,
+           now()
+         )`
+      )
+      .then(() => ({ accepted: true, message: "" }))
+      .catch((error: unknown) => ({
+        accepted: false,
+        message: error instanceof Error ? error.message : String(error)
+      }));
+
+    if (malformedResult.accepted) {
+      throw new Error("malformed_consent_reference_lock_order accepted malformed consent evidence.");
+    }
+    if (!/policy lock tuple/i.test(malformedResult.message)) {
+      throw new Error(
+        `malformed_consent_reference_lock_order failed for an unexpected reason: ${malformedResult.message}`
+      );
+    }
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await malformedConsentReference.query("ROLLBACK").catch(() => undefined);
+    await malformedConsentReference.end().catch(() => undefined);
+  }
+
+  const mismatchedAtomicConsent = new Client({ connectionString });
+  const mismatchedEvidenceFields = await insertConsentEvidence(
+    client,
+    "evidence-consent-mismatched-lock-order",
+    "consent-mismatched-lock-order",
+    "communications-consent-v1",
+    {
+      evidenceOverrides: { purpose: "scheduling" },
+      purpose: "scheduling",
+      status: "revoked",
+      revokedAt: "2026-07-26T10:00:00.000Z",
+      skipReference: true
+    }
+  );
+  await mismatchedAtomicConsent.connect();
+  await client.query("BEGIN");
+
+  let mismatchedConsentSettled = false;
+  try {
+    const ownerPidResult = await client.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const contenderPidResult = await mismatchedAtomicConsent.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+    const ownerPid = ownerPidResult.rows[0]?.pid;
+    const contenderPid = contenderPidResult.rows[0]?.pid;
+    if (ownerPid === undefined || contenderPid === undefined) {
+      throw new Error("mismatched_atomic_consent_lock_order could not read backend pids.");
+    }
+
+    await insertQueuedDispatchAttempt(
+      client,
+      "dispatch-before-mismatched-atomic-consent",
+      "consent-granted"
+    );
+
+    await mismatchedAtomicConsent.query("BEGIN");
+    await mismatchedAtomicConsent.query("SET LOCAL statement_timeout = '5s'");
+    const contenderConsent = (async () => {
+      await mismatchedAtomicConsent.query(
+        `insert into communication_trust_evidence_references (
+           trust_evidence_reference_id, tenant_id, card_id, communication_id,
+           domain, artifact_schema, canonicalization_version, key_purpose,
+           envelope_id, trust_event_id, evidence_fields, recorded_at
+         ) values (
+           'evidence-consent-mismatched-lock-order', 'tenant-test', 'card-test',
+           'communication-test', 'communications.consent', 'communication-consent-v1',
+           'bidayax-c14n-1', 'tenant_artifact_signing',
+           'envelope-evidence-consent-mismatched-lock-order',
+           'trust-event-evidence-consent-mismatched-lock-order',
+           $1::jsonb, now()
+         )`,
+        [JSON.stringify(mismatchedEvidenceFields)]
+      );
+      await insertGrantedConsentReceipt(
+        mismatchedAtomicConsent,
+        "consent-mismatched-lock-order",
+        "evidence-consent-mismatched-lock-order",
+        "revoked"
+      );
+    })()
+      .then(() => {
+        mismatchedConsentSettled = true;
+        return { accepted: true, message: "" };
+      })
+      .catch((error: unknown) => {
+        mismatchedConsentSettled = true;
+        return {
+          accepted: false,
+          message: error instanceof Error ? error.message : String(error)
+        };
+      });
+
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    if (mismatchedConsentSettled) {
+      const earlyResult = await contenderConsent;
+      throw new Error(
+        `mismatched_atomic_consent_lock_order did not block on dispatch Trust-key lock: ` +
+          `${earlyResult.accepted ? "accepted" : "rejected"} ${earlyResult.message}`
+      );
+    }
+    const blockingResult = await client.query<{ blocked_by_owner: boolean }>(
+      "select $2::int = any(pg_blocking_pids($1::int)) as blocked_by_owner",
+      [contenderPid, ownerPid]
+    );
+    if (!blockingResult.rows[0]?.blocked_by_owner) {
+      throw new Error("mismatched_atomic_consent_lock_order was not blocked by the dispatch owner transaction.");
+    }
+
+    await client.query("ROLLBACK");
+    const consentResult = await contenderConsent;
+    if (consentResult.accepted) {
+      throw new Error("mismatched_atomic_consent_lock_order accepted mismatched consent evidence.");
+    }
+    if (!/does not match receipt/i.test(consentResult.message)) {
+      throw new Error(
+        `mismatched_atomic_consent_lock_order failed for an unexpected reason: ${consentResult.message}`
+      );
+    }
+  } finally {
+    await client.query("ROLLBACK").catch(() => undefined);
+    await mismatchedAtomicConsent.query("ROLLBACK").catch(() => undefined);
+    await mismatchedAtomicConsent.end().catch(() => undefined);
+  }
+}
+
 async function insertConsentEvidence(
   client: PgClient,
   evidenceReferenceId: string,
@@ -1345,6 +2436,7 @@ async function insertConsentEvidence(
     readonly envelopeStatus?: "active" | "superseded" | "revoked";
     readonly consentPolicyId?: string;
     readonly effectiveAt?: string;
+    readonly envelopeId?: string;
     readonly evidenceOverrides?: Record<string, unknown>;
     readonly expiresAt?: string | null;
     readonly expiresAtSql?: string;
@@ -1359,10 +2451,12 @@ async function insertConsentEvidence(
     readonly trustEventDetailsOverrides?: Record<string, unknown>;
     readonly trustEventType?: string;
     readonly omitTrustEventDetailsFields?: readonly string[];
+    readonly receiptParticipantId?: string;
     readonly verificationValid?: boolean;
+    readonly skipReference?: boolean;
   } = {}
 ) {
-  const envelopeId = `envelope-${evidenceReferenceId}`;
+  const envelopeId = options.envelopeId ?? `envelope-${evidenceReferenceId}`;
   const trustEventId = `trust-event-${evidenceReferenceId}`;
   const evidenceFields: Record<string, unknown> = {
     channel: "telephony",
@@ -1456,17 +2550,38 @@ async function insertConsentEvidence(
       options.verificationValid ?? true
     ]
   );
+  if (!options.skipReference) {
+    await client.query(
+      `insert into communication_trust_evidence_references (
+         trust_evidence_reference_id, tenant_id, card_id, communication_id,
+         domain, artifact_schema, canonicalization_version, key_purpose,
+         envelope_id, trust_event_id, evidence_fields, recorded_at
+       ) values (
+         $1, 'tenant-test', 'card-test', 'communication-test',
+         'communications.consent', 'communication-consent-v1',
+         'bidayax-c14n-1', 'tenant_artifact_signing', $2, $3, $4::jsonb, now()
+       )`,
+      [evidenceReferenceId, envelopeId, trustEventId, JSON.stringify(evidenceFields)]
+    );
+  }
+
+  return evidenceFields;
+}
+
+async function markCanonicalTrustKeyLifecycle(
+  client: PgClient,
+  lifecycle: "compromised" | "revoked"
+) {
   await client.query(
-    `insert into communication_trust_evidence_references (
-       trust_evidence_reference_id, tenant_id, card_id, communication_id,
-       domain, artifact_schema, canonicalization_version, key_purpose,
-       envelope_id, trust_event_id, evidence_fields, recorded_at
-     ) values (
-       $1, 'tenant-test', 'card-test', 'communication-test',
-       'communications.consent', 'communication-consent-v1',
-       'bidayax-c14n-1', 'tenant_artifact_signing', $2, $3, $4::jsonb, now()
-     )`,
-    [evidenceReferenceId, envelopeId, trustEventId, JSON.stringify(evidenceFields)]
+    `update trust_keys
+        set status = $1,
+            status_changed_at = clock_timestamp(),
+            compromised_at = case when $1 = 'compromised' then clock_timestamp() else compromised_at end,
+            revoked_at = case when $1 = 'revoked' then clock_timestamp() else revoked_at end
+      where tenant_id = 'tenant-test'
+        and key_id = 'communications-trust-key'
+        and key_version = 1`,
+    [lifecycle]
   );
 }
 
@@ -1997,7 +3112,12 @@ async function seedCommunications(client: PgClient) {
      ) values (
        'transition-test', 'tenant-test', 'card-test', 'communication-test', 1,
        'requested', 'policy_checking', 'CONSENT_CHECK_STARTED', 'user-test',
-       'authz-lifecycle-policy-checking', now(), '{}'::jsonb
+       'authz-lifecycle-policy-checking',
+       (select updated_at + interval '1 millisecond'
+          from communications
+         where tenant_id = 'tenant-test'
+           and communication_id = 'communication-test'),
+       '{}'::jsonb
      )`
   );
   await client.query(
@@ -2891,6 +4011,26 @@ async function runVerification(
     );
   });
 
+  for (const [caseName, envelopeId, trustEventEnvelopeId] of [
+    ["numeric", "123", 123],
+    ["null", "envelope-consent-null-event-envelope", null],
+    ["object", "envelope-consent-object-event-envelope", { value: "envelope-consent-object-event-envelope" }],
+    ["array", "envelope-consent-array-event-envelope", ["envelope-consent-array-event-envelope"]]
+  ] as const) {
+    await expectError(client, `trust_event_${caseName}_envelope_link`, async () => {
+      await insertConsentEvidence(
+        client,
+        `evidence-consent-${caseName}-event-envelope`,
+        `consent-${caseName}-event-envelope`,
+        "communications-consent-v1",
+        {
+          envelopeId,
+          trustEventDetailsOverrides: { envelopeId: trustEventEnvelopeId }
+        }
+      );
+    });
+  }
+
   await expectError(client, "consent_invalid_verification_receipt", async () => {
     await insertConsentEvidence(
       client,
@@ -2900,6 +4040,32 @@ async function runVerification(
       { verificationValid: false }
     );
   });
+
+  for (const lifecycle of ["compromised", "revoked"] as const) {
+    const label = `consent_${lifecycle}_key_authority`;
+    await expectError(client, label, async () => {
+      await insertConsentEvidence(
+        client,
+        `evidence-${label}`,
+        label,
+        "communications-consent-v1"
+      );
+      await markCanonicalTrustKeyLifecycle(client, lifecycle);
+      await client.query(
+        `insert into communication_consent_receipts (
+           consent_receipt_id, tenant_id, card_id, participant_id, consent_policy_id,
+           channel, purpose, status, source, evidence_reference_id, observed_at,
+           effective_at, expires_at, revoked_at, metadata
+         ) values (
+           $1, 'tenant-test', 'card-test', 'participant-test',
+           'consent-policy-test', 'telephony', 'callback', 'granted', 'visitor',
+           $2, '2026-07-25T10:00:00.000Z'::timestamptz,
+           '2026-07-25T10:00:00.000Z'::timestamptz, null, null, '{}'::jsonb
+         )`,
+        [label, `evidence-${label}`]
+      );
+    });
+  }
 
   await insertConsentEvidence(
     client,
@@ -2931,6 +4097,19 @@ async function runVerification(
     ["status", "consent_missing_status_evidence"],
     ["source", "consent_missing_source_evidence"]
   ] as const) {
+    if (field === "channel" || field === "purpose" || field === "participantId") {
+      await expectError(client, label, async () => {
+        await insertConsentEvidence(
+          client,
+          `evidence-${label}`,
+          label,
+          "communications-consent-v1",
+          { omitEvidenceFields: [field] }
+        );
+      });
+      continue;
+    }
+
     await insertConsentEvidence(
       client,
       `evidence-${label}`,
@@ -3247,7 +4426,12 @@ async function runVerification(
        ) values (
          'transition-invalid', 'tenant-test', 'card-test', 'communication-test', 2,
          'policy_checking', 'active', 'INVALID_SKIP', 'user-test',
-         'authz-lifecycle-invalid', now(), '{}'::jsonb
+         'authz-lifecycle-invalid',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3288,7 +4472,12 @@ async function runVerification(
        ) values (
          'transition-missing-authz', 'tenant-test', 'card-test', 'communication-test', 2,
          'policy_checking', 'authorized', 'MISSING_AUTHZ', 'user-test',
-         'authz-missing-lifecycle', now(), '{}'::jsonb
+         'authz-missing-lifecycle',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3303,7 +4492,11 @@ async function runVerification(
          'transition-wrong-operation-authz', 'tenant-test', 'card-test',
          'communication-test', 2, 'policy_checking', 'authorized',
          'WRONG_OPERATION_AUTHZ', 'user-test', 'authz-allow',
-         now(), '{}'::jsonb
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3334,7 +4527,12 @@ async function runVerification(
          'transition-missing-operation-authz', 'tenant-test', 'card-test',
          'communication-test', 2, 'policy_checking', 'authorized',
          'MISSING_OPERATION_AUTHZ', 'user-test',
-         'authz-lifecycle-missing-operation', now(), '{}'::jsonb
+         'authz-lifecycle-missing-operation',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3364,7 +4562,12 @@ async function runVerification(
          'transition-null-operation-authz', 'tenant-test', 'card-test',
          'communication-test', 2, 'policy_checking', 'authorized',
          'NULL_OPERATION_AUTHZ', 'user-test',
-         'authz-lifecycle-null-operation', now(), '{}'::jsonb
+         'authz-lifecycle-null-operation',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3378,7 +4581,12 @@ async function runVerification(
        ) values (
          'transition-null-card', 'tenant-test', null, 'communication-test', 2,
          'policy_checking', 'authorized', 'NULL_CARD_BYPASS', 'user-test',
-         'authz-deny', now(), '{}'::jsonb
+         'authz-deny',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3444,7 +4652,12 @@ async function runVerification(
        ) values (
           'transition-terminal-reentry', 'tenant-test', 'card-test',
           'communication-terminal', 1, 'requested', 'completed', 'TERMINAL_REENTRY',
-          'user-test', 'authz-lifecycle-terminal', now(), '{}'::jsonb
+          'user-test', 'authz-lifecycle-terminal',
+          (select updated_at + interval '1 millisecond'
+             from communications
+            where tenant_id = 'tenant-test'
+              and communication_id = 'communication-terminal'),
+          '{}'::jsonb
         )`
     );
   });
@@ -3458,7 +4671,12 @@ async function runVerification(
        ) values (
          'transition-cross-card', 'tenant-test', 'card-other',
          'communication-test', 2, 'policy_checking', 'authorized',
-         'CARD_MISMATCH', 'user-test', 'authz-deny', now(), '{}'::jsonb
+         'CARD_MISMATCH', 'user-test', 'authz-deny',
+         (select updated_at + interval '1 millisecond'
+            from communications
+           where tenant_id = 'tenant-test'
+             and communication_id = 'communication-test'),
+         '{}'::jsonb
        )`
     );
   });
@@ -3506,6 +4724,28 @@ async function runVerification(
         where attempt_id = 'dispatch-update-consent-test'`
     );
   });
+
+  for (const lifecycle of ["compromised", "revoked"] as const) {
+    const label = `dispatch_${lifecycle}_key_authority`;
+    await expectError(client, label, async () => {
+      await markCanonicalTrustKeyLifecycle(client, lifecycle);
+      await client.query(
+        `insert into communication_dispatch_attempts (
+           attempt_id, tenant_id, card_id, communication_id, participant_id,
+           purpose, consent_receipt_id, suppression_id, command_operation,
+           command_idempotency_key, adapter_id, channel, state, retry_count,
+           provider_dispatch_enabled, provider_reference_id, failure_reason_code,
+           next_retry_at, created_at, updated_at
+         ) values (
+           $1, 'tenant-test', 'card-test', 'communication-test',
+           'participant-test', 'callback', 'consent-granted', null,
+           'request_callback', 'command-test', 'telephony-adapter-disabled',
+           'telephony', 'queued', 0, false, null, null, null, now(), now()
+         )`,
+        [label]
+      );
+    });
+  }
 
   await expectError(client, "dispatch_expired_consent", async () => {
     await client.query(
@@ -4799,7 +6039,7 @@ async function runVerification(
 
   return [
     `complete migration chain applied to disposable/test schema (${migrationFiles.length} files)`,
-    "0018-to-0019 upgrade path preserves valid metadata, lifecycle, suppression, consent, terminal command, and historical Trust-key evidence; invalidates reserved legacy command evidence for fresh reauthorization; fails closed on legacy lifecycle, suppression, consent, Trust-event, compromised-key, hash, and concurrent old-writer defects; rejects forged legacy command invalidation and post-migration revoked/compromised Trust-reference backdating; and enforces post-upgrade metadata constraints",
+    "0018-to-0019 upgrade path preserves valid metadata, lifecycle, suppression, consent, terminal command, and historical Trust-key evidence; invalidates reserved legacy command evidence for fresh reauthorization; fails closed on legacy lifecycle, suppression, consent, non-string legacy consent tuples, Trust-event envelope type defects, compromised-key, hash, and concurrent old-writer defects; rejects forged legacy command invalidation and post-migration revoked/compromised Trust-reference backdating; serializes concurrent Trust-key revocation/compromise with Trust-reference creation; serializes consent reference/receipt and dispatch policy/Trust-key lock ordering without deadlock; rejects consent and dispatch authorization after cited Trust-key revocation or compromise; and enforces post-upgrade metadata constraints",
     "all 18 Communications data-model tables exist",
     "tenant/card composite endpoint relationships reject cross-card and cross-tenant rows",
     "null-card bypass attempts are rejected across child and reference rows",
@@ -4811,7 +6051,7 @@ async function runVerification(
     "queued dispatch requires active cited consent and a still-active cited policy at evaluation time",
     "consent receipts reject missing evidence, cross-card policies, and channel/purpose-mismatched policies",
     "consent trust evidence must bind observed, effective, expiry, and revocation timing exactly",
-    "missing, expired, revoked, ambiguous, and stale-policy consent deny insert and update dispatch paths",
+    "missing, expired, revoked, ambiguous, stale-policy, and non-authoritative Trust-key consent deny insert and update dispatch paths",
     "active suppressions deny insert and update dispatch paths under serialized policy locks",
     "provider dispatch remains disabled",
     "webhook evidence rejects raw body retention and sensitive metadata",
@@ -4834,9 +6074,30 @@ try {
   client = new Client({ connectionString });
   await client.connect();
   const migrationFiles = await getMigrationFiles();
-  await verify0018To0019UpgradePath(client, migrationFiles, connectionString);
-  await resetPublicSchema(client);
-  await applyMigrationFiles(client, migrationFiles);
+  await runVerifierStep("verify_0018_to_0019_upgrade_path", () =>
+    verify0018To0019UpgradePath(client, migrationFiles, connectionString)
+  );
+  await runVerifierStep("preflight_reset_public_schema", () => resetPublicSchema(client));
+  await runVerifierStep("preflight_apply_migrations", () => applyMigrationFiles(client, migrationFiles));
+  await runVerifierStep("preflight_seed_foundation", () => seedFoundation(client));
+  await runVerifierStep("preflight_seed_communications", () => seedCommunications(client));
+  await runVerifierStep("preflight_trust_key_compromised_contention", () =>
+    expectTrustKeyLifecycleReferenceContention(client, connectionString, "compromised")
+  );
+  await runVerifierStep("preflight_trust_key_revoked_contention", () =>
+    expectTrustKeyLifecycleReferenceContention(client, connectionString, "revoked")
+  );
+  await runVerifierStep("preflight_trust_reference_before_compromised_lifecycle", () =>
+    expectTrustReferenceBeforeLifecycleAccepted(client, connectionString, "compromised")
+  );
+  await runVerifierStep("preflight_trust_reference_before_revoked_lifecycle", () =>
+    expectTrustReferenceBeforeLifecycleAccepted(client, connectionString, "revoked")
+  );
+  await runVerifierStep("preflight_consent_dispatch_lock_order", () =>
+    expectConsentDispatchLockOrder(client, connectionString)
+  );
+  await runVerifierStep("verification_reset_public_schema", () => resetPublicSchema(client));
+  await runVerifierStep("verification_apply_migrations", () => applyMigrationFiles(client, migrationFiles));
   await client.query("BEGIN");
   verificationTransactionStarted = true;
   const details = await runVerification(client, migrationFiles, connectionString);

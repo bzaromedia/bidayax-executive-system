@@ -168,12 +168,8 @@ DECLARE
   key_record trust_keys%ROWTYPE;
   trust_event_record trust_events%ROWTYPE;
   verification_record trust_verification_receipts%ROWTYPE;
-  evaluation_time TIMESTAMPTZ := clock_timestamp();
+  evaluation_time TIMESTAMPTZ;
 BEGIN
-  IF TG_OP = 'INSERT' THEN
-    NEW.recorded_at := evaluation_time;
-  END IF;
-
   IF NOT (
     (NEW.domain = 'communications.lifecycle' AND NEW.artifact_schema = 'communication-lifecycle-v1')
     OR (NEW.domain = 'communications.consent' AND NEW.artifact_schema = 'communication-consent-v1')
@@ -207,10 +203,21 @@ BEGIN
     RAISE EXCEPTION 'communication trust reference envelope is incompatible';
   END IF;
 
-  IF envelope_record.status <> 'active'
-     OR envelope_record.signed_at > NEW.recorded_at
-     OR (envelope_record.expires_at IS NOT NULL AND envelope_record.expires_at <= NEW.recorded_at) THEN
-    RAISE EXCEPTION 'communication trust reference requires active unexpired envelope evidence';
+  IF NEW.domain = 'communications.consent'
+     AND NEW.artifact_schema = 'communication-consent-v1' THEN
+    IF jsonb_typeof(NEW.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(NEW.evidence_fields->'channel') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(NEW.evidence_fields->'purpose') IS DISTINCT FROM 'string' THEN
+      RAISE EXCEPTION 'communication consent Trust reference requires policy lock tuple';
+    END IF;
+
+    PERFORM lock_communication_policy_subject_hierarchy_v1(
+      NEW.tenant_id,
+      NEW.card_id,
+      NEW.evidence_fields->>'participantId',
+      NEW.evidence_fields->>'channel',
+      NEW.evidence_fields->>'purpose'
+    );
   END IF;
 
   SELECT * INTO key_record
@@ -218,7 +225,21 @@ BEGIN
    WHERE tenant_id = NEW.tenant_id
      AND key_id = envelope_record.key_id
      AND key_version = envelope_record.key_version
-     AND purpose = envelope_record.key_purpose;
+     AND purpose = envelope_record.key_purpose
+   FOR NO KEY UPDATE;
+
+  IF TG_OP = 'INSERT' THEN
+    evaluation_time := clock_timestamp();
+    NEW.recorded_at := evaluation_time;
+  ELSE
+    evaluation_time := NEW.recorded_at;
+  END IF;
+
+  IF envelope_record.status <> 'active'
+     OR envelope_record.signed_at > evaluation_time
+     OR (envelope_record.expires_at IS NOT NULL AND envelope_record.expires_at <= evaluation_time) THEN
+    RAISE EXCEPTION 'communication trust reference requires active unexpired envelope evidence';
+  END IF;
 
   IF key_record.key_id IS NULL
      OR key_record.status = 'pending'
@@ -234,7 +255,7 @@ BEGIN
          key_record.revoked_at IS NULL
          OR key_record.compromised_at IS NOT NULL
          OR envelope_record.signed_at >= key_record.revoked_at
-         OR NEW.recorded_at >= key_record.revoked_at
+         OR evaluation_time >= key_record.revoked_at
        )
      )
      OR (
@@ -242,12 +263,12 @@ BEGIN
        AND (
          key_record.compromised_at IS NULL
          OR envelope_record.signed_at >= key_record.compromised_at
-         OR NEW.recorded_at >= key_record.compromised_at
+         OR evaluation_time >= key_record.compromised_at
          OR (
            key_record.revoked_at IS NOT NULL
            AND (
              envelope_record.signed_at >= key_record.revoked_at
-             OR NEW.recorded_at >= key_record.revoked_at
+             OR evaluation_time >= key_record.revoked_at
            )
          )
        )
@@ -261,7 +282,7 @@ BEGIN
      AND envelope_id = NEW.envelope_id
      AND valid = TRUE
      AND verified_at >= envelope_record.signed_at
-     AND verified_at <= NEW.recorded_at
+     AND verified_at <= evaluation_time
    ORDER BY verified_at DESC
    LIMIT 1;
 
@@ -286,11 +307,54 @@ BEGIN
      OR trust_event_record.subject_id <> NEW.communication_id
      OR trust_event_record.subject_type <> NEW.domain
      OR NOT (trust_event_record.details ? 'envelopeId')
+     OR jsonb_typeof(trust_event_record.details->'envelopeId') IS DISTINCT FROM 'string'
      OR trust_event_record.details->>'envelopeId' IS DISTINCT FROM NEW.envelope_id THEN
     RAISE EXCEPTION 'communication trust event is incompatible';
   END IF;
 
   RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_communication_trust_reference_compatibility ON communication_trust_evidence_references;
+CREATE TRIGGER trg_communication_trust_reference_compatibility
+  BEFORE INSERT ON communication_trust_evidence_references
+  FOR EACH ROW EXECUTE FUNCTION enforce_communication_trust_reference_compatibility_v1();
+
+CREATE OR REPLACE FUNCTION communication_trust_reference_has_authoritative_key_v1(
+  input_tenant_id TEXT,
+  input_trust_evidence_reference_id TEXT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  reference_authoritative BOOLEAN := FALSE;
+BEGIN
+  SELECT TRUE INTO reference_authoritative
+    FROM communication_trust_evidence_references reference
+    JOIN cryptographic_envelopes envelope
+      ON envelope.tenant_id = reference.tenant_id
+     AND envelope.envelope_id = reference.envelope_id
+    JOIN trust_keys signing_key
+      ON signing_key.tenant_id = envelope.tenant_id
+     AND signing_key.key_id = envelope.key_id
+     AND signing_key.key_version = envelope.key_version
+     AND signing_key.purpose = envelope.key_purpose
+   WHERE reference.tenant_id = input_tenant_id
+     AND reference.trust_evidence_reference_id = input_trust_evidence_reference_id
+     AND envelope.status = 'active'
+     AND envelope.signed_at >= signing_key.valid_from
+     AND (signing_key.valid_until IS NULL OR envelope.signed_at <= signing_key.valid_until)
+     AND (
+       signing_key.status NOT IN ('retiring', 'retired')
+       OR envelope.signed_at <= signing_key.status_changed_at
+     )
+     AND signing_key.status IN ('active', 'retiring', 'retired')
+     AND signing_key.revoked_at IS NULL
+     AND signing_key.compromised_at IS NULL
+   LIMIT 1
+   FOR NO KEY UPDATE OF signing_key;
+
+  RETURN COALESCE(reference_authoritative, FALSE);
 END;
 $$ LANGUAGE plpgsql;
 
@@ -320,6 +384,14 @@ BEGIN
      OR NOT (trust_reference_record.evidence_fields ? 'status')
      OR NOT (trust_reference_record.evidence_fields ? 'source')
      OR NOT (trust_reference_record.evidence_fields ? 'policyVersion')
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'consentReceiptId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'channel') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'purpose') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'consentPolicyId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'status') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'source') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'policyVersion') IS DISTINCT FROM 'string'
      OR trust_reference_record.evidence_fields->>'consentReceiptId' IS DISTINCT FROM NEW.consent_receipt_id
      OR trust_reference_record.evidence_fields->>'channel' IS DISTINCT FROM NEW.channel
      OR trust_reference_record.evidence_fields->>'purpose' IS DISTINCT FROM NEW.purpose
@@ -328,6 +400,21 @@ BEGIN
      OR trust_reference_record.evidence_fields->>'status' IS DISTINCT FROM NEW.status
      OR trust_reference_record.evidence_fields->>'source' IS DISTINCT FROM NEW.source THEN
     RAISE EXCEPTION 'communication consent evidence reference does not match receipt';
+  END IF;
+
+  PERFORM lock_communication_policy_subject_hierarchy_v1(
+    NEW.tenant_id,
+    NEW.card_id,
+    NEW.participant_id,
+    NEW.channel,
+    NEW.purpose
+  );
+
+  IF NOT communication_trust_reference_has_authoritative_key_v1(
+    NEW.tenant_id,
+    NEW.evidence_reference_id
+  ) THEN
+    RAISE EXCEPTION 'communication consent receipt requires currently authoritative Trust evidence';
   END IF;
 
   IF NEW.effective_at > NEW.observed_at
@@ -390,6 +477,42 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_dispatch_consent_trust_authority_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  receipt_record communication_consent_receipts%ROWTYPE;
+BEGIN
+  IF NEW.state = 'queued' THEN
+    SELECT * INTO receipt_record
+      FROM communication_consent_receipts
+     WHERE tenant_id = NEW.tenant_id
+       AND consent_receipt_id = NEW.consent_receipt_id
+       AND card_id IS NOT DISTINCT FROM NEW.card_id
+       AND participant_id = NEW.participant_id
+       AND channel = NEW.channel
+       AND purpose = NEW.purpose;
+
+    IF receipt_record.consent_receipt_id IS NULL THEN
+      RAISE EXCEPTION 'communication dispatch requires active consent';
+    END IF;
+
+    IF NOT communication_trust_reference_has_authoritative_key_v1(
+      NEW.tenant_id,
+      receipt_record.evidence_reference_id
+    ) THEN
+      RAISE EXCEPTION 'communication dispatch requires currently authoritative consent Trust evidence';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_communication_dispatch_policy_trust_authority ON communication_dispatch_attempts;
+CREATE TRIGGER trg_communication_dispatch_policy_trust_authority
+  BEFORE INSERT OR UPDATE ON communication_dispatch_attempts
+  FOR EACH ROW EXECUTE FUNCTION enforce_communication_dispatch_consent_trust_authority_v1();
 
 CREATE OR REPLACE FUNCTION enforce_communication_suppression_actor_evidence_v1()
 RETURNS TRIGGER AS $$
@@ -940,6 +1063,7 @@ BEGIN
         OR trust_event.subject_id IS DISTINCT FROM reference.communication_id
         OR trust_event.subject_type IS DISTINCT FROM reference.domain
         OR NOT (trust_event.details ? 'envelopeId')
+        OR jsonb_typeof(trust_event.details->'envelopeId') IS DISTINCT FROM 'string'
         OR trust_event.details->>'envelopeId' IS DISTINCT FROM reference.envelope_id
   ) THEN
     RAISE EXCEPTION 'migration 0019 found invalid legacy communication trust evidence references';
@@ -1020,12 +1144,20 @@ BEGIN
         OR NOT (reference.evidence_fields ? 'channel')
         OR NOT (reference.evidence_fields ? 'purpose')
         OR NOT (reference.evidence_fields ? 'participantId')
-        OR NOT (reference.evidence_fields ? 'consentPolicyId')
-        OR NOT (reference.evidence_fields ? 'status')
-        OR NOT (reference.evidence_fields ? 'source')
-        OR NOT (reference.evidence_fields ? 'policyVersion')
-        OR reference.evidence_fields->>'consentReceiptId' IS DISTINCT FROM receipt.consent_receipt_id
-        OR reference.evidence_fields->>'channel' IS DISTINCT FROM receipt.channel
+         OR NOT (reference.evidence_fields ? 'consentPolicyId')
+         OR NOT (reference.evidence_fields ? 'status')
+         OR NOT (reference.evidence_fields ? 'source')
+         OR NOT (reference.evidence_fields ? 'policyVersion')
+         OR jsonb_typeof(reference.evidence_fields->'consentReceiptId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'channel') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'purpose') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'consentPolicyId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'status') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'source') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'policyVersion') IS DISTINCT FROM 'string'
+         OR reference.evidence_fields->>'consentReceiptId' IS DISTINCT FROM receipt.consent_receipt_id
+         OR reference.evidence_fields->>'channel' IS DISTINCT FROM receipt.channel
         OR reference.evidence_fields->>'purpose' IS DISTINCT FROM receipt.purpose
         OR reference.evidence_fields->>'participantId' IS DISTINCT FROM receipt.participant_id
         OR reference.evidence_fields->>'consentPolicyId' IS DISTINCT FROM receipt.consent_policy_id

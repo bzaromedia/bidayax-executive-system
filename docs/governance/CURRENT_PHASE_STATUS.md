@@ -1,7 +1,7 @@
 # Current Phase Status
 
 Status: Active governance
-Date (America/Los_Angeles): 2026-08-01
+Date (America/Los_Angeles): 2026-08-05
 
 ## Determination
 
@@ -52,7 +52,10 @@ Production Hardening or historical Phase 12 Observability.
   Advisor review rejected formal closure because Critical and High
   post-merge defects remained in authorization-decision binding, consent
   evidence binding, Trust event envelope binding, command timestamp authority,
-  PostgreSQL verifier target safety, and nested metadata validation.
+  PostgreSQL verifier target safety, nested metadata validation, Trust-reference
+  timestamp ownership, Trust-key lifecycle concurrency, current Trust-key
+  authority for consent and dispatch, consent/dispatch lock ordering, atomic
+  consent envelope lock ordering, and legacy consent evidence JSON typing.
 
 ## Next Authorized Work Package
 

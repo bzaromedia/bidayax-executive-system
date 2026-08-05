@@ -1,7 +1,7 @@
 # Phase 11B Production Readiness Review
 
 Status: Reopened for post-merge Phase 11B corrective remediation
-Date (America/Los_Angeles): 2026-08-01
+Date (America/Los_Angeles): 2026-08-05
 
 This review covered PR #15, the Phase 11B Communications Data Model
 implementation package, and is reopened for the post-merge Phase 11B
@@ -101,10 +101,14 @@ Evidence:
   values, and secret-like fields.
 - Trust evidence references use explicit Communications domains, artifact
   schemas, canonicalization version, the accepted tenant artifact signing key
-  purpose, database-owned post-0019 reference recording time, active
-  unexpired Trust envelopes, historically valid uncompromised signing-key
-  evidence, valid verification receipts, compatible Trust events, and
-  allowlisted fields that must match the signed envelope payload.
+  purpose, post-lock database-owned post-0019 reference recording time,
+  FK-compatible row-locked Trust-key lifecycle validation, active unexpired
+  Trust envelopes, historically valid uncompromised signing-key evidence, valid
+  verification receipts, compatible Trust events, and allowlisted fields that
+  must match the signed envelope payload.
+- Consent receipts and queued dispatch attempts require currently authoritative
+  Trust-key evidence; revoked or compromised signing keys can remain historical
+  audit evidence but cannot authorize new consent or dispatch decisions.
 - Audit, lifecycle, consent policy, consent receipt, command, webhook, summary,
   failover, and trust evidence are append-only where required. Suppression
   evidence permits only one controlled active-to-released transition with
@@ -145,9 +149,12 @@ Evidence:
   evidence, consent evidence, Trust event envelope linkage, command
   idempotency invalidation, historical Trust key lifecycle evidence, and
   concurrent old-writer rejection; rejects post-0019 revoked/compromised
-  Trust-key backdating attempts; rolls back transactional fixture data after
-  verification; and uses a cleanup-safe completion path for disposable Docker
-  PostgreSQL runs.
+  Trust-key backdating attempts; serializes concurrent Trust-key
+  revocation/compromise with Trust-reference creation; rejects consent and
+  dispatch authorization after cited Trust-key revocation or compromise;
+  verifies atomic consent envelope creation versus queued dispatch does not
+  deadlock; rolls back transactional fixture data after verification; and uses
+  a cleanup-safe completion path for disposable Docker PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
 
@@ -364,6 +371,17 @@ merge readiness still requires the final pushed corrective branch to have:
 | 11B-PRR-068 | HIGH | Final-head Advisor review at `1810cb3` found legitimate Trust key lifecycle history could create an unrecoverable migration dead end. | Resolved by validating historical signing-key validity rather than current active-key status only, permitting retired/retiring and later revoked/compromised keys only when signed and recorded before the effective lifecycle boundary, and adding upgrade fixtures for those states plus an invalid compromised-before-recorded case. | Phase 11B |
 | 11B-PRR-069 | CRITICAL | Final-head Advisor review at `2cb7fca` found post-compromise Trust-reference creation could be forged by caller-supplied `recorded_at`, allowing a writer to manufacture pre-compromise history after a key was compromised. | Resolved by making migration `0019` own new Trust-reference `recorded_at` values with `clock_timestamp()` on insert while preserving legitimate 0018-era history through the locked legacy scan. | Phase 11B |
 | 11B-PRR-070 | HIGH | Final-head Advisor review at `2cb7fca` found PRR and traceability overstated the Trust-key remediation before the post-0019 timestamp-forgery path was closed. | Resolved by recording the `2cb7fca` rejection, documenting the database-owned Trust-reference timestamp control, and adding revoked/compromised post-migration backdating regression evidence. | Phase 11B |
+| 11B-PRR-071 | CRITICAL | Final-head Advisor review at `a7dddc8` found Trust-reference creation could race an uncommitted Trust-key revocation or compromise because the trigger read `trust_keys` without a conflicting row lock. | Resolved by locking the cited Trust key row during post-0019 Trust-reference validation so creation waits for concurrent lifecycle changes and rechecks the committed revocation or compromise boundary before accepting evidence. | Phase 11B |
+| 11B-PRR-072 | HIGH | Final-head Advisor review at `a7dddc8` found PRR, traceability, PR body, and verifier evidence overstated Trust concurrency coverage. | Resolved by recording the `a7dddc8` rejection, adding committed-fixture two-connection PostgreSQL tests for uncommitted compromise and revocation that must block and then reject after lifecycle commit, and adding reverse-order evidence that a Trust reference recorded before lifecycle compromise remains accepted. | Phase 11B |
+| 11B-PRR-073 | CRITICAL | Read-only security and database sidecar reviews found the Trust-reference trigger still captured `recorded_at` before waiting on the Trust-key row lock, allowing a lifecycle transaction that locked first to commit revocation or compromise after the stale insert timestamp and still be accepted. | Resolved by moving post-0019 `recorded_at` assignment after the Trust-key row lock and evaluating envelope expiry, key lifecycle cutoffs, and verification-receipt chronology against that post-lock timestamp. The lock mode remains compatible with envelope foreign-key locks while still serializing real Trust-key lifecycle updates. | Phase 11B |
+| 11B-PRR-074 | HIGH | Read-only security review found compromised or revoked Trust-key evidence could remain authorization-eligible for consent and queued dispatch even though the Trust runtime rejects compromised and revoked keys for verification. | Resolved by adding a row-locking current Trust-key authority predicate, requiring it during consent receipt validation, and adding a queued dispatch guard so historical references remain audit evidence but no longer authorize current consent or dispatch after key revocation or compromise. | Phase 11B |
+| 11B-PRR-075 | HIGH | Read-only sidecar reviews found the two-connection verifier inferred blocking from elapsed time and did not prove both lifecycle-first and reference-first serialization directions. | Resolved by checking `pg_blocking_pids` for the expected backend owner, testing lifecycle-first compromise and revocation with key-lock ownership before insert timestamping, and testing reference-first compromise and revocation where the lifecycle update blocks behind the Trust-reference insert. | Phase 11B |
+| 11B-PRR-076 | MEDIUM | Read-only pre-commit Advisor review found consent insertion could acquire the Trust-key row lock before the consent policy advisory lock while queued dispatch acquired the policy advisory lock before the Trust-key row lock, creating a consent/dispatch deadlock path, including atomic consent Trust-reference plus receipt transactions and malformed or subject-mismatched consent evidence. | Resolved by making consent Trust-reference and receipt validation acquire the policy-subject advisory lock before current Trust-key authority validation, rejecting malformed consent lock tuples before Trust-key locking, rejecting subject mismatches before receipt policy locking, and adding two-connection PostgreSQL coverage proving consent-reference/receipt and dispatch contention blocks on the expected transaction without `40P01`. | Phase 11B |
+| 11B-PRR-077 | MEDIUM | Read-only pre-commit Advisor review found legacy 0018 consent references with non-string tuple values could survive migration and authorize receipts through `->>` text coercion. | Resolved by requiring string-typed consent evidence tuple fields during live receipt validation and migration 0019 legacy revalidation, with 0018-to-0019 fixtures for numeric, object, and array participant tuple values plus JSON-null values for 0018-persistable consent tuple fields. | Phase 11B |
+| 11B-PRR-078 | MEDIUM | Read-only pre-commit Advisor review found Trust-event `details.envelopeId` could authorize live or legacy Trust references through `->>` text coercion when non-string JSON values matched unconstrained text envelope IDs. | Resolved by requiring string-typed Trust-event `envelopeId` in live Trust-reference validation and migration 0019 legacy revalidation, with live fixtures for numeric, JSON null, object, and array envelope identifiers plus 0018-to-0019 fixtures for numeric, object, and array coercion-compatible legacy identifiers. | Phase 11B |
+
+| 11B-PRR-079 | HIGH | Pre-commit Advisor review on 2026-08-05 found atomic consent evidence creation could deadlock with queued dispatch because the consent transaction's Trust-key foreign-key `KEY SHARE` lock conflicted with dispatch's Trust-key `FOR UPDATE` lock while dispatch held the policy advisory lock. | Resolved by using `FOR NO KEY UPDATE` for Trust-key compatibility and authority reads, preserving serialization with Trust-key lifecycle updates while avoiding conflict with envelope foreign-key locks, and adding an atomic consent envelope versus queued dispatch regression. | Phase 11B |
+| 11B-PRR-080 | MEDIUM | Pre-commit Advisor review on 2026-08-05 found documentation claimed legacy JSON-null consent tuple upgrade coverage that the verifier had not actually executed. | Resolved by seeding 0018-era JSON-null values for the consent evidence tuple fields that can persist under the 0018 trigger and requiring migration `0019` to reject those legacy rows; JSON-null `policyVersion` remains covered by the post-0019 live negative because 0018 already rejects it. | Phase 11B |
 
 ## Formal PRR Decision
 
