@@ -1,0 +1,14 @@
+services:
+  card:
+    command:
+      - pnpm
+      - --filter
+      - "@bidayax/card"
+      - dev
+
+  dashboard:
+    command:
+      - pnpm
+      - --filter
+      - "@bidayax/dashboard"
+      - dev
