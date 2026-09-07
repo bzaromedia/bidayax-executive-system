@@ -2,6 +2,16 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     environment:
