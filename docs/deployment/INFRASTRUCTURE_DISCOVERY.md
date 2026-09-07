@@ -7,7 +7,7 @@ Production architecture status: DEDICATED VPS PLANNING BASELINE
 
 - The existing shared KVM 8 VPS is not the approved final public production host.
 - The approved production target is a new dedicated Hostinger VPS.
-- Production runtime remains Node.js 22 with pnpm 11.7.0.
+- Production runtime remains Node.js 22 with pnpm 12.3.4.
 - Production secrets move to `/opt/the-executive-card/shared/env/production.env`.
 - Deployment moves to immutable releases rather than a mutable live repository checkout.
 

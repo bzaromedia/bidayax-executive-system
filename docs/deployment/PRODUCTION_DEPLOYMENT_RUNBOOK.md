@@ -2,7 +2,7 @@
 
 Project: The Executive Card™
 Deployment target: Dedicated Hostinger VPS
-Runtime baseline: Node.js 22.17.0 + pnpm 11.7.0
+Runtime baseline: Node.js 22.17.0 + pnpm 12.3.4
 Database baseline: PostgreSQL 17
 Proxy baseline: host-level Caddy
 
