@@ -59,6 +59,12 @@ services:
       context: ../..
       dockerfile: infrastructure/docker/Dockerfile.card
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:
@@ -93,6 +99,12 @@ services:
       context: ../..
       dockerfile: infrastructure/docker/Dockerfile.dashboard
     restart: unless-stopped
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:
