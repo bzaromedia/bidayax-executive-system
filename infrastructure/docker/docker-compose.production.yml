@@ -3,11 +3,15 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     init: true
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,mode=3775
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     cap_add:
+      - CHOWN
       - DAC_OVERRIDE
       - SETGID
       - SETUID
