@@ -60,6 +60,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.card
     restart: unless-stopped
     init: true
+    read_only: true
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -100,6 +101,7 @@ services:
       dockerfile: infrastructure/docker/Dockerfile.dashboard
     restart: unless-stopped
     init: true
+    read_only: true
     security_opt:
       - no-new-privileges:true
     cap_drop:
