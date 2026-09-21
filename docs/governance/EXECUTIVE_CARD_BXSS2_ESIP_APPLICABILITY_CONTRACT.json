@@ -1,0 +1,268 @@
+{
+  "schema_version": "1.0.0",
+  "record_id": "EXECUTIVE-CARD-BXSS2-ESIP-AUTHORITY-001",
+  "effective_date": "2026-09-21",
+  "project": {
+    "canonical_name": "BidayaX Executive System / The Executive Card",
+    "repository_root": "D:\\bidayax-executive-system",
+    "product_class": "Executive Identity Intelligence System",
+    "baseline_git_head": "1ce4a94426717c52d361cbf99dbb890281eda6b6",
+    "baseline_branch": "fix/phase-11b-postmerge-correctness",
+    "operating_mode": "BXSS2_LOCAL_SOVEREIGN_BUILD_MODE"
+  },
+  "authority": {
+    "status": "EC1_AUTHORITY_CONTRACT_ESTABLISHED",
+    "installation_status": "NOT_INSTALLED_BY_EC1",
+    "runtime_activation_status": "PROHIBITED_IN_EC1",
+    "service_mutation_status": "PROHIBITED_IN_EC1",
+    "database_mutation_status": "PROHIBITED_IN_EC1",
+    "provider_activation_status": "PROHIBITED_IN_EC1",
+    "precedence": [
+      "CURRENT_EXPLICIT_OWNER_DIRECTION",
+      "CURRENT_CANONICAL_BXSS2_STANDARDS_AND_PROFILES",
+      "EXECUTIVE_CARD_ACCEPTED_PRODUCT_AND_PHASE_GOVERNANCE",
+      "OLDER_BXSS2_ADOPTION_MATERIAL_WHERE_NOT_SUPERSEDED"
+    ],
+    "conflict_rule": "NO_GENERIC_BXSS_ARTIFACT_MAY_SILENTLY_BYPASS_OR_INVALIDATE_EXECUTIVE_CARD_PHASE_LOCKS_OR_PRODUCT_SPECIFIC_SAFETY_CONTROLS"
+  },
+  "canonical_registry": {
+    "system_count": 48,
+    "runtime_plane_count": 6,
+    "numbered_registry_must_remain_exact": true,
+    "expected_registry_path": ".bidayax\\bxss2\\registry\\BXSS2_48_SYSTEM_REGISTRY.json",
+    "expected_consumption_path": ".bidayax\\bxss2\\capability-consumption.json",
+    "expected_project_profile_path": ".bidayax\\bxss2\\project-profile.json",
+    "expected_adoption_record_path": ".bidayax\\bxss2\\adoption-record.json",
+    "require_exactly_48_consumption_rows": true,
+    "require_every_system_classified": true,
+    "allowed_classifications": [
+      "ACTIVE_REQUIRED",
+      "CONTRACT_REQUIRED",
+      "DEFERRED",
+      "NOT_APPLICABLE",
+      "PROHIBITED"
+    ],
+    "bome_is_numbered_system": false,
+    "bage_is_numbered_system": false,
+    "incomplete_registry_policy": "FAIL_CLOSED",
+    "partial_adoption_policy": "PROHIBITED"
+  },
+  "mandatory_governance": {
+    "preventability_first": "REQUIRED",
+    "misp_dil12": "REQUIRED_FOR_CONSEQUENTIAL_INTENT_AND_ACTION",
+    "bif12": "REQUIRED_AS_PROFILE_NOT_NEW_SYSTEM_OR_PLANE",
+    "esip": "MANDATORY_PROJECT_PROFILE_NOT_NEW_SYSTEM_OR_PLANE",
+    "adaptive_api": "MANDATORY_FOR_EXTERNAL_PROVIDER_OR_PROTOCOL_BOUNDARIES",
+    "design_system_as_control_plane": "MANDATORY_FOR_UI",
+    "virp12": "MANDATORY_FOR_APPROVED_VISUAL_RECONSTRUCTION",
+    "a0_provenance": "MANDATORY",
+    "bome": "MANDATORY_COMPOSITE_WHERE_PROCEDURE_EXECUTION_AND_EVIDENCE_APPLY",
+    "srex": "MANDATORY_FOR_PRODUCTION_RELIABILITY_RECOVERY_AND_OPERATIONAL_EVIDENCE",
+    "runtime_green": "EVIDENCE_REQUIRED_NOT_INFERRED"
+  },
+  "esip": {
+    "status": "MANDATORY",
+    "architecture_role": "PLUGIN_PROFILE",
+    "creates_new_plane": false,
+    "creates_new_numbered_system": false,
+    "governed_path": [
+      "AI_AGENT_OR_HAGI",
+      "GOVERNED_INTENT",
+      "MISP_DIL12_ALLOW_ASK_DENY",
+      "GOVERNED_DOMAIN_SERVICE",
+      "ADAPTIVE_API",
+      "TYPED_CONTRACT_SCHEMA_VALIDATION",
+      "IDENTITY_AUTHORIZATION_POLICY",
+      "IDEMPOTENCY_CONCURRENCY_STATE_VERSION",
+      "ENTERPRISE_SYSTEM_ADAPTER",
+      "ERP_CRM_HRIS_SCM_WMS_FINANCIAL_OR_LEGACY_SYSTEM",
+      "POST_EXECUTION_VERIFICATION_RECONCILIATION",
+      "BOME_EVIDENCE_PROVENANCE_ATTESTATION_OBSERVABILITY",
+      "SREX_MONITORING_RECOVERY"
+    ],
+    "controls": [
+      "TYPED_CONTRACTS",
+      "SCHEMA_VALIDATION",
+      "IDENTITY_AND_AUTHORIZATION",
+      "POLICY_ENFORCEMENT",
+      "IDEMPOTENCY",
+      "CONCURRENCY_CONTROL",
+      "STATE_VERSION_CONTROL",
+      "RECONCILIATION",
+      "DRIFT_DETECTION",
+      "RESILIENCE",
+      "PROVIDER_AND_ADAPTER_EXIT",
+      "EVIDENCE_BY_CONSTRUCTION",
+      "OBSERVABILITY",
+      "POST_EXECUTION_VERIFICATION"
+    ],
+    "direct_enterprise_coupling": "PROHIBITED",
+    "direct_provider_coupling": "PROHIBITED"
+  },
+  "executive_card_core": {
+    "identity": [
+      "packages\\identity",
+      "database\\migrations\\0015_create_identity_provider_integration.sql"
+    ],
+    "event_ledger": [
+      "apps\\card\\app\\api\\events\\route.ts",
+      "database\\migrations\\0001_create_interaction_events.sql"
+    ],
+    "intent_scoring": [
+      "services\\intent-scoring",
+      "database\\migrations\\0002_create_intent_scores.sql"
+    ],
+    "contact_graph": [
+      "services\\contact-graph",
+      "database\\migrations\\0003_create_contact_graph.sql"
+    ],
+    "receptionist": [
+      "services\\receptionist-agent",
+      "services\\polyglot-receptionist",
+      "packages\\receptionist-core",
+      "packages\\receptionist-runtime"
+    ],
+    "communications": [
+      "packages\\communications-domain",
+      "services\\communications",
+      "database\\migrations\\0018_create_communications_data_model.sql",
+      "database\\migrations\\0019_harden_communications_data_model_guards.sql"
+    ],
+    "provider_boundaries": [
+      "services\\telephony",
+      "services\\voice-gateway"
+    ],
+    "trust_provenance": [
+      "packages\\trust",
+      "database\\migrations\\0017_create_cryptographic_trust_layer.sql",
+      "docs\\PROVENANCE_MANIFESTS.md"
+    ],
+    "observability": [
+      "services\\telemetry",
+      "apps\\dashboard\\app\\observability"
+    ],
+    "workflow": [
+      "packages\\workflow-engine",
+      "services\\policy-enforcement"
+    ],
+    "ui_control_plane": [
+      "packages\\design-system",
+      "packages\\tokens",
+      "packages\\ui",
+      "apps\\card",
+      "apps\\dashboard"
+    ]
+  },
+  "data_authenticity": {
+    "runtime_mock_business_data": "PROHIBITED",
+    "runtime_demo_business_data": "PROHIBITED",
+    "runtime_fake_business_data": "PROHIBITED",
+    "test_mocks": "PERMITTED_ONLY_IN_TEST_SCOPE",
+    "unavailable_state_rule": "RENDER_EXPLICIT_UNAVAILABLE_UNCONFIGURED_DISABLED_OR_ERROR_STATE",
+    "persisted_state_rule": "DO_NOT_PRESENT_DEFAULT_CONFIGURATION_AS_DURABLY_PERSISTED_TENANT_STATE",
+    "known_future_corrections": [
+      "REMOVE_RUNTIME_TELEPHONY_MOCK_PROVIDER_FALLBACK",
+      "REMOVE_AMBIGUOUS_DATABASE_UNCONFIGURED_BUSINESS_STATE_FALLBACKS"
+    ]
+  },
+  "commercial_intelligence_and_evidence_layer": {
+    "status": "FORMAL_BXSS2_GOVERNED_REQUIREMENT",
+    "architecture_role": "GOVERNED_COMPOSITION",
+    "creates_new_plane": false,
+    "creates_new_numbered_system": false,
+    "components": [
+      "GOVERNED_TELEMETRY",
+      "COMMERCIAL_METRIC_REGISTRY",
+      "COST_ATTRIBUTION",
+      "COMMERCIAL_EVIDENCE_LEDGER",
+      "FOUNDING_100_COHORT_AUTHORITY",
+      "PRICING_HYPOTHESIS_REGISTRY",
+      "PAYMENT_EVIDENCE_NORMALIZATION",
+      "INTERNAL_COMMERCIAL_COMMAND_CENTER"
+    ],
+    "evidence_sources": [
+      "EXECUTIVE_EVENT_LEDGER",
+      "IDENTITY_AND_TENANT_AUTHORITY",
+      "TRUST_AND_PROVENANCE",
+      "BOME_LINEAGE",
+      "TELEMETRY_AND_OBSERVABILITY",
+      "ADAPTIVE_API_PROVIDER_USAGE",
+      "PAYMENT_RAIL_EVENTS"
+    ],
+    "founding_100": {
+      "role": "CONTROLLED_EVIDENCE_COHORT",
+      "target_participants": 100,
+      "synthetic_participants": "PROHIBITED",
+      "metric_definitions_required_before_measurement": true
+    },
+    "pricing": {
+      "initial_status": "HYPOTHESIS",
+      "evidence_required_for_validation": true,
+      "opinion_only_promotion": "PROHIBITED"
+    }
+  },
+  "payment_rails": {
+    "architecture": "GOVERNED_PROVIDER_NEUTRAL_ABSTRACTION",
+    "canonical_boundary": "ADAPTIVE_API",
+    "crypto_preference": "PREFERRED_RAIL_CLASS_NOT_ARCHITECTURAL_COUPLING",
+    "provider_assumptions": "PROHIBITED",
+    "direct_provider_coupling": "PROHIBITED",
+    "normalized_operations": [
+      "PAYMENT_INTENT_CREATE",
+      "AUTHORIZE",
+      "SETTLE",
+      "STATUS_QUERY",
+      "REFUND",
+      "REVERSAL_WHERE_APPLICABLE"
+    ],
+    "required_evidence_states": [
+      "CREATED",
+      "AUTHORIZED",
+      "PENDING",
+      "SETTLED",
+      "FAILED",
+      "EXPIRED",
+      "REFUNDED",
+      "REVERSED",
+      "DISPUTED_WHERE_APPLICABLE"
+    ]
+  },
+  "ui": {
+    "approved_executive_card_visual_language": "MANDATORY",
+    "generic_saas_styling": "PROHIBITED",
+    "data_driven_mock_content": "PROHIBITED",
+    "runtime_data_source": "AUTHORITATIVE_SERVICES_AND_PERSISTED_STATE_ONLY",
+    "welding_sequence": [
+      "APPROVED_VISUAL_SOURCE_OF_TRUTH",
+      "DESIGN_SYSTEM_CONTROL_PLANE",
+      "TYPED_QUERY_OR_COMMAND_CONTRACT",
+      "GOVERNED_DOMAIN_SERVICE",
+      "AUTHORITATIVE_STATE",
+      "EXPLICIT_RUNTIME_STATE",
+      "EVIDENCE_AND_TELEMETRY_CORRELATION"
+    ]
+  },
+  "phase_ordering": {
+    "phase_11b_status": "NOT_FORMALLY_CLOSED_AT_EC1_ENTRY",
+    "phase_11c_and_later": "LOCKED_UNTIL_PHASE_11B_CLOSURE",
+    "ec1_may_bypass_phase_11": false
+  },
+  "tracks": {
+    "core": "PRIMARY",
+    "commercial_seam": "AFTER_CORE_GOVERNANCE_BOUNDARIES_ARE_ESTABLISHED",
+    "public_site": "POST_CORE"
+  },
+  "ec1_acceptance": {
+    "authority_contract_created": true,
+    "gate_ledger_created": true,
+    "baseline_preserved": true,
+    "runtime_mutated": false,
+    "canonical_48_row_registry_materialized": false,
+    "full_bxss2_adoption_claim_allowed": false,
+    "bxss2_project_ready_claim_allowed": false,
+    "esip_runtime_green_claim_allowed": false,
+    "ui_green_claim_allowed": false,
+    "runtime_green_claim_allowed": false,
+    "next_required_evidence": "MATERIALIZE_AND_VALIDATE_CURRENT_CANONICAL_48_SYSTEM_REGISTRY_AND_EXECUTIVE_CARD_CAPABILITY_CONSUMPTION_BEFORE_INSTALLATION_OR_RUNTIME_WIRING"
+  }
+}
