@@ -1,0 +1,325 @@
+{
+  "schema_version": "1.0.0",
+  "registry_id": "BXSS2-CANONICAL-48-SYSTEM-REGISTRY",
+  "materialization_record": "EXECUTIVE-CARD-EC1C-REGISTRY-001",
+  "effective_date": "2026-09-21",
+  "authority": {
+    "project": "BidayaX Executive System / The Executive Card",
+    "materialized_under": "EXECUTIVE-CARD-BXSS2-ESIP-AUTHORITY-001",
+    "git_head": "ced00bd16e55ff6c0203bcd02929d0c063834066",
+    "source_authorities": [
+      "BXSS2 Universal Project Adoption Pack v2.0",
+      "BXSS Comprehensive Audit and AI Development Gap Closure Source of Truth v1.0",
+      "Executive Card BXSS2 + ESIP Authority and Applicability Contract"
+    ],
+    "source_of_truth_file_local_status": "NOT_YET_MATERIALIZED",
+    "full_bxss2_adoption_claim": false,
+    "runtime_green_claim": false
+  },
+  "registry_count": 48,
+  "runtime_plane_count": 6,
+  "products_are_external_consumers": true,
+  "runtime_implementation_inferred_from_registry_membership": false,
+  "systems": [
+    {
+      "ordinal": 1,
+      "id": "bxss",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 2,
+      "id": "constitutional-kernel",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 3,
+      "id": "methodology",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 4,
+      "id": "blueprint",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 5,
+      "id": "policy-compiler",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 6,
+      "id": "dioxys",
+      "runtime_plane": "constitutional-governance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 7,
+      "id": "sios",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 8,
+      "id": "hagi",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 9,
+      "id": "bmif",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 10,
+      "id": "baif",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 11,
+      "id": "knowledge",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 12,
+      "id": "memory",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 13,
+      "id": "causal-world-model",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 14,
+      "id": "model-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 15,
+      "id": "capability-graph",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 16,
+      "id": "data-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 17,
+      "id": "event-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 18,
+      "id": "agent-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 19,
+      "id": "resource-intelligence",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 20,
+      "id": "capital-intelligence-engine",
+      "runtime_plane": "synthetic-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 21,
+      "id": "adaptive-api",
+      "runtime_plane": "connectivity-api-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 22,
+      "id": "universal-api-intelligence",
+      "runtime_plane": "connectivity-api-intelligence",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 23,
+      "id": "synaptic-defense-grid",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 24,
+      "id": "identity-trust",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 25,
+      "id": "identity-authority-graph",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 26,
+      "id": "crypto-trust",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 27,
+      "id": "zero-trust",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 28,
+      "id": "universal-trust-fabric",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 29,
+      "id": "trust-assurance-fabric",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 30,
+      "id": "dspm-method",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 31,
+      "id": "automated-compliance-system",
+      "runtime_plane": "trust-security-compliance",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 32,
+      "id": "srex",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 33,
+      "id": "evidence-provenance-fabric",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 34,
+      "id": "provenance-ip",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 35,
+      "id": "execution-ledger",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 36,
+      "id": "clean-room-registry",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 37,
+      "id": "observability",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 38,
+      "id": "evaluation-forge",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 39,
+      "id": "verification",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 40,
+      "id": "simulation",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 41,
+      "id": "bsie",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 42,
+      "id": "asie",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 43,
+      "id": "recovery-mesh",
+      "runtime_plane": "evidence-verification-operations",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 44,
+      "id": "genesis",
+      "runtime_plane": "cognitive-evolution",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 45,
+      "id": "evolutionary-improvement-engine",
+      "runtime_plane": "cognitive-evolution",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 46,
+      "id": "specialist-agent-collective",
+      "runtime_plane": "cognitive-evolution",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 47,
+      "id": "improvement-lineage-archive",
+      "runtime_plane": "cognitive-evolution",
+      "default_maturity": "specified"
+    },
+    {
+      "ordinal": 48,
+      "id": "continuous-evidence-driven-evolution",
+      "runtime_plane": "cognitive-evolution",
+      "default_maturity": "specified"
+    }
+  ],
+  "composites": [
+    {
+      "id": "bome",
+      "numbered_system": false,
+      "role": "governed procedural memory and outcome-linked execution learning"
+    },
+    {
+      "id": "bage",
+      "numbered_system": false,
+      "role": "evidence-bounded governed experimentation and promotion proposals"
+    }
+  ]
+}
