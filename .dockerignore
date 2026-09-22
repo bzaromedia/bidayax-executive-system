@@ -8,3 +8,7 @@ node_modules
 **/dist
 **/coverage
 **/.cache
+.env
+.env.*
+!.env.example
+!.env.production.example

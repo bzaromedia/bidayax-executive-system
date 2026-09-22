@@ -1,0 +1,1223 @@
+CREATE OR REPLACE FUNCTION communication_metadata_value_is_safe_v1(field_name TEXT, field_value JSONB)
+RETURNS BOOLEAN AS $$
+DECLARE
+  text_value TEXT;
+BEGIN
+  IF field_name IN ('requestHash', 'payloadHash', 'digest', 'checksumSha256') THEN
+    IF field_value IS NULL OR jsonb_typeof(field_value) <> 'string' THEN
+      RETURN FALSE;
+    END IF;
+
+    text_value := field_value #>> '{}';
+    RETURN text_value ~ '^[0-9a-f]{64}$';
+  END IF;
+
+  IF field_value IS NULL THEN
+    RETURN TRUE;
+  END IF;
+
+  IF jsonb_typeof(field_value) IN ('object', 'array') THEN
+    IF field_name = '' THEN
+      RETURN communication_metadata_is_safe_v1(field_value);
+    END IF;
+
+    RETURN FALSE;
+  END IF;
+
+  IF jsonb_typeof(field_value) <> 'string' THEN
+    RETURN TRUE;
+  END IF;
+
+  text_value := field_value #>> '{}';
+
+  RETURN text_value !~* '(@|authorization|bearer|token|secret|password|private[ _-]?key|raw[ _-]?(body|payload|transcript|audio)|transcript|recording|audio|e164|phone|email|\+?[0-9][0-9 .()]{6,}[0-9]|\([0-9]{3}\)[0-9 ._-]{3,}[0-9]|(\+?1[- .]?)?\(?[2-9][0-9]{2}\)?[- .][0-9]{3}[- .][0-9]{4}|[0-9]{10,})';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION enforce_communication_authorization_evidence_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  membership_record tenant_memberships%ROWTYPE;
+  session_record application_sessions%ROWTYPE;
+  grant_record card_access_grants%ROWTYPE;
+  service_identity_record trust_crypto_identities%ROWTYPE;
+  platform_identity_record trust_crypto_identities%ROWTYPE;
+  evaluation_time TIMESTAMPTZ := clock_timestamp();
+BEGIN
+  NEW.created_at := evaluation_time;
+
+  IF NEW.status <> 'reserved'
+     OR NEW.completed_at IS NOT NULL
+     OR NEW.result_communication_id IS NOT NULL THEN
+    RAISE EXCEPTION 'communication command reservation must be inserted in reserved state without terminal result';
+  END IF;
+
+  IF NEW.actor_type = 'service' THEN
+    SELECT * INTO service_identity_record
+      FROM trust_crypto_identities
+     WHERE tenant_id = NEW.tenant_id
+       AND identity_id = NEW.actor_service_id
+       AND identity_type = 'service'
+       AND status = 'active';
+
+    IF service_identity_record.identity_id IS NULL THEN
+      RAISE EXCEPTION 'communication service command requires an active service identity';
+    END IF;
+
+    IF NEW.operation <> 'apply_tenant_kill_switch' THEN
+      RAISE EXCEPTION 'communication service commands are limited to tenant kill-switch scope in Phase 11B';
+    END IF;
+
+    IF NOT (
+      service_identity_record.metadata ? 'communicationsCapabilities'
+      AND service_identity_record.metadata->'communicationsCapabilities' ? 'tenant_kill_switch'
+    ) THEN
+      RAISE EXCEPTION 'communication service command lacks tenant kill-switch capability';
+    END IF;
+
+    RETURN NEW;
+  END IF;
+
+  IF NEW.actor_type = 'platform' THEN
+    SELECT * INTO platform_identity_record
+      FROM trust_crypto_identities
+     WHERE tenant_id = NEW.tenant_id
+       AND identity_id = NEW.actor_platform_id
+       AND identity_type = 'system'
+       AND status = 'active';
+
+    IF platform_identity_record.identity_id IS NULL THEN
+      RAISE EXCEPTION 'communication platform command requires an active platform identity';
+    END IF;
+
+    IF NEW.operation <> 'apply_platform_kill_switch' THEN
+      RAISE EXCEPTION 'communication platform commands are limited to platform kill-switch scope in Phase 11B';
+    END IF;
+
+    IF NOT (
+      platform_identity_record.metadata ? 'communicationsCapabilities'
+      AND platform_identity_record.metadata->'communicationsCapabilities' ? 'platform_kill_switch'
+    ) THEN
+      RAISE EXCEPTION 'communication platform command lacks platform kill-switch capability';
+    END IF;
+
+    RETURN NEW;
+  END IF;
+
+  SELECT * INTO membership_record
+    FROM tenant_memberships
+   WHERE tenant_id = NEW.tenant_id
+     AND user_id = NEW.actor_user_id;
+
+  IF membership_record.membership_id IS NULL OR membership_record.status <> 'active' THEN
+    RAISE EXCEPTION 'communication command requires an active tenant membership';
+  END IF;
+
+  IF NEW.scope_type = 'tenant'
+     AND NEW.operation = 'apply_tenant_kill_switch'
+     AND membership_record.role NOT IN ('tenant_owner', 'tenant_admin') THEN
+    RAISE EXCEPTION 'communication tenant kill-switch command requires owner or admin membership';
+  END IF;
+
+  SELECT * INTO session_record
+    FROM application_sessions
+   WHERE session_id = NEW.session_id
+     AND tenant_id = NEW.tenant_id
+     AND user_id = NEW.actor_user_id;
+
+  IF session_record.session_id IS NULL THEN
+    RAISE EXCEPTION 'communication command session does not match actor and tenant';
+  END IF;
+
+  IF session_record.revoked_at IS NOT NULL
+     OR evaluation_time >= session_record.idle_expires_at
+     OR evaluation_time >= session_record.absolute_expires_at THEN
+    RAISE EXCEPTION 'communication command session is not active';
+  END IF;
+
+  IF NEW.scope_type = 'card' THEN
+    SELECT * INTO grant_record
+      FROM card_access_grants
+     WHERE grant_id = NEW.card_grant_id
+       AND tenant_id = NEW.tenant_id
+       AND card_id = NEW.card_id
+       AND user_id = NEW.actor_user_id;
+
+    IF grant_record.grant_id IS NULL THEN
+      RAISE EXCEPTION 'communication command grant does not match actor, tenant, and card';
+    END IF;
+
+    IF grant_record.revoked_at IS NOT NULL
+       OR (grant_record.expires_at IS NOT NULL AND evaluation_time >= grant_record.expires_at) THEN
+      RAISE EXCEPTION 'communication command grant is not active';
+    END IF;
+
+    IF NOT (grant_record.permission_set ? NEW.required_permission) THEN
+      RAISE EXCEPTION 'communication command grant lacks required permission';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_trust_reference_compatibility_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  envelope_record cryptographic_envelopes%ROWTYPE;
+  key_record trust_keys%ROWTYPE;
+  trust_event_record trust_events%ROWTYPE;
+  verification_record trust_verification_receipts%ROWTYPE;
+  evaluation_time TIMESTAMPTZ;
+BEGIN
+  IF NOT (
+    (NEW.domain = 'communications.lifecycle' AND NEW.artifact_schema = 'communication-lifecycle-v1')
+    OR (NEW.domain = 'communications.consent' AND NEW.artifact_schema = 'communication-consent-v1')
+    OR (NEW.domain = 'communications.suppression' AND NEW.artifact_schema = 'communication-suppression-v1')
+    OR (NEW.domain = 'communications.routing' AND NEW.artifact_schema = 'communication-routing-v1')
+    OR (NEW.domain = 'communications.audit' AND NEW.artifact_schema = 'communication-audit-v1')
+    OR (NEW.domain = 'communications.webhook' AND NEW.artifact_schema = 'communication-webhook-evidence-v1')
+  ) THEN
+    RAISE EXCEPTION 'communication trust domain and artifact schema are incompatible';
+  END IF;
+
+  IF NEW.envelope_id IS NULL THEN
+    RAISE EXCEPTION 'communication trust reference requires a cryptographic envelope';
+  END IF;
+
+  SELECT * INTO envelope_record
+    FROM cryptographic_envelopes
+   WHERE tenant_id = NEW.tenant_id
+     AND envelope_id = NEW.envelope_id;
+
+  IF envelope_record.envelope_id IS NULL THEN
+    RAISE EXCEPTION 'communication trust reference requires an existing envelope';
+  END IF;
+
+  IF envelope_record.domain <> NEW.domain
+     OR envelope_record.schema_version <> NEW.artifact_schema
+     OR envelope_record.canonicalization_version <> NEW.canonicalization_version
+     OR envelope_record.key_purpose <> NEW.key_purpose
+     OR envelope_record.artifact_id <> NEW.communication_id
+     OR envelope_record.card_id IS DISTINCT FROM NEW.card_id THEN
+    RAISE EXCEPTION 'communication trust reference envelope is incompatible';
+  END IF;
+
+  IF NEW.domain = 'communications.consent'
+     AND NEW.artifact_schema = 'communication-consent-v1' THEN
+    IF jsonb_typeof(NEW.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(NEW.evidence_fields->'channel') IS DISTINCT FROM 'string'
+       OR jsonb_typeof(NEW.evidence_fields->'purpose') IS DISTINCT FROM 'string' THEN
+      RAISE EXCEPTION 'communication consent Trust reference requires policy lock tuple';
+    END IF;
+
+    PERFORM lock_communication_policy_subject_hierarchy_v1(
+      NEW.tenant_id,
+      NEW.card_id,
+      NEW.evidence_fields->>'participantId',
+      NEW.evidence_fields->>'channel',
+      NEW.evidence_fields->>'purpose'
+    );
+  END IF;
+
+  SELECT * INTO key_record
+    FROM trust_keys
+   WHERE tenant_id = NEW.tenant_id
+     AND key_id = envelope_record.key_id
+     AND key_version = envelope_record.key_version
+     AND purpose = envelope_record.key_purpose
+   FOR NO KEY UPDATE;
+
+  IF TG_OP = 'INSERT' THEN
+    evaluation_time := clock_timestamp();
+    NEW.recorded_at := evaluation_time;
+  ELSE
+    evaluation_time := NEW.recorded_at;
+  END IF;
+
+  IF envelope_record.status <> 'active'
+     OR envelope_record.signed_at > evaluation_time
+     OR (envelope_record.expires_at IS NOT NULL AND envelope_record.expires_at <= evaluation_time) THEN
+    RAISE EXCEPTION 'communication trust reference requires active unexpired envelope evidence';
+  END IF;
+
+  IF key_record.key_id IS NULL
+     OR key_record.status = 'pending'
+     OR envelope_record.signed_at < key_record.valid_from
+     OR (key_record.valid_until IS NOT NULL AND envelope_record.signed_at > key_record.valid_until)
+     OR (
+       key_record.status IN ('active', 'retiring', 'retired')
+       AND (key_record.revoked_at IS NOT NULL OR key_record.compromised_at IS NOT NULL)
+     )
+     OR (
+       key_record.status = 'revoked'
+       AND (
+         key_record.revoked_at IS NULL
+         OR key_record.compromised_at IS NOT NULL
+         OR envelope_record.signed_at >= key_record.revoked_at
+         OR evaluation_time >= key_record.revoked_at
+       )
+     )
+     OR (
+       key_record.status = 'compromised'
+       AND (
+         key_record.compromised_at IS NULL
+         OR envelope_record.signed_at >= key_record.compromised_at
+         OR evaluation_time >= key_record.compromised_at
+         OR (
+           key_record.revoked_at IS NOT NULL
+           AND (
+             envelope_record.signed_at >= key_record.revoked_at
+             OR evaluation_time >= key_record.revoked_at
+           )
+         )
+       )
+     ) THEN
+    RAISE EXCEPTION 'communication trust reference requires historically valid uncompromised signing key evidence';
+  END IF;
+
+  SELECT * INTO verification_record
+    FROM trust_verification_receipts
+   WHERE tenant_id = NEW.tenant_id
+     AND envelope_id = NEW.envelope_id
+     AND valid = TRUE
+     AND verified_at >= envelope_record.signed_at
+     AND verified_at <= evaluation_time
+   ORDER BY verified_at DESC
+   LIMIT 1;
+
+  IF verification_record.receipt_id IS NULL THEN
+    RAISE EXCEPTION 'communication trust reference requires valid envelope verification receipt';
+  END IF;
+
+  IF envelope_record.payload IS DISTINCT FROM NEW.evidence_fields THEN
+    RAISE EXCEPTION 'communication trust reference evidence projection must match signed envelope payload';
+  END IF;
+
+  SELECT * INTO trust_event_record
+    FROM trust_events
+   WHERE tenant_id = NEW.tenant_id
+     AND event_id = NEW.trust_event_id;
+
+  IF trust_event_record.event_id IS NULL THEN
+    RAISE EXCEPTION 'communication trust reference requires an existing trust event';
+  END IF;
+
+  IF trust_event_record.event_type <> NEW.domain
+     OR trust_event_record.subject_id <> NEW.communication_id
+     OR trust_event_record.subject_type <> NEW.domain
+     OR NOT (trust_event_record.details ? 'envelopeId')
+     OR jsonb_typeof(trust_event_record.details->'envelopeId') IS DISTINCT FROM 'string'
+     OR trust_event_record.details->>'envelopeId' IS DISTINCT FROM NEW.envelope_id THEN
+    RAISE EXCEPTION 'communication trust event is incompatible';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_communication_trust_reference_compatibility ON communication_trust_evidence_references;
+CREATE TRIGGER trg_communication_trust_reference_compatibility
+  BEFORE INSERT ON communication_trust_evidence_references
+  FOR EACH ROW EXECUTE FUNCTION enforce_communication_trust_reference_compatibility_v1();
+
+CREATE OR REPLACE FUNCTION communication_trust_reference_has_authoritative_key_v1(
+  input_tenant_id TEXT,
+  input_trust_evidence_reference_id TEXT
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+  reference_authoritative BOOLEAN := FALSE;
+BEGIN
+  SELECT TRUE INTO reference_authoritative
+    FROM communication_trust_evidence_references reference
+    JOIN cryptographic_envelopes envelope
+      ON envelope.tenant_id = reference.tenant_id
+     AND envelope.envelope_id = reference.envelope_id
+    JOIN trust_keys signing_key
+      ON signing_key.tenant_id = envelope.tenant_id
+     AND signing_key.key_id = envelope.key_id
+     AND signing_key.key_version = envelope.key_version
+     AND signing_key.purpose = envelope.key_purpose
+   WHERE reference.tenant_id = input_tenant_id
+     AND reference.trust_evidence_reference_id = input_trust_evidence_reference_id
+     AND envelope.status = 'active'
+     AND envelope.signed_at >= signing_key.valid_from
+     AND (signing_key.valid_until IS NULL OR envelope.signed_at <= signing_key.valid_until)
+     AND (
+       signing_key.status NOT IN ('retiring', 'retired')
+       OR envelope.signed_at <= signing_key.status_changed_at
+     )
+     AND signing_key.status IN ('active', 'retiring', 'retired')
+     AND signing_key.revoked_at IS NULL
+     AND signing_key.compromised_at IS NULL
+   LIMIT 1
+   FOR NO KEY UPDATE OF signing_key;
+
+  RETURN COALESCE(reference_authoritative, FALSE);
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_consent_evidence_reference_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  trust_reference_record communication_trust_evidence_references%ROWTYPE;
+  policy_record communication_consent_policies%ROWTYPE;
+BEGIN
+  SELECT * INTO trust_reference_record
+    FROM communication_trust_evidence_references
+   WHERE tenant_id = NEW.tenant_id
+     AND trust_evidence_reference_id = NEW.evidence_reference_id
+     AND domain = 'communications.consent'
+     AND artifact_schema = 'communication-consent-v1'
+     AND card_id IS NOT DISTINCT FROM NEW.card_id;
+
+  IF trust_reference_record.trust_evidence_reference_id IS NULL THEN
+    RAISE EXCEPTION 'communication consent receipt requires matching durable consent evidence reference';
+  END IF;
+
+  IF NOT (trust_reference_record.evidence_fields ? 'consentReceiptId')
+     OR NOT (trust_reference_record.evidence_fields ? 'channel')
+     OR NOT (trust_reference_record.evidence_fields ? 'purpose')
+     OR NOT (trust_reference_record.evidence_fields ? 'participantId')
+     OR NOT (trust_reference_record.evidence_fields ? 'consentPolicyId')
+     OR NOT (trust_reference_record.evidence_fields ? 'status')
+     OR NOT (trust_reference_record.evidence_fields ? 'source')
+     OR NOT (trust_reference_record.evidence_fields ? 'policyVersion')
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'consentReceiptId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'channel') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'purpose') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'consentPolicyId') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'status') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'source') IS DISTINCT FROM 'string'
+     OR jsonb_typeof(trust_reference_record.evidence_fields->'policyVersion') IS DISTINCT FROM 'string'
+     OR trust_reference_record.evidence_fields->>'consentReceiptId' IS DISTINCT FROM NEW.consent_receipt_id
+     OR trust_reference_record.evidence_fields->>'channel' IS DISTINCT FROM NEW.channel
+     OR trust_reference_record.evidence_fields->>'purpose' IS DISTINCT FROM NEW.purpose
+     OR trust_reference_record.evidence_fields->>'participantId' IS DISTINCT FROM NEW.participant_id
+     OR trust_reference_record.evidence_fields->>'consentPolicyId' IS DISTINCT FROM NEW.consent_policy_id
+     OR trust_reference_record.evidence_fields->>'status' IS DISTINCT FROM NEW.status
+     OR trust_reference_record.evidence_fields->>'source' IS DISTINCT FROM NEW.source THEN
+    RAISE EXCEPTION 'communication consent evidence reference does not match receipt';
+  END IF;
+
+  PERFORM lock_communication_policy_subject_hierarchy_v1(
+    NEW.tenant_id,
+    NEW.card_id,
+    NEW.participant_id,
+    NEW.channel,
+    NEW.purpose
+  );
+
+  IF NOT communication_trust_reference_has_authoritative_key_v1(
+    NEW.tenant_id,
+    NEW.evidence_reference_id
+  ) THEN
+    RAISE EXCEPTION 'communication consent receipt requires currently authoritative Trust evidence';
+  END IF;
+
+  IF NEW.effective_at > NEW.observed_at
+     OR (NEW.expires_at IS NOT NULL AND NEW.expires_at <= NEW.effective_at)
+     OR (NEW.revoked_at IS NOT NULL AND NEW.revoked_at < NEW.effective_at) THEN
+    RAISE EXCEPTION 'communication consent receipt chronology is invalid';
+  END IF;
+
+  IF NOT communication_evidence_timestamptz_matches_v1(
+       trust_reference_record.evidence_fields->>'observedAt',
+       NEW.observed_at
+     )
+     OR NOT communication_evidence_timestamptz_matches_v1(
+       trust_reference_record.evidence_fields->>'effectiveAt',
+       NEW.effective_at
+     ) THEN
+    RAISE EXCEPTION 'communication consent evidence reference does not match receipt timing';
+  END IF;
+
+  IF NOT (trust_reference_record.evidence_fields ? 'expiresAt')
+     OR (
+       NEW.expires_at IS NULL
+       AND trust_reference_record.evidence_fields->'expiresAt' <> 'null'::jsonb
+     )
+     OR (
+       NEW.expires_at IS NOT NULL
+       AND NOT communication_evidence_timestamptz_matches_v1(
+         trust_reference_record.evidence_fields->>'expiresAt',
+         NEW.expires_at
+       )
+     ) THEN
+    RAISE EXCEPTION 'communication consent evidence reference does not match receipt expiry';
+  END IF;
+
+  IF NOT (trust_reference_record.evidence_fields ? 'revokedAt')
+     OR (
+       NEW.revoked_at IS NULL
+       AND trust_reference_record.evidence_fields->'revokedAt' <> 'null'::jsonb
+     )
+     OR (
+       NEW.revoked_at IS NOT NULL
+       AND NOT communication_evidence_timestamptz_matches_v1(
+         trust_reference_record.evidence_fields->>'revokedAt',
+         NEW.revoked_at
+       )
+     ) THEN
+    RAISE EXCEPTION 'communication consent evidence reference does not match receipt revocation chronology';
+  END IF;
+
+  SELECT * INTO policy_record
+    FROM communication_consent_policies
+   WHERE tenant_id = NEW.tenant_id
+     AND consent_policy_id = NEW.consent_policy_id;
+
+  IF policy_record.consent_policy_id IS NULL
+     OR trust_reference_record.evidence_fields->>'policyVersion' IS DISTINCT FROM policy_record.policy_version THEN
+    RAISE EXCEPTION 'communication consent evidence reference policy version does not match cited policy';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_dispatch_consent_trust_authority_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  receipt_record communication_consent_receipts%ROWTYPE;
+BEGIN
+  IF NEW.state = 'queued' THEN
+    SELECT * INTO receipt_record
+      FROM communication_consent_receipts
+     WHERE tenant_id = NEW.tenant_id
+       AND consent_receipt_id = NEW.consent_receipt_id
+       AND card_id IS NOT DISTINCT FROM NEW.card_id
+       AND participant_id = NEW.participant_id
+       AND channel = NEW.channel
+       AND purpose = NEW.purpose;
+
+    IF receipt_record.consent_receipt_id IS NULL THEN
+      RAISE EXCEPTION 'communication dispatch requires active consent';
+    END IF;
+
+    IF NOT communication_trust_reference_has_authoritative_key_v1(
+      NEW.tenant_id,
+      receipt_record.evidence_reference_id
+    ) THEN
+      RAISE EXCEPTION 'communication dispatch requires currently authoritative consent Trust evidence';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_communication_dispatch_policy_trust_authority ON communication_dispatch_attempts;
+CREATE TRIGGER trg_communication_dispatch_policy_trust_authority
+  BEFORE INSERT OR UPDATE ON communication_dispatch_attempts
+  FOR EACH ROW EXECUTE FUNCTION enforce_communication_dispatch_consent_trust_authority_v1();
+
+CREATE OR REPLACE FUNCTION enforce_communication_suppression_actor_evidence_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  creator_membership tenant_memberships%ROWTYPE;
+  releaser_membership tenant_memberships%ROWTYPE;
+  release_audit_record communication_audit_events%ROWTYPE;
+BEGIN
+  SELECT * INTO creator_membership
+    FROM tenant_memberships
+   WHERE tenant_id = NEW.tenant_id
+     AND user_id = NEW.created_by_actor_id
+     AND status = 'active';
+
+  IF creator_membership.membership_id IS NULL
+     OR creator_membership.role = 'viewer' THEN
+    RAISE EXCEPTION 'communication suppression creator requires active non-viewer membership';
+  END IF;
+
+  IF TG_OP = 'INSERT' AND NEW.status <> 'active' THEN
+    RAISE EXCEPTION 'communication suppression rows must be inserted active and released through a controlled transition';
+  END IF;
+
+  IF NEW.status = 'released' THEN
+    SELECT * INTO releaser_membership
+      FROM tenant_memberships
+     WHERE tenant_id = NEW.tenant_id
+       AND user_id = NEW.released_by_actor_id
+       AND status = 'active';
+
+    IF releaser_membership.membership_id IS NULL
+       OR releaser_membership.role NOT IN ('tenant_owner', 'tenant_admin', 'receptionist_manager') THEN
+      RAISE EXCEPTION 'communication suppression release requires authorized active membership';
+    END IF;
+
+    SELECT * INTO release_audit_record
+      FROM communication_audit_events
+     WHERE tenant_id = NEW.tenant_id
+       AND audit_event_id = NEW.audit_event_id
+       AND event_type = 'communication.suppression_released'
+       AND result = 'succeeded'
+       AND card_id IS NOT DISTINCT FROM NEW.card_id
+       AND actor_type = 'user'
+       AND actor_user_id = NEW.released_by_actor_id;
+
+    IF release_audit_record.audit_event_id IS NULL THEN
+      RAISE EXCEPTION 'communication suppression release requires matching release audit evidence';
+    END IF;
+
+    IF NOT (release_audit_record.metadata ? 'suppressionId')
+       OR NOT (release_audit_record.metadata ? 'releaseReason')
+       OR NOT (release_audit_record.metadata ? 'requiredPermission')
+       OR NOT (release_audit_record.metadata ? 'decisionId')
+       OR release_audit_record.metadata->>'suppressionId' IS DISTINCT FROM NEW.suppression_id
+       OR release_audit_record.metadata->>'releaseReason' IS DISTINCT FROM NEW.release_reason
+       OR release_audit_record.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:release_suppression'
+       OR release_audit_record.metadata->>'decisionId' IS DISTINCT FROM release_audit_record.authorization_decision_id THEN
+      RAISE EXCEPTION 'communication suppression release audit evidence does not match suppression resource';
+    END IF;
+
+    IF release_audit_record.occurred_at < NEW.created_at
+       OR release_audit_record.occurred_at > NEW.released_at THEN
+      RAISE EXCEPTION 'communication suppression release audit chronology is invalid';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_lifecycle_transition_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_communication communications%ROWTYPE;
+  decision_record communication_audit_events%ROWTYPE;
+BEGIN
+  SELECT * INTO current_communication
+    FROM communications
+   WHERE tenant_id = NEW.tenant_id
+     AND communication_id = NEW.communication_id
+   FOR UPDATE;
+
+  IF current_communication.communication_id IS NULL THEN
+    RAISE EXCEPTION 'communication lifecycle transition requires an existing communication';
+  END IF;
+
+  IF NEW.card_id IS DISTINCT FROM current_communication.card_id THEN
+    RAISE EXCEPTION 'communication lifecycle transition card scope does not match communication';
+  END IF;
+
+  IF NEW.from_state <> current_communication.current_state THEN
+    RAISE EXCEPTION 'communication lifecycle transition does not match current state';
+  END IF;
+
+  IF NEW.sequence_number <> current_communication.state_version + 1 THEN
+    RAISE EXCEPTION 'communication lifecycle transition sequence must increment by one';
+  END IF;
+
+  IF NEW.occurred_at < current_communication.updated_at THEN
+    RAISE EXCEPTION 'communication lifecycle transition cannot backdate aggregate chronology';
+  END IF;
+
+  SELECT * INTO decision_record
+    FROM communication_audit_events
+   WHERE tenant_id = NEW.tenant_id
+     AND audit_event_id = NEW.authorization_decision_id
+     AND event_type = 'communication.authorization_decision'
+     AND result = 'succeeded'
+     AND card_id IS NOT DISTINCT FROM NEW.card_id
+     AND communication_id IS NOT DISTINCT FROM NEW.communication_id
+     AND actor_type = 'user'
+     AND actor_user_id IS NOT DISTINCT FROM NEW.actor_user_id;
+
+  IF decision_record.audit_event_id IS NULL THEN
+    RAISE EXCEPTION 'communication lifecycle transition requires durable authorization decision evidence';
+  END IF;
+
+  IF NOT (decision_record.metadata ? 'operation')
+     OR NOT (decision_record.metadata ? 'resourceType')
+     OR NOT (decision_record.metadata ? 'communicationId')
+     OR NOT (decision_record.metadata ? 'fromState')
+     OR NOT (decision_record.metadata ? 'toState')
+     OR NOT (decision_record.metadata ? 'requiredPermission')
+     OR decision_record.metadata->>'operation' IS DISTINCT FROM 'advance_lifecycle'
+     OR decision_record.metadata->>'resourceType' IS DISTINCT FROM 'communication_lifecycle_transition'
+     OR decision_record.metadata->>'communicationId' IS DISTINCT FROM NEW.communication_id
+     OR decision_record.metadata->>'fromState' IS DISTINCT FROM NEW.from_state
+     OR decision_record.metadata->>'toState' IS DISTINCT FROM NEW.to_state
+     OR decision_record.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:advance_lifecycle' THEN
+    RAISE EXCEPTION 'communication lifecycle transition authorization decision resource mismatch';
+  END IF;
+
+  IF NOT (
+    (NEW.from_state = 'requested' AND NEW.to_state IN ('policy_checking', 'blocked', 'suppressed', 'cancelled'))
+    OR (NEW.from_state = 'policy_checking' AND NEW.to_state IN ('authorized', 'blocked', 'suppressed', 'expired'))
+    OR (NEW.from_state = 'authorized' AND NEW.to_state IN ('queued', 'blocked', 'suppressed', 'cancelled'))
+    OR (NEW.from_state = 'queued' AND NEW.to_state IN ('dispatching', 'cancelled', 'expired', 'suppressed'))
+    OR (NEW.from_state = 'dispatching' AND NEW.to_state IN ('accepted', 'failed', 'terminated'))
+    OR (NEW.from_state = 'accepted' AND NEW.to_state IN ('active', 'completed', 'failed', 'terminated'))
+    OR (NEW.from_state = 'active' AND NEW.to_state IN ('completed', 'failed', 'terminated'))
+  ) THEN
+    RAISE EXCEPTION 'invalid communication lifecycle transition from % to %', NEW.from_state, NEW.to_state;
+  END IF;
+
+  PERFORM set_config('bidayax.communication_lifecycle_transition', 'true', true);
+
+  UPDATE communications
+     SET current_state = NEW.to_state,
+         state_version = NEW.sequence_number,
+         updated_at = NEW.occurred_at
+   WHERE tenant_id = NEW.tenant_id
+     AND communication_id = NEW.communication_id;
+
+  PERFORM set_config('bidayax.communication_lifecycle_transition', 'false', true);
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+ALTER TABLE communication_command_idempotency_keys
+  ADD COLUMN IF NOT EXISTS legacy_invalidated_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS legacy_invalidation_reason TEXT;
+
+ALTER TABLE communication_command_idempotency_keys
+  DROP CONSTRAINT IF EXISTS communication_command_legacy_invalidation_reason;
+
+ALTER TABLE communication_command_idempotency_keys
+  ADD CONSTRAINT communication_command_legacy_invalidation_reason CHECK (
+    (
+      legacy_invalidated_at IS NULL
+      AND legacy_invalidation_reason IS NULL
+    )
+    OR (
+      legacy_invalidated_at IS NOT NULL
+      AND legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+      AND status = 'failed'
+      AND result_communication_id IS NULL
+      AND completed_at IS NOT NULL
+      AND completed_at >= created_at
+    )
+  );
+
+CREATE OR REPLACE FUNCTION enforce_communication_command_result_update_v1()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    RAISE EXCEPTION 'communication command evidence cannot be deleted';
+  END IF;
+
+  IF OLD.legacy_invalidated_at IS NOT NULL THEN
+    RAISE EXCEPTION 'legacy invalidated communication command cannot be mutated or replayed';
+  END IF;
+
+  IF NEW.tenant_id IS DISTINCT FROM OLD.tenant_id
+     OR NEW.card_id IS DISTINCT FROM OLD.card_id
+     OR NEW.scope_type IS DISTINCT FROM OLD.scope_type
+     OR NEW.scope_id IS DISTINCT FROM OLD.scope_id
+     OR NEW.operation IS DISTINCT FROM OLD.operation
+     OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
+     OR NEW.request_hash IS DISTINCT FROM OLD.request_hash
+     OR NEW.actor_type IS DISTINCT FROM OLD.actor_type
+     OR NEW.actor_user_id IS DISTINCT FROM OLD.actor_user_id
+     OR NEW.actor_service_id IS DISTINCT FROM OLD.actor_service_id
+     OR NEW.actor_platform_id IS DISTINCT FROM OLD.actor_platform_id
+     OR NEW.session_id IS DISTINCT FROM OLD.session_id
+     OR NEW.card_grant_id IS DISTINCT FROM OLD.card_grant_id
+     OR NEW.authorization_decision_id IS DISTINCT FROM OLD.authorization_decision_id
+     OR NEW.required_permission IS DISTINCT FROM OLD.required_permission
+     OR NEW.permission_version IS DISTINCT FROM OLD.permission_version
+     OR NEW.policy_version IS DISTINCT FROM OLD.policy_version
+     OR NEW.created_at IS DISTINCT FROM OLD.created_at
+     OR NEW.expires_at IS DISTINCT FROM OLD.expires_at
+     OR NEW.legacy_invalidated_at IS DISTINCT FROM OLD.legacy_invalidated_at
+     OR NEW.legacy_invalidation_reason IS DISTINCT FROM OLD.legacy_invalidation_reason THEN
+    RAISE EXCEPTION 'communication command authorization and request evidence is immutable';
+  END IF;
+
+  IF OLD.status <> 'reserved' OR NEW.status NOT IN ('completed', 'failed') THEN
+    RAISE EXCEPTION 'communication command result update must move reserved to a terminal command status';
+  END IF;
+
+  NEW.completed_at := clock_timestamp();
+
+  IF NEW.completed_at < NEW.created_at THEN
+    RAISE EXCEPTION 'communication command terminal result requires completed_at after creation';
+  END IF;
+
+  IF NEW.status = 'completed'
+     AND NEW.operation IN (
+       'request_callback', 'cancel_callback', 'schedule_communication',
+       'initiate_communication', 'accept_inbound_communication_event',
+       'escalate_to_human', 'terminate_communication'
+     )
+     AND NEW.result_communication_id IS NULL THEN
+    RAISE EXCEPTION 'communication command completion requires result communication id for communication-producing operation';
+  END IF;
+
+  IF NEW.status = 'completed'
+     AND NEW.operation NOT IN (
+       'request_callback', 'cancel_callback', 'schedule_communication',
+       'initiate_communication', 'accept_inbound_communication_event',
+       'escalate_to_human', 'terminate_communication'
+     )
+     AND NEW.result_communication_id IS NOT NULL THEN
+    RAISE EXCEPTION 'communication command completion cannot carry result communication id for non-communication operation';
+  END IF;
+
+  IF NEW.status = 'failed' AND NEW.result_communication_id IS NOT NULL THEN
+    RAISE EXCEPTION 'communication command failure cannot carry a result communication id';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION enforce_communication_command_authorization_decision_v1()
+RETURNS TRIGGER AS $$
+DECLARE
+  decision_record communication_audit_events%ROWTYPE;
+BEGIN
+  SELECT * INTO decision_record
+    FROM communication_audit_events
+   WHERE tenant_id = NEW.tenant_id
+     AND audit_event_id = NEW.authorization_decision_id
+     AND event_type = 'communication.authorization_decision'
+     AND result = 'succeeded';
+
+  IF decision_record.audit_event_id IS NULL THEN
+    RAISE EXCEPTION 'communication command requires durable authorization decision evidence';
+  END IF;
+
+  IF decision_record.permission_version <> NEW.permission_version
+     OR decision_record.policy_version <> NEW.policy_version THEN
+    RAISE EXCEPTION 'communication command authorization decision version mismatch';
+  END IF;
+
+  IF NOT (decision_record.metadata ? 'operation')
+     OR NOT (decision_record.metadata ? 'scopeType')
+     OR NOT (decision_record.metadata ? 'scopeId')
+     OR NOT (decision_record.metadata ? 'requiredPermission')
+     OR NOT (decision_record.metadata ? 'requestHash')
+     OR decision_record.metadata->>'operation' IS DISTINCT FROM NEW.operation
+     OR decision_record.metadata->>'scopeType' IS DISTINCT FROM NEW.scope_type
+     OR decision_record.metadata->>'scopeId' IS DISTINCT FROM NEW.scope_id
+     OR decision_record.metadata->>'requiredPermission' IS DISTINCT FROM NEW.required_permission
+     OR decision_record.metadata->>'requestHash' IS DISTINCT FROM NEW.request_hash THEN
+    RAISE EXCEPTION 'communication command authorization decision resource mismatch';
+  END IF;
+
+  IF NEW.actor_type = 'user'
+     AND (
+       NOT (decision_record.metadata ? 'sessionId')
+       OR decision_record.metadata->>'sessionId' IS DISTINCT FROM NEW.session_id
+     ) THEN
+    RAISE EXCEPTION 'communication command authorization decision user context mismatch';
+  END IF;
+
+  IF NEW.scope_type = 'card'
+     AND (
+       NOT (decision_record.metadata ? 'cardGrantId')
+       OR decision_record.metadata->>'cardGrantId' IS DISTINCT FROM NEW.card_grant_id
+     ) THEN
+    RAISE EXCEPTION 'communication command authorization decision user context mismatch';
+  END IF;
+
+  IF NEW.scope_type = 'card' AND decision_record.card_id IS DISTINCT FROM NEW.card_id THEN
+    RAISE EXCEPTION 'communication command authorization decision card mismatch';
+  END IF;
+
+  IF NEW.scope_type <> 'card' AND decision_record.card_id IS NOT NULL THEN
+    RAISE EXCEPTION 'communication command tenant/platform authorization decision must be cardless';
+  END IF;
+
+  IF NEW.actor_type = 'user'
+     AND (
+       decision_record.actor_type <> 'user'
+       OR decision_record.actor_user_id IS DISTINCT FROM NEW.actor_user_id
+     ) THEN
+    RAISE EXCEPTION 'communication command user authorization decision actor mismatch';
+  END IF;
+
+  IF NEW.actor_type = 'service'
+     AND (
+       decision_record.actor_type <> 'service'
+       OR decision_record.actor_service_id IS DISTINCT FROM NEW.actor_service_id
+     ) THEN
+    RAISE EXCEPTION 'communication command service authorization decision actor mismatch';
+  END IF;
+
+  IF NEW.actor_type = 'platform'
+     AND (
+       decision_record.actor_type NOT IN ('platform', 'system')
+       OR decision_record.actor_platform_id IS DISTINCT FROM NEW.actor_platform_id
+     ) THEN
+    RAISE EXCEPTION 'communication command platform authorization decision actor mismatch';
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE INDEX IF NOT EXISTS idx_trust_verification_receipts_valid_envelope
+  ON trust_verification_receipts(tenant_id, envelope_id, verified_at DESC)
+  WHERE valid = TRUE;
+
+DO $$
+DECLARE
+  legacy_command_invalidated_at TIMESTAMPTZ := clock_timestamp();
+BEGIN
+  LOCK TABLE
+    communication_command_idempotency_keys,
+    communication_audit_events,
+    communication_consent_receipts,
+    communication_consent_policies,
+    communication_lifecycle_transitions,
+    communication_webhook_evidence,
+    communication_routing_policies,
+    communication_business_hours_policies,
+    communication_summaries,
+    communication_failover_events,
+    communication_adapter_health,
+    communication_dispatch_attempts,
+    communication_participants,
+    communication_participant_endpoints,
+    communication_suppressions,
+    communication_receptionist_sessions,
+    communication_trust_evidence_references,
+    communications,
+    cryptographic_envelopes,
+    trust_events,
+    trust_keys,
+    trust_verification_receipts
+  IN ACCESS EXCLUSIVE MODE;
+
+  IF EXISTS (
+    SELECT 1 FROM communications
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communications.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_consent_receipts
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_consent_receipts.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_lifecycle_transitions
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_lifecycle_transitions.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_webhook_evidence
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_webhook_evidence.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_routing_policies
+     WHERE jsonb_typeof(condition) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(condition)
+        OR jsonb_typeof(action) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(action)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_routing_policies condition/action';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_business_hours_policies
+     WHERE jsonb_typeof(weekly_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(weekly_windows)
+        OR jsonb_typeof(exception_windows) <> 'array'
+        OR NOT communication_metadata_is_safe_v1(exception_windows)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_business_hours_policies windows';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_summaries
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_summaries.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_failover_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_failover_events.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_adapter_health
+     WHERE jsonb_typeof(sanitized_metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(sanitized_metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_adapter_health.sanitized_metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_trust_evidence_references
+     WHERE jsonb_typeof(evidence_fields) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(evidence_fields)
+        OR NOT communication_trust_fields_are_allowlisted_v1(evidence_fields)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_trust_evidence_references.evidence_fields';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM communication_audit_events
+     WHERE jsonb_typeof(metadata) <> 'object'
+        OR NOT communication_metadata_is_safe_v1(metadata)
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found unsafe metadata in communication_audit_events.metadata';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_trust_evidence_references reference
+      LEFT JOIN cryptographic_envelopes envelope
+        ON envelope.tenant_id = reference.tenant_id
+       AND envelope.envelope_id = reference.envelope_id
+      LEFT JOIN trust_keys signing_key
+        ON signing_key.tenant_id = reference.tenant_id
+       AND signing_key.key_id = envelope.key_id
+       AND signing_key.key_version = envelope.key_version
+       AND signing_key.purpose = envelope.key_purpose
+      LEFT JOIN LATERAL (
+        SELECT receipt_id
+          FROM trust_verification_receipts verification
+         WHERE verification.tenant_id = reference.tenant_id
+           AND verification.envelope_id = reference.envelope_id
+           AND verification.valid = TRUE
+           AND verification.verified_at >= envelope.signed_at
+           AND verification.verified_at <= reference.recorded_at
+         ORDER BY verification.verified_at DESC
+         LIMIT 1
+      ) verification ON TRUE
+      LEFT JOIN trust_events trust_event
+        ON trust_event.tenant_id = reference.tenant_id
+       AND trust_event.event_id = reference.trust_event_id
+     WHERE NOT (
+       (reference.domain = 'communications.lifecycle' AND reference.artifact_schema = 'communication-lifecycle-v1')
+       OR (reference.domain = 'communications.consent' AND reference.artifact_schema = 'communication-consent-v1')
+       OR (reference.domain = 'communications.suppression' AND reference.artifact_schema = 'communication-suppression-v1')
+       OR (reference.domain = 'communications.routing' AND reference.artifact_schema = 'communication-routing-v1')
+       OR (reference.domain = 'communications.audit' AND reference.artifact_schema = 'communication-audit-v1')
+       OR (reference.domain = 'communications.webhook' AND reference.artifact_schema = 'communication-webhook-evidence-v1')
+     )
+        OR reference.envelope_id IS NULL
+        OR envelope.envelope_id IS NULL
+        OR envelope.domain IS DISTINCT FROM reference.domain
+        OR envelope.schema_version IS DISTINCT FROM reference.artifact_schema
+        OR envelope.canonicalization_version IS DISTINCT FROM reference.canonicalization_version
+        OR envelope.key_purpose IS DISTINCT FROM reference.key_purpose
+        OR envelope.artifact_id IS DISTINCT FROM reference.communication_id
+        OR envelope.card_id IS DISTINCT FROM reference.card_id
+        OR envelope.status IS DISTINCT FROM 'active'
+        OR envelope.signed_at > reference.recorded_at
+        OR (envelope.expires_at IS NOT NULL AND envelope.expires_at <= reference.recorded_at)
+        OR signing_key.key_id IS NULL
+        OR signing_key.status = 'pending'
+        OR envelope.signed_at < signing_key.valid_from
+        OR (signing_key.valid_until IS NOT NULL AND envelope.signed_at > signing_key.valid_until)
+        OR (
+          signing_key.status IN ('active', 'retiring', 'retired')
+          AND (signing_key.revoked_at IS NOT NULL OR signing_key.compromised_at IS NOT NULL)
+        )
+        OR (
+          signing_key.status = 'revoked'
+          AND (
+            signing_key.revoked_at IS NULL
+            OR signing_key.compromised_at IS NOT NULL
+            OR envelope.signed_at >= signing_key.revoked_at
+            OR reference.recorded_at >= signing_key.revoked_at
+          )
+        )
+        OR (
+          signing_key.status = 'compromised'
+          AND (
+            signing_key.compromised_at IS NULL
+            OR envelope.signed_at >= signing_key.compromised_at
+            OR reference.recorded_at >= signing_key.compromised_at
+            OR (
+              signing_key.revoked_at IS NOT NULL
+              AND (
+                envelope.signed_at >= signing_key.revoked_at
+                OR reference.recorded_at >= signing_key.revoked_at
+              )
+            )
+          )
+        )
+        OR verification.receipt_id IS NULL
+        OR envelope.payload IS DISTINCT FROM reference.evidence_fields
+        OR trust_event.event_id IS NULL
+        OR trust_event.event_type IS DISTINCT FROM reference.domain
+        OR trust_event.subject_id IS DISTINCT FROM reference.communication_id
+        OR trust_event.subject_type IS DISTINCT FROM reference.domain
+        OR NOT (trust_event.details ? 'envelopeId')
+        OR jsonb_typeof(trust_event.details->'envelopeId') IS DISTINCT FROM 'string'
+        OR trust_event.details->>'envelopeId' IS DISTINCT FROM reference.envelope_id
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication trust evidence references';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_lifecycle_transitions transition
+      LEFT JOIN communication_audit_events decision
+        ON decision.tenant_id = transition.tenant_id
+       AND decision.audit_event_id = transition.authorization_decision_id
+       AND decision.event_type = 'communication.authorization_decision'
+       AND decision.result = 'succeeded'
+       AND decision.card_id IS NOT DISTINCT FROM transition.card_id
+       AND decision.communication_id IS NOT DISTINCT FROM transition.communication_id
+       AND decision.actor_type = 'user'
+       AND decision.actor_user_id IS NOT DISTINCT FROM transition.actor_user_id
+     WHERE decision.audit_event_id IS NULL
+        OR NOT (decision.metadata ? 'operation')
+        OR NOT (decision.metadata ? 'resourceType')
+        OR NOT (decision.metadata ? 'communicationId')
+        OR NOT (decision.metadata ? 'fromState')
+        OR NOT (decision.metadata ? 'toState')
+        OR NOT (decision.metadata ? 'requiredPermission')
+        OR decision.metadata->>'operation' IS DISTINCT FROM 'advance_lifecycle'
+        OR decision.metadata->>'resourceType' IS DISTINCT FROM 'communication_lifecycle_transition'
+        OR decision.metadata->>'communicationId' IS DISTINCT FROM transition.communication_id
+        OR decision.metadata->>'fromState' IS DISTINCT FROM transition.from_state
+        OR decision.metadata->>'toState' IS DISTINCT FROM transition.to_state
+        OR decision.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:advance_lifecycle'
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication lifecycle authorization evidence';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_suppressions suppression
+      LEFT JOIN communication_audit_events release_audit
+        ON release_audit.tenant_id = suppression.tenant_id
+       AND release_audit.audit_event_id = suppression.audit_event_id
+       AND release_audit.event_type = 'communication.suppression_released'
+       AND release_audit.result = 'succeeded'
+       AND release_audit.card_id IS NOT DISTINCT FROM suppression.card_id
+       AND release_audit.actor_type = 'user'
+       AND release_audit.actor_user_id = suppression.released_by_actor_id
+     WHERE suppression.status = 'released'
+       AND (
+         release_audit.audit_event_id IS NULL
+         OR NOT (release_audit.metadata ? 'suppressionId')
+         OR NOT (release_audit.metadata ? 'releaseReason')
+         OR NOT (release_audit.metadata ? 'requiredPermission')
+         OR NOT (release_audit.metadata ? 'decisionId')
+         OR release_audit.metadata->>'suppressionId' IS DISTINCT FROM suppression.suppression_id
+         OR release_audit.metadata->>'releaseReason' IS DISTINCT FROM suppression.release_reason
+         OR release_audit.metadata->>'requiredPermission' IS DISTINCT FROM 'communications:release_suppression'
+         OR release_audit.metadata->>'decisionId' IS DISTINCT FROM release_audit.authorization_decision_id
+         OR release_audit.occurred_at < suppression.created_at
+         OR release_audit.occurred_at > suppression.released_at
+       )
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication suppression release evidence';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+      FROM communication_consent_receipts receipt
+      LEFT JOIN communication_trust_evidence_references reference
+        ON reference.tenant_id = receipt.tenant_id
+       AND reference.trust_evidence_reference_id = receipt.evidence_reference_id
+       AND reference.domain = 'communications.consent'
+       AND reference.artifact_schema = 'communication-consent-v1'
+       AND reference.card_id IS NOT DISTINCT FROM receipt.card_id
+      LEFT JOIN communication_consent_policies policy
+        ON policy.tenant_id = receipt.tenant_id
+       AND policy.consent_policy_id = receipt.consent_policy_id
+     WHERE reference.trust_evidence_reference_id IS NULL
+        OR NOT (reference.evidence_fields ? 'consentReceiptId')
+        OR NOT (reference.evidence_fields ? 'channel')
+        OR NOT (reference.evidence_fields ? 'purpose')
+        OR NOT (reference.evidence_fields ? 'participantId')
+         OR NOT (reference.evidence_fields ? 'consentPolicyId')
+         OR NOT (reference.evidence_fields ? 'status')
+         OR NOT (reference.evidence_fields ? 'source')
+         OR NOT (reference.evidence_fields ? 'policyVersion')
+         OR jsonb_typeof(reference.evidence_fields->'consentReceiptId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'channel') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'purpose') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'participantId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'consentPolicyId') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'status') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'source') IS DISTINCT FROM 'string'
+         OR jsonb_typeof(reference.evidence_fields->'policyVersion') IS DISTINCT FROM 'string'
+         OR reference.evidence_fields->>'consentReceiptId' IS DISTINCT FROM receipt.consent_receipt_id
+         OR reference.evidence_fields->>'channel' IS DISTINCT FROM receipt.channel
+        OR reference.evidence_fields->>'purpose' IS DISTINCT FROM receipt.purpose
+        OR reference.evidence_fields->>'participantId' IS DISTINCT FROM receipt.participant_id
+        OR reference.evidence_fields->>'consentPolicyId' IS DISTINCT FROM receipt.consent_policy_id
+        OR reference.evidence_fields->>'status' IS DISTINCT FROM receipt.status
+        OR reference.evidence_fields->>'source' IS DISTINCT FROM receipt.source
+        OR receipt.effective_at > receipt.observed_at
+        OR (receipt.expires_at IS NOT NULL AND receipt.expires_at <= receipt.effective_at)
+        OR (receipt.revoked_at IS NOT NULL AND receipt.revoked_at < receipt.effective_at)
+        OR NOT communication_evidence_timestamptz_matches_v1(
+          reference.evidence_fields->>'observedAt',
+          receipt.observed_at
+        )
+        OR NOT communication_evidence_timestamptz_matches_v1(
+          reference.evidence_fields->>'effectiveAt',
+          receipt.effective_at
+        )
+        OR NOT (reference.evidence_fields ? 'expiresAt')
+        OR (
+          receipt.expires_at IS NULL
+          AND reference.evidence_fields->'expiresAt' <> 'null'::jsonb
+        )
+        OR (
+          receipt.expires_at IS NOT NULL
+          AND NOT communication_evidence_timestamptz_matches_v1(
+            reference.evidence_fields->>'expiresAt',
+            receipt.expires_at
+          )
+        )
+        OR NOT (reference.evidence_fields ? 'revokedAt')
+        OR (
+          receipt.revoked_at IS NULL
+          AND reference.evidence_fields->'revokedAt' <> 'null'::jsonb
+        )
+        OR (
+          receipt.revoked_at IS NOT NULL
+          AND NOT communication_evidence_timestamptz_matches_v1(
+            reference.evidence_fields->>'revokedAt',
+            receipt.revoked_at
+          )
+        )
+        OR policy.consent_policy_id IS NULL
+        OR reference.evidence_fields->>'policyVersion' IS DISTINCT FROM policy.policy_version
+  ) THEN
+    RAISE EXCEPTION 'migration 0019 found invalid legacy communication consent evidence';
+  END IF;
+
+  DROP TRIGGER IF EXISTS trg_communication_command_idempotency_result_update
+    ON communication_command_idempotency_keys;
+
+  UPDATE communication_command_idempotency_keys
+     SET status = 'failed',
+         result_communication_id = NULL,
+         completed_at = GREATEST(legacy_command_invalidated_at, created_at),
+         legacy_invalidated_at = GREATEST(legacy_command_invalidated_at, created_at),
+         legacy_invalidation_reason = 'phase11b_0019_reauthorization_required'
+   WHERE legacy_invalidated_at IS NULL
+     AND status = 'reserved';
+
+  CREATE TRIGGER trg_communication_command_idempotency_result_update
+    BEFORE UPDATE OR DELETE ON communication_command_idempotency_keys
+    FOR EACH ROW EXECUTE FUNCTION enforce_communication_command_result_update_v1();
+END;
+$$;

@@ -16,6 +16,7 @@ import {
   communicationTrustEvidenceAllowedFields,
   telephonyTableOwnershipDecisions
 } from "../src/data-model";
+import type { SafeCommunicationMetadata } from "../src/data-model";
 
 const digest =
   "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -133,6 +134,58 @@ describe("communications data model contract", () => {
         hint: "(555) 555-0123"
       })
     ).toThrow(/not safe/);
+    for (const field of [
+      "requestHash",
+      "payloadHash",
+      "digest",
+      "checksumSha256"
+    ]) {
+      for (const invalidValue of [
+        null,
+        42,
+        true,
+        {},
+        ["SAFE_VALUE"],
+        "",
+        "not-a-sha256-digest",
+        digest.toUpperCase()
+      ]) {
+        expect(() =>
+          assertSafeCommunicationMetadata({
+            [field]: invalidValue
+          } as unknown as SafeCommunicationMetadata)
+        ).toThrow(/SHA-256 hex digest/);
+      }
+    }
+    expect(() =>
+      assertSafeCommunicationMetadata(
+        "Bearer abc" as unknown as SafeCommunicationMetadata
+      )
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(42 as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(true as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata(null as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata([
+        "SAFE_VALUE"
+      ] as unknown as SafeCommunicationMetadata)
+    ).toThrow(/safe JSON object/);
+    expect(() =>
+      assertSafeCommunicationMetadata({
+        wrapper: { email: "caller@example.test" }
+      } as unknown as SafeCommunicationMetadata)
+    ).toThrow(/primitive safe value/);
+    expect(() =>
+      assertSafeCommunicationMetadata({
+        evidence: ["caller@example.test"]
+      } as unknown as SafeCommunicationMetadata)
+    ).toThrow(/primitive safe value/);
   });
 
   it("requires hashed endpoints instead of raw phone or email values", () => {
@@ -493,6 +546,24 @@ describe("communications data model contract", () => {
         }
       })
     ).toThrow(/not safe/);
+
+    expect(() =>
+      assertCommunicationTrustEvidenceReferenceDraft({
+        referenceId: "trust-ref-1",
+        tenantId: "tenant-1",
+        cardId: "card-1",
+        communicationId: "communication-1",
+        domain: "communications.webhook",
+        artifactSchema: "communication-webhook-evidence-v1",
+        canonicalizationVersion: "bidayax-c14n-1",
+        keyPurpose: "tenant_artifact_signing",
+        envelopeId: "envelope-1",
+        trustEventId: "trust-event-1",
+        evidenceFields: {
+          payloadHash: "not-a-sha256-digest"
+        }
+      })
+    ).toThrow(/SHA-256 hex digest/);
 
     expect(() =>
       assertCommunicationTrustEvidenceReferenceDraft({

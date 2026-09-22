@@ -1,0 +1,16 @@
+services:
+  card:
+    read_only: false
+    command:
+      - pnpm
+      - --filter
+      - "@bidayax/card"
+      - dev
+
+  dashboard:
+    read_only: false
+    command:
+      - pnpm
+      - --filter
+      - "@bidayax/dashboard"
+      - dev

@@ -1,0 +1,696 @@
+{
+  "schema_version": "1.0.0",
+  "record_id": "EXECUTIVE-CARD-BXSS2-CAPABILITY-CONSUMPTION-001",
+  "effective_date": "2026-09-21",
+  "project": {
+    "canonical_name": "BidayaX Executive System / The Executive Card",
+    "product_class": "Executive Identity Intelligence System",
+    "repository_root": "D:\\bidayax-executive-system",
+    "git_head": "ced00bd16e55ff6c0203bcd02929d0c063834066"
+  },
+  "authority": {
+    "governing_contract": "EXECUTIVE-CARD-BXSS2-ESIP-AUTHORITY-001",
+    "applicability_status": "MATERIALIZED_FOR_VALIDATION",
+    "full_adoption_proven": false,
+    "bxss2_project_ready": false,
+    "runtime_green": false,
+    "ui_green": false,
+    "partial_adoption": "PROHIBITED",
+    "classification_semantics": {
+      "ACTIVE_REQUIRED": "Required by current Executive Card product or governance path.",
+      "CONTRACT_REQUIRED": "Canonical jurisdiction applies or must remain reserved, but canonical BXSS contract binding is not yet evidenced.",
+      "DEFERRED": "Canonical jurisdiction retained but intentionally outside the current authorized phase.",
+      "NOT_APPLICABLE": "May be used only with explicit evidence that the jurisdiction does not apply to this product.",
+      "PROHIBITED": "May be used only where explicit project or governance authority prohibits the numbered capability."
+    }
+  },
+  "mandatory_profile_context": {
+    "preventability_first": "REQUIRED",
+    "misp_dil12": "REQUIRED_FOR_CONSEQUENTIAL_INTENT_AND_ACTION",
+    "bif12": "REQUIRED_PROFILE",
+    "esip": "MANDATORY_PROFILE",
+    "adaptive_api": "MANDATORY_FOR_EXTERNAL_PROVIDER_OR_PROTOCOL_BOUNDARIES",
+    "design_system_as_control_plane": "MANDATORY_FOR_UI",
+    "virp12": "MANDATORY_FOR_APPROVED_VISUAL_RECONSTRUCTION",
+    "a0_provenance": "MANDATORY",
+    "bome": "MANDATORY_COMPOSITE_WHERE_GOVERNED_EXECUTION_AND_EVIDENCE_APPLY",
+    "srex": "MANDATORY_FOR_PRODUCTION_RELIABILITY_AND_RECOVERY"
+  },
+  "classification_counts": {
+    "ACTIVE_REQUIRED": 35,
+    "CONTRACT_REQUIRED": 11,
+    "DEFERRED": 2,
+    "NOT_APPLICABLE": 0,
+    "PROHIBITED": 0
+  },
+  "systems": [
+    {
+      "ordinal": 1,
+      "id": "bxss",
+      "runtime_plane": "constitutional-governance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/governance/CURRENT_PHASE_STATUS.md",
+        "docs/governance/PHASE_GATE_POLICY.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 2,
+      "id": "constitutional-kernel",
+      "runtime_plane": "constitutional-governance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/governance/PHASE_GATE_POLICY.md",
+        "docs/AUTHORIZATION_MODEL.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 3,
+      "id": "methodology",
+      "runtime_plane": "constitutional-governance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/ENGINEERING_METHODOLOGY.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 4,
+      "id": "blueprint",
+      "runtime_plane": "constitutional-governance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/ARCHITECTURE.md",
+        "docs/SYSTEM_THESIS.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 5,
+      "id": "policy-compiler",
+      "runtime_plane": "constitutional-governance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/policy-enforcement",
+        "docs/AUTHORIZATION_MODEL.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 6,
+      "id": "dioxys",
+      "runtime_plane": "constitutional-governance",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Canonical constitutional/developer-golden-path jurisdiction exists, but no Executive Card-native canonical Dioxys contract is presently evidenced.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 7,
+      "id": "sios",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Current BXSS adoption authority includes SIOS profile coverage, but the Executive Card repository has no pre-EC-1 native SIOS binding.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 8,
+      "id": "hagi",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/receptionist-agent",
+        "services/polyglot-receptionist"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 9,
+      "id": "bmif",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Canonical synthetic-intelligence jurisdiction is preserved; local product evidence does not yet establish a canonical BMIF binding.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 10,
+      "id": "baif",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Canonical synthetic-intelligence jurisdiction is preserved; incidental text matches do not establish BAIF implementation.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 11,
+      "id": "knowledge",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Knowledge jurisdiction is relevant to governed AI/receptionist capability, but no canonical knowledge contract is presently bound.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 12,
+      "id": "memory",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Memory jurisdiction is relevant to BOME and governed AI operation; generic in-memory code is not canonical BXSS memory.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 13,
+      "id": "causal-world-model",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "DEFERRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED_BUT_NOT_REQUIRED_BY_CURRENT_AUTHORIZED_PHASE",
+      "rationale": "No current Executive Card product evidence or current-phase requirement establishes causal-world-model activation.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 14,
+      "id": "model-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "AI/provider model governance requires a canonical model boundary before Runtime-GREEN, but no canonical Model Fabric binding is present.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 15,
+      "id": "capability-graph",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Canonical capability/asset jurisdiction is required for governed capability mapping, but the Executive Card Contact Graph is not evidence of BXSS Capability Graph.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 16,
+      "id": "data-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "database/migrations",
+        "packages/database-reconciliation"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 17,
+      "id": "event-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "apps/card/app/api/events/route.ts",
+        "database/migrations/0001_create_interaction_events.sql"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 18,
+      "id": "agent-fabric",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/receptionist-agent",
+        "services/polyglot-receptionist",
+        "packages/receptionist-core",
+        "packages/receptionist-runtime"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 19,
+      "id": "resource-intelligence",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/telephony/src/usage-ledger.ts",
+        "docs/TELEPHONY_COST_MODEL.md",
+        "docs/TELEPHONY_PROVIDER_COST_RECONCILIATION.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 20,
+      "id": "capital-intelligence-engine",
+      "runtime_plane": "synthetic-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/commercialization/TARGET_CUSTOMERS.md",
+        "docs/commercialization/VALUATION_POSITIONING.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 21,
+      "id": "adaptive-api",
+      "runtime_plane": "connectivity-api-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "apps/dashboard/src/data/live-provider-queries.ts",
+        "services/telephony",
+        "services/voice-gateway"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 22,
+      "id": "universal-api-intelligence",
+      "runtime_plane": "connectivity-api-intelligence",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "apps/card/app/api/events/route.ts",
+        "apps/card/app/api/receptionist",
+        "services/communications"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 23,
+      "id": "synaptic-defense-grid",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "database/migrations/0019_harden_communications_data_model_guards.sql",
+        "docs/PHASE_7G_PROVIDER_ADAPTER_SECURITY_REVIEW.md",
+        "docs/PHASE_8G_RECEPTIONIST_RUNTIME_SECURITY_REVIEW.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 24,
+      "id": "identity-trust",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "packages/identity",
+        "database/migrations/0015_create_identity_provider_integration.sql",
+        "apps/dashboard/app/api/auth"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 25,
+      "id": "identity-authority-graph",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/AUTHORIZATION_MODEL.md",
+        "apps/dashboard/src/lib/identity-runtime.ts",
+        "apps/dashboard/src/components/IdentityAccessPanel.tsx"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 26,
+      "id": "crypto-trust",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "packages/trust",
+        "database/migrations/0017_create_cryptographic_trust_layer.sql"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 27,
+      "id": "zero-trust",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/policy-enforcement",
+        "packages/identity",
+        "docs/AUTHORIZATION_MODEL.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 28,
+      "id": "universal-trust-fabric",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "packages/trust",
+        "apps/dashboard/app/trust-center/page.tsx"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 29,
+      "id": "trust-assurance-fabric",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "apps/dashboard/src/components/EvidenceScoreCard.tsx",
+        "apps/dashboard/src/components/TrustCenter.tsx",
+        "packages/trust"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 30,
+      "id": "dspm-method",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/PRIVACY_SAFE_TELEMETRY.md",
+        "docs/REDACTION_POLICY.md",
+        "docs/RETENTION_POLICY.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 31,
+      "id": "automated-compliance-system",
+      "runtime_plane": "trust-security-compliance",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/AUDIT_HASH_CHAINS.md",
+        "docs/REDACTION_POLICY.md",
+        "docs/RETENTION_POLICY.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 32,
+      "id": "srex",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "apps/dashboard/app/api/system/health/route.ts",
+        "docs/RECOVERY_PHASE_B_ENTERPRISE_COMPLETION_GATE.md",
+        "docs/TELEPHONY_PROVIDER_FAILURE_RECOVERY.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 33,
+      "id": "evidence-provenance-fabric",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/PROVENANCE_MANIFESTS.md",
+        "docs/MERKLE_EVIDENCE.md",
+        "packages/trust"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 34,
+      "id": "provenance-ip",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/PROVENANCE_MANIFESTS.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 35,
+      "id": "execution-ledger",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/EVENT_LEDGER.md",
+        "apps/card/app/api/events/route.ts",
+        "database/migrations/0001_create_interaction_events.sql"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 36,
+      "id": "clean-room-registry",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/PROVENANCE_MANIFESTS.md",
+        "packages/trust/src/provenance.ts"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 37,
+      "id": "observability",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/telemetry",
+        "apps/dashboard/app/observability/page.tsx",
+        "apps/dashboard/app/api/telemetry"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 38,
+      "id": "evaluation-forge",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/ACCEPTANCE_TESTS.md",
+        "docs/API_ACCEPTANCE_TESTS.md",
+        "docs/SANDBOX_EVALUATION_MODEL.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 39,
+      "id": "verification",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "package.json"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 40,
+      "id": "simulation",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/receptionist-agent/src/simulate-interaction.ts",
+        "services/receptionist-agent/tests/simulate-interaction.test.ts"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 41,
+      "id": "bsie",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "BSIE remains a canonical registry jurisdiction; Executive Card-specific semantics and contract binding are not yet locally materialized.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 42,
+      "id": "asie",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "ASIE remains a canonical registry jurisdiction; incidental substring matches do not establish implementation.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 43,
+      "id": "recovery-mesh",
+      "runtime_plane": "evidence-verification-operations",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "docs/ROLLBACK_PLAN.md",
+        "docs/RECOVERY_PHASE_B_ENTERPRISE_COMPLETION_GATE.md",
+        "docs/IDENTITY_PROVIDER_ROLLBACK.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 44,
+      "id": "genesis",
+      "runtime_plane": "cognitive-evolution",
+      "classification": "CONTRACT_REQUIRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED; EXECUTIVE_CARD_MUST_BIND_CANONICAL_CONTRACT_BEFORE_RUNTIME_GREEN",
+      "rationale": "Genesis participates in governed development/evolution architecture, but no canonical Executive Card Genesis contract is currently bound.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 45,
+      "id": "evolutionary-improvement-engine",
+      "runtime_plane": "cognitive-evolution",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/improvement-engine",
+        "apps/dashboard/app/api/improvement-engine"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 46,
+      "id": "specialist-agent-collective",
+      "runtime_plane": "cognitive-evolution",
+      "classification": "DEFERRED",
+      "basis": "CANONICAL_JURISDICTION_RETAINED_BUT_NOT_REQUIRED_BY_CURRENT_AUTHORIZED_PHASE",
+      "rationale": "The repository explicitly treats Specialist Agent Collective as future work; current runtime activation is therefore deferred.",
+      "product_evidence": [],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 47,
+      "id": "improvement-lineage-archive",
+      "runtime_plane": "cognitive-evolution",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/improvement-engine",
+        "database/models/evolutionary-improvement-engine.md"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    },
+    {
+      "ordinal": 48,
+      "id": "continuous-evidence-driven-evolution",
+      "runtime_plane": "cognitive-evolution",
+      "classification": "ACTIVE_REQUIRED",
+      "basis": "CURRENT_EXECUTIVE_CARD_PRODUCT_OR_GOVERNANCE_PATH_REQUIRES_THIS_JURISDICTION",
+      "rationale": "Existing Executive Card evidence demonstrates active product or governance overlap; canonical BXSS contract/evidence binding remains required before maturity claims.",
+      "product_evidence": [
+        "services/improvement-engine",
+        "apps/dashboard/app/api/improvement-engine"
+      ],
+      "canonical_runtime_green": false,
+      "project_runtime_green": false
+    }
+  ]
+}

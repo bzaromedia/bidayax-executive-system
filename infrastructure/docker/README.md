@@ -5,7 +5,7 @@ Canonical production runtime:
 - dedicated Hostinger VPS
 - Ubuntu 24.04
 - Node.js 22.17.0 Alpine build images
-- pnpm 11.7.0 via deterministic Corepack activation
+- pnpm 12.3.4 via deterministic pinned npm global installation
 - host-level Caddy
 - PostgreSQL 17 on the internal Docker network
 - immutable releases under `/opt/the-executive-card/releases/<git-sha>`

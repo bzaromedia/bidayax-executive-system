@@ -30,8 +30,8 @@ for (const dockerfile of dockerfiles) {
     `${dockerfile} must use the approved Node.js 22 Alpine image.`
   );
   assert(
-    content.includes("corepack prepare pnpm@11.7.0 --activate"),
-    `${dockerfile} must activate pnpm 11.7.0 deterministically.`
+    content.includes("npm install --global pnpm@12.3.4"),
+    `${dockerfile} must install pnpm 12.3.4 deterministically.`
   );
 }
 

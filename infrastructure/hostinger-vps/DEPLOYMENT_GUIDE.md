@@ -9,7 +9,7 @@ It does not authorize provisioning, Hostinger mutation, DNS changes, TLS changes
 - dedicated VPS only
 - Ubuntu 24.04
 - Node.js 22.17.0 in Docker build images
-- pnpm 11.7.0 via deterministic Corepack activation
+- pnpm 12.3.4 via deterministic pinned npm global installation
 - PostgreSQL 17 on the internal Docker network
 - host-level Caddy
 - immutable releases under `/opt/the-executive-card/releases/<git-sha>`

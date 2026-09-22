@@ -2,6 +2,20 @@ services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /var/run/postgresql:rw,noexec,nosuid,nodev,mode=3775
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     environment:
@@ -59,6 +73,13 @@ services:
       context: ../..
       dockerfile: infrastructure/docker/Dockerfile.card
     restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:
@@ -93,6 +114,13 @@ services:
       context: ../..
       dockerfile: infrastructure/docker/Dockerfile.dashboard
     restart: unless-stopped
+    init: true
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
     env_file:
       - ${EXECUTIVE_CARD_ENV_FILE:-/opt/the-executive-card/shared/env/production.env}
     depends_on:

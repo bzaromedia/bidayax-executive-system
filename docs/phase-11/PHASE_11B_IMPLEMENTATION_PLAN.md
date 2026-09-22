@@ -93,9 +93,23 @@ gate:
 - `docs/codex/DECISION-LOG.md`
 - `.github/workflows/ci.yml`
 
+Post-merge Phase 11B corrective remediation may update only the same active
+Phase 11B implementation, validation, and evidence surfaces needed to resolve
+Critical or High closure-gate findings without beginning Phase 11C:
+
+- `database/migrations/0019_harden_communications_data_model_guards.sql`
+- `scripts/verify-communications-data-model-postgres.ts`
+- `packages/communications-domain/src/data-model/index.ts`
+- `packages/communications-domain/tests/data-model.test.ts`
+- `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`
+- `docs/governance/CURRENT_PHASE_STATUS.md`
+- `docs/phase-11/PHASE_11B_TRACEABILITY.md`
+- `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md`
+
 Implementation may add only these new files:
 
 - `database/migrations/0018_create_communications_data_model.sql`
+- `database/migrations/0019_harden_communications_data_model_guards.sql`
 - `packages/communications-domain/src/data-model/index.ts`
 - `packages/communications-domain/tests/data-model.test.ts`
 - `services/communications/tests/data-model-repository-contract.test.ts`

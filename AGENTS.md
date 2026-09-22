@@ -58,7 +58,7 @@ Read task-specific documents before editing related areas. Examples:
 
 ## Approved Commands And Package Manager
 
-- Package manager: `pnpm@11.7.0`
+- Package manager: `pnpm@12.3.4`
 - Node runtime target: Node 22
 - Primary validation commands:
   - `pnpm typecheck`

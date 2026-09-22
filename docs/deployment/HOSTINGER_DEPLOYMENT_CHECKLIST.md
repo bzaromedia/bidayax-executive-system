@@ -33,7 +33,7 @@ This checklist is the launch gate for the dedicated-VPS production model.
 ## 4. Runtime Alignment
 
 - [ ] Dockerfiles use Node.js 22.17.0.
-- [ ] Dockerfiles activate pnpm 11.7.0 deterministically.
+- [ ] Dockerfiles install pnpm 12.3.4 deterministically.
 - [ ] `pnpm install --frozen-lockfile` succeeds.
 - [ ] Docker builds succeed for card and dashboard.
 

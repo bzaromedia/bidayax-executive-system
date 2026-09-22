@@ -1,22 +1,24 @@
 # Phase 11B Production Readiness Review
 
-Status: Proposed for PR #15 merge readiness
-Date: 2026-07-25
+Status: Reopened for post-merge Phase 11B corrective remediation
+Date (America/Los_Angeles): 2026-08-05
 
-This review covers PR #15, the Phase 11B Communications Data Model
-implementation package. It is evidence for implementation merge readiness only.
-It does not close Phase 11B, authorize Phase 11C, activate providers, deploy
-production systems, or unlock Wallet or other frozen work.
+This review covered PR #15, the Phase 11B Communications Data Model
+implementation package, and is reopened for the post-merge Phase 11B
+corrective remediation required by closure-gate review. It is evidence for
+implementation and corrective merge readiness only. It does not close Phase
+11B, authorize Phase 11C, activate providers, deploy production systems, or
+unlock Wallet or other frozen work.
 
-Required final disposition before merge: `PRODUCTION_READINESS_REVIEW_PASSED`.
+Required final disposition before any implementation or corrective merge:
+`PRODUCTION_READINESS_REVIEW_PASSED`.
 
 Current disposition: `PRODUCTION_READINESS_REVIEW_PASSED`.
 
-The local PRR evidence was reopened after the latest Advisor merge-gate review
-rejected the working tree. It is promoted back to
-`PRODUCTION_READINESS_REVIEW_PASSED` after the Critical and Major findings were
-repaired and final local validation passed on the remediated working tree.
-Remote CI on the pushed PR head and read-only Advisor merge approval remain
+PR #15 merged, but Phase 11B closure review rejected formal closure because
+Critical and High post-merge correctness defects remained. This PRR has passed
+for the repaired corrective working tree after focused and full local
+validation were rerun. Remote CI and read-only Advisor merge review remain
 separate required merge gates.
 
 ## Scope Reviewed
@@ -25,7 +27,15 @@ separate required merge gates.
 - Branch: `feature/phase-11b-communications-data-model`
 - Starting implementation commit:
   `577b102b4011978474cfb8efde1fd1d483eb40b8`
-- Final implementation commit: pending until PR #15 remediation commit is pushed.
+- PR #15 final implementation commit:
+  `63c41728d92309bf340f96dc8f416dae65f70b56`
+- PR #15 merge commit:
+  `bbbb75b0c3a4b9696f22f5e32052706b15ba30cf`
+- Active corrective branch:
+  `fix/phase-11b-postmerge-correctness`
+- Corrective PR: #16. Its final head, GitHub CI result, and merge Advisor
+  disposition must be verified from live PR metadata before merge; any new
+  commit invalidates the prior final-head gate.
 - Governing ADR: `docs/adr/0002-communications-data-model.md`
 - Governing plan:
   `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md`
@@ -66,8 +76,8 @@ Disposition: PASSED
 
 Evidence:
 
-- Migration `0018` enforces tenant/card composite relationships and rejects
-  null-card bypass attempts through database triggers.
+- Migrations `0018` and `0019` enforce tenant/card composite relationships and
+  reject null-card bypass attempts through database triggers.
 - Command idempotency records require explicit card, tenant, or platform scope,
   actor type, authorization decision ID, required permission, permission
   version, and policy version. User card commands require authoritative tenant
@@ -75,7 +85,8 @@ Evidence:
   and platform commands require active Trust identities, explicit
   Communications kill-switch capabilities, exact operation/scope/request
   authorization-decision audit metadata, fixed Phase 11B permission/policy
-  versions, and cannot borrow user authorization fields.
+  versions, required metadata keys, null-safe comparisons, and cannot borrow
+  user authorization fields.
 - Consent policy and consent receipt compatibility is enforced by card,
   channel, purpose, effective window, and durable consent trust-evidence
   references. Consent evidence must match receipt, participant, policy,
@@ -90,9 +101,14 @@ Evidence:
   values, and secret-like fields.
 - Trust evidence references use explicit Communications domains, artifact
   schemas, canonicalization version, the accepted tenant artifact signing key
-  purpose, active unexpired Trust envelopes, active uncompromised signing keys,
-  valid verification receipts, compatible Trust events, and allowlisted fields
-  that must match the signed envelope payload.
+  purpose, post-lock database-owned post-0019 reference recording time,
+  FK-compatible row-locked Trust-key lifecycle validation, active unexpired
+  Trust envelopes, historically valid uncompromised signing-key evidence, valid
+  verification receipts, compatible Trust events, and allowlisted fields that
+  must match the signed envelope payload.
+- Consent receipts and queued dispatch attempts require currently authoritative
+  Trust-key evidence; revoked or compromised signing keys can remain historical
+  audit evidence but cannot authorize new consent or dispatch decisions.
 - Audit, lifecycle, consent policy, consent receipt, command, webhook, summary,
   failover, and trust evidence are append-only where required. Suppression
   evidence permits only one controlled active-to-released transition with
@@ -102,9 +118,9 @@ Findings:
 
 - No production credentials, provider credentials, private keys, raw provider
   payloads, transcripts, or audio are added.
-- Known latest Critical and High local findings have been remediated in the
-  working tree and covered by focused and full local validation. Remote CI and
-  Advisor review remain required before merge.
+- Known prior Critical and High closure-gate findings are remediated in the
+  corrective working tree and covered by focused and full local validation.
+  Remote CI and Advisor review remain required before corrective merge.
 
 ## Data
 
@@ -115,18 +131,37 @@ Evidence:
 - Migration `0018` creates 18 Communications-owned tables with primary keys,
   foreign keys, tenant/card composite constraints, unique constraints, check
   constraints, append-only triggers, lifecycle sequencing, idempotency keys,
-  dispatch policy checks, and query indexes.
+  dispatch policy checks, and query indexes. Migration `0019` hardens the
+  existing guard triggers through a forward corrective roll-forward, rechecks
+  existing metadata/evidence rows before the hardened predicates become
+  authoritative, preserves pre-0019 terminal command idempotency outcomes,
+  marks only pre-0019 reserved command rows terminal `failed` with a
+  fresh-authorization-required reason, and fails closed if pre-existing Phase
+  11B lifecycle, suppression, consent, Trust, or metadata rows violate the
+  hardened constraints. New post-0019 Trust references cannot manufacture
+  pre-revocation or pre-compromise history because the trigger owns
+  `recorded_at` through database wall-clock time.
 - The named PostgreSQL gate
   `pnpm verify:communications-data-model:postgres` applies the complete
-  migration chain to a disposable or test schema, rolls back transactional
-  fixture data after verification, and uses a cleanup-safe completion path for
-  disposable Docker PostgreSQL runs.
+  migration chain to the exact local disposable database target, validates the
+  0018-to-0019 upgrade path with representative valid and invalid 0018-era
+  rows for metadata, lifecycle authorization evidence, suppression-release
+  evidence, consent evidence, Trust event envelope linkage, command
+  idempotency invalidation, historical Trust key lifecycle evidence, and
+  concurrent old-writer rejection; rejects post-0019 revoked/compromised
+  Trust-key backdating attempts; serializes concurrent Trust-key
+  revocation/compromise with Trust-reference creation; rejects consent and
+  dispatch authorization after cited Trust-key revocation or compromise;
+  verifies atomic consent envelope creation versus queued dispatch does not
+  deadlock; rolls back transactional fixture data after verification; and uses
+  a cleanup-safe completion path for disposable Docker PostgreSQL runs.
 - Rollback is documented as disabling new writers/readers or corrective
   roll-forward without deleting audit, consent, lifecycle, or trust evidence.
 
 Findings:
 
-- The model is tenant-scoped, migration-safe, auditable, privacy-aware,
+- The model is tenant-scoped, migration-guarded by fail-closed upgrade
+  verification, auditable, privacy-aware,
   idempotency-aware, concurrency-aware through lifecycle sequencing, durable
   uniqueness, and serialized consent/suppression policy evaluation locks, and
   compatible with later orchestration boundaries
@@ -176,10 +211,12 @@ Evidence:
   policy-lock behavior, lifecycle sequencing and chronology, append-only
   evidence, adapter-health reason-code structure and privacy, business-hours
   policy, safe summary evidence, failover evidence, Trust envelope/event
-  compatibility and payload projection, raw payload rejection, provider
-  dispatch disabled behavior, and prohibited credential/raw columns.
-- Full repository validation remains required against the final PR head before
-  merge.
+  compatibility and payload projection, raw payload rejection, hash-designated
+  metadata string enforcement, lifecycle and suppression authorization
+  null-safety, 0018-to-0019 upgrade-path behavior, provider dispatch disabled
+  behavior, and prohibited credential/raw columns.
+- Full repository validation passed against the repaired corrective working
+  tree. Remote CI and Advisor review remain required before corrective merge.
 
 Findings:
 
@@ -250,8 +287,8 @@ Evidence:
 
 ## Validation Evidence
 
-Final validation must be rerun after this PRR document is committed. The PRR
-may be considered passed only when the final PR #15 head has:
+Local validation has been rerun after the latest corrective repairs. Corrective
+merge readiness still requires the final pushed corrective branch to have:
 
 - passing local validation proportional to Phase 11B risk;
 - passing named PostgreSQL validation;
@@ -309,15 +346,51 @@ may be considered passed only when the final PR #15 head has:
 | 11B-PRR-043 | HIGH | Final merge-gate Advisor review found TypeScript command authorization contracts accepted database-invalid versions, actors, scopes, and permissions. | Resolved by exporting literal Phase 11B permission/policy versions and enforcing the migration's operation/scope/actor/permission matrix. | Phase 11B |
 | 11B-PRR-044 | HIGH | Final merge-gate Advisor review found TypeScript Trust-reference contracts rejected valid consent projection fields while accepting null Trust event linkage. | Resolved by adding consent projection fields to the domain allowlist, requiring Trust event IDs, and checking domain/schema compatibility before persistence. | Phase 11B |
 | 11B-PRR-045 | HIGH | Final merge-gate Advisor review found the CI workflow file was not explicitly authorized in the Phase 11B PRR remediation scope. | Resolved by amending the implementation plan to list `.github/workflows/ci.yml` as PRR evidence-scope validation work. | Phase 11B |
-| 11B-PRR-046 | HIGH | Final merge-gate Advisor review found the reviewed tree was dirty and remote CI covered only the prior PR head. | Pending by design until the Executor commits, pushes, and GitHub CI passes on the final reviewed SHA. | Phase 11B |
+| 11B-PRR-046 | HIGH | Final merge-gate Advisor review found the reviewed tree was dirty and remote CI covered only the prior PR head. | Resolved by requiring live PR #16 final-head GitHub CI and fresh Advisor merge approval after every pushed corrective commit. | Phase 11B |
+| 11B-PRR-047 | CRITICAL | Post-merge closure Advisor found authorization-decision metadata could omit required keys and bypass SQL `<>` comparisons through NULL. | Resolved in the corrective branch by migration `0019`, which requires keys and uses `IS DISTINCT FROM`; PostgreSQL verifier covers omitted operation, scope, permission, request hash, session, and grant metadata. | Phase 11B |
+| 11B-PRR-048 | CRITICAL | Post-merge closure Advisor found consent evidence could omit receipt, channel, purpose, participant, policy, status, or source fields and still qualify. | Resolved in the corrective branch by migration `0019` required-key checks and PostgreSQL omitted-field negatives. | Phase 11B |
+| 11B-PRR-049 | CRITICAL | Post-merge closure Advisor found Trust events could omit the cited `envelopeId`. | Resolved in the corrective branch by migration `0019` Trust event required-key and null-safe envelope comparison; PostgreSQL verifier covers omitted event envelope linkage. | Phase 11B |
+| 11B-PRR-050 | CRITICAL | Post-merge closure Advisor found caller-writable command `created_at` could be backdated to evade session or grant expiry. | Resolved in the corrective branch by migration `0019` database-owned command creation time and PostgreSQL backdated expired session/grant negatives. | Phase 11B |
+| 11B-PRR-051 | CRITICAL | Post-merge closure Advisor found the PostgreSQL verifier could target an unintended remote or production-like database before rollback. | Resolved in the corrective branch by exact local disposable database URL policy and pre-connection URL safety self-tests covering protocol allowlisting, native `socket:` rejection, non-local hosts, exact database-name enforcement, query-parameter host/port/SSL/service overrides, encoded and duplicated parameters, mixed-case parameters, remote IPv6, and Unix-socket-style host attempts. | Phase 11B |
+| 11B-PRR-052 | HIGH | Post-merge closure Advisor found TypeScript metadata validation accepted nested runtime payloads and diverged from the Phase 11B flat durable-metadata contract. | Resolved in the corrective branch by rejecting non-primitive metadata values in TypeScript and by tightening migration `0019` so named metadata fields cannot carry nested object or array values while top-level structured policy arrays remain supported. Domain and PostgreSQL verifier tests cover nested object/array rejection. | Phase 11B |
+| 11B-PRR-053 | CRITICAL | Corrective Advisor review found consent Trust evidence could carry JSON-null `policyVersion` and bypass nullable `<>` comparison. | Resolved in the corrective branch by using `IS DISTINCT FROM` for policy-version comparison and adding omitted/null policy-version PostgreSQL negatives. | Phase 11B |
+| 11B-PRR-054 | CRITICAL | Corrective Advisor review found transaction-start `now()` could stale-date command authorization inside a long-running transaction. | Resolved in the corrective branch by using database wall-clock `clock_timestamp()` for command creation and terminal completion timestamps and adding delayed-in-transaction expired session/grant negatives. | Phase 11B |
+| 11B-PRR-055 | HIGH | Corrective Advisor review found the implementation plan omitted itself from the corrective file-scope manifest. | Resolved by listing `docs/phase-11/PHASE_11B_IMPLEMENTATION_PLAN.md` in the bounded post-merge corrective remediation scope. | Phase 11B |
+| 11B-PRR-056 | CRITICAL | Corrective merge Advisor found the PostgreSQL verifier accepted native `socket:` URLs because the URL guard did not restrict protocols. | Resolved by allowing only `postgres:` and `postgresql:` protocols, adding native `socket:` and unrelated-scheme rejection self-tests, and proving `socket://localhost/bidayax_phase11b_test` is rejected before connection. | Phase 11B |
+| 11B-PRR-057 | HIGH | Corrective merge Advisor found TypeScript accepted malformed values for SQL hash-designated metadata fields: `requestHash`, `payloadHash`, `digest`, and `checksumSha256`. | Resolved by enforcing lowercase SHA-256 hex digests for those metadata keys in TypeScript, tightening SQL named metadata-field handling in migration `0019`, and adding domain plus PostgreSQL verifier negatives. | Phase 11B |
+| 11B-PRR-058 | HIGH | Corrective merge Advisor found SQL hash-designated metadata still accepted non-string JSON primitives before hash validation. | Resolved by evaluating `requestHash`, `payloadHash`, `digest`, and `checksumSha256` before generic primitive acceptance in `communication_metadata_value_is_safe_v1`, requiring lowercase SHA-256 JSON strings, and adding domain plus PostgreSQL negatives for null, number, boolean, object, array, empty, malformed, and uppercase values across audit metadata and Trust reference payload hashes. | Phase 11B |
+| 11B-PRR-059 | HIGH | Corrective merge Advisor found migration `0019` lacked a genuine 0018-to-0019 upgrade-path and constraint-revalidation gate. | Resolved by adding migration-time fail-closed scans across existing Communications metadata/evidence columns and by expanding `pnpm verify:communications-data-model:postgres` to apply through migration `0018`, seed representative valid and invalid 0018-era adapter-health metadata, apply `0019`, verify valid rows survive, verify invalid legacy rows fail the upgrade, verify metadata constraints are validated, and verify invalid post-0019 writes fail. | Phase 11B |
+| 11B-PRR-060 | CRITICAL | Final-head Advisor review at `5cfb7c3` found existing 0018 authorization, consent, Trust, and timestamp evidence was not revalidated by migration `0019`, allowing under-bound legacy commands to survive and complete. | Resolved by adding locked migration-time legacy scans, preserving terminal pre-0019 command outcomes, terminally invalidating only pre-0019 reserved command idempotency rows as failed evidence requiring a new command key and fresh authorization, validating existing Trust evidence references against active envelopes, historically valid signing-key evidence, verification receipts, signed payload equality, and Trust event `envelopeId` linkage, and validating consent receipts against required evidence fields, exact receipt identity, timing, chronology, and cited policy version. | Phase 11B |
+| 11B-PRR-061 | HIGH | Final-head Advisor review at `5cfb7c3` found the PostgreSQL upgrade gate only covered adapter-health hash metadata and not legacy authorization, command timestamp, consent, or Trust evidence paths. | Resolved by expanding the `0018` to `0019` verifier to preserve valid legacy metadata, lifecycle authorization evidence, suppression-release evidence, consent evidence, historical Trust key lifecycle evidence, and terminal command evidence; invalidate reserved legacy command rows for fresh reauthorization; reject missing/null lifecycle and suppression authorization evidence; reject missing consent evidence fields; reject missing Trust event envelope linkage; reject invalid legacy hash metadata; reject concurrent old-writer unsafe metadata; and verify invalid post-0019 writes still fail. | Phase 11B |
+| 11B-PRR-062 | HIGH | Fallback Advisor review at `a85a983` found metadata revalidation was not race-safe because the first hardened scans ran before the migration lock and the lock omitted several scanned tables. | Resolved by moving all metadata, Trust, consent, and command legacy scans into a single final `ACCESS EXCLUSIVE` lock boundary covering all Phase 11B Communications tables plus Trust envelope, key, event, and verification receipt tables; PostgreSQL verifier adds a two-connection old-writer race scenario. | Phase 11B |
+| 11B-PRR-063 | HIGH | Fallback Advisor review at `a85a983` found legacy command rejection created a forward-migration dead end and did not provide an executable reauthorization path. | Resolved by preserving legacy command rows, marking them terminal `failed` with `phase11b_0019_reauthorization_required`, blocking later mutation of invalidated rows, and requiring retry through a new command key and fresh authorization evidence. | Phase 11B |
+| 11B-PRR-064 | MEDIUM | Fallback Advisor review at `a85a983` found Trust verification receipt lookup lacked a supporting index. | Resolved by adding `idx_trust_verification_receipts_valid_envelope` on `(tenant_id, envelope_id, verified_at DESC)` for valid receipts. | Phase 11B |
+| 11B-PRR-065 | MEDIUM | Fallback Advisor review at `a85a983` found readiness documentation overstated migration safety and described command reauthorization without executable evidence. | Resolved by replacing the in-place reauthorization claim with the implemented terminal legacy invalidation behavior and by linking migration safety to final locked scans, concurrent old-writer verification, CI, and fresh Advisor approval. | Phase 11B |
+| 11B-PRR-066 | CRITICAL | Final-head Advisor review at `1810cb3` found lifecycle and suppression authorization evidence still failed open under SQL NULL semantics. | Resolved by replacing both trigger functions in migration `0019` with required-key checks and null-safe `IS DISTINCT FROM` comparisons, adding locked legacy scans for lifecycle transitions and released suppressions, and adding post-0019 plus 0018-to-0019 missing/null evidence regression tests. | Phase 11B |
+| 11B-PRR-067 | HIGH | Final-head Advisor review at `1810cb3` found the legacy command invalidation bypass was client-forgeable through a custom session setting and allowed contradictory inserted rows. | Resolved by removing the persistent GUC bypass, performing reserved-row invalidation while the result-update trigger is dropped inside the locked migration block, strengthening the legacy-field constraint, preserving terminal legacy outcomes, and adding forged-setting plus direct-insert regression tests. | Phase 11B |
+| 11B-PRR-068 | HIGH | Final-head Advisor review at `1810cb3` found legitimate Trust key lifecycle history could create an unrecoverable migration dead end. | Resolved by validating historical signing-key validity rather than current active-key status only, permitting retired/retiring and later revoked/compromised keys only when signed and recorded before the effective lifecycle boundary, and adding upgrade fixtures for those states plus an invalid compromised-before-recorded case. | Phase 11B |
+| 11B-PRR-069 | CRITICAL | Final-head Advisor review at `2cb7fca` found post-compromise Trust-reference creation could be forged by caller-supplied `recorded_at`, allowing a writer to manufacture pre-compromise history after a key was compromised. | Resolved by making migration `0019` own new Trust-reference `recorded_at` values with `clock_timestamp()` on insert while preserving legitimate 0018-era history through the locked legacy scan. | Phase 11B |
+| 11B-PRR-070 | HIGH | Final-head Advisor review at `2cb7fca` found PRR and traceability overstated the Trust-key remediation before the post-0019 timestamp-forgery path was closed. | Resolved by recording the `2cb7fca` rejection, documenting the database-owned Trust-reference timestamp control, and adding revoked/compromised post-migration backdating regression evidence. | Phase 11B |
+| 11B-PRR-071 | CRITICAL | Final-head Advisor review at `a7dddc8` found Trust-reference creation could race an uncommitted Trust-key revocation or compromise because the trigger read `trust_keys` without a conflicting row lock. | Resolved by locking the cited Trust key row during post-0019 Trust-reference validation so creation waits for concurrent lifecycle changes and rechecks the committed revocation or compromise boundary before accepting evidence. | Phase 11B |
+| 11B-PRR-072 | HIGH | Final-head Advisor review at `a7dddc8` found PRR, traceability, PR body, and verifier evidence overstated Trust concurrency coverage. | Resolved by recording the `a7dddc8` rejection, adding committed-fixture two-connection PostgreSQL tests for uncommitted compromise and revocation that must block and then reject after lifecycle commit, and adding reverse-order evidence that a Trust reference recorded before lifecycle compromise remains accepted. | Phase 11B |
+| 11B-PRR-073 | CRITICAL | Read-only security and database sidecar reviews found the Trust-reference trigger still captured `recorded_at` before waiting on the Trust-key row lock, allowing a lifecycle transaction that locked first to commit revocation or compromise after the stale insert timestamp and still be accepted. | Resolved by moving post-0019 `recorded_at` assignment after the Trust-key row lock and evaluating envelope expiry, key lifecycle cutoffs, and verification-receipt chronology against that post-lock timestamp. The lock mode remains compatible with envelope foreign-key locks while still serializing real Trust-key lifecycle updates. | Phase 11B |
+| 11B-PRR-074 | HIGH | Read-only security review found compromised or revoked Trust-key evidence could remain authorization-eligible for consent and queued dispatch even though the Trust runtime rejects compromised and revoked keys for verification. | Resolved by adding a row-locking current Trust-key authority predicate, requiring it during consent receipt validation, and adding a queued dispatch guard so historical references remain audit evidence but no longer authorize current consent or dispatch after key revocation or compromise. | Phase 11B |
+| 11B-PRR-075 | HIGH | Read-only sidecar reviews found the two-connection verifier inferred blocking from elapsed time and did not prove both lifecycle-first and reference-first serialization directions. | Resolved by checking `pg_blocking_pids` for the expected backend owner, testing lifecycle-first compromise and revocation with key-lock ownership before insert timestamping, and testing reference-first compromise and revocation where the lifecycle update blocks behind the Trust-reference insert. | Phase 11B |
+| 11B-PRR-076 | MEDIUM | Read-only pre-commit Advisor review found consent insertion could acquire the Trust-key row lock before the consent policy advisory lock while queued dispatch acquired the policy advisory lock before the Trust-key row lock, creating a consent/dispatch deadlock path, including atomic consent Trust-reference plus receipt transactions and malformed or subject-mismatched consent evidence. | Resolved by making consent Trust-reference and receipt validation acquire the policy-subject advisory lock before current Trust-key authority validation, rejecting malformed consent lock tuples before Trust-key locking, rejecting subject mismatches before receipt policy locking, and adding two-connection PostgreSQL coverage proving consent-reference/receipt and dispatch contention blocks on the expected transaction without `40P01`. | Phase 11B |
+| 11B-PRR-077 | MEDIUM | Read-only pre-commit Advisor review found legacy 0018 consent references with non-string tuple values could survive migration and authorize receipts through `->>` text coercion. | Resolved by requiring string-typed consent evidence tuple fields during live receipt validation and migration 0019 legacy revalidation, with 0018-to-0019 fixtures for numeric, object, and array participant tuple values plus JSON-null values for 0018-persistable consent tuple fields. | Phase 11B |
+| 11B-PRR-078 | MEDIUM | Read-only pre-commit Advisor review found Trust-event `details.envelopeId` could authorize live or legacy Trust references through `->>` text coercion when non-string JSON values matched unconstrained text envelope IDs. | Resolved by requiring string-typed Trust-event `envelopeId` in live Trust-reference validation and migration 0019 legacy revalidation, with live fixtures for numeric, JSON null, object, and array envelope identifiers plus 0018-to-0019 fixtures for numeric, object, and array coercion-compatible legacy identifiers. | Phase 11B |
+
+| 11B-PRR-079 | HIGH | Pre-commit Advisor review on 2026-08-05 found atomic consent evidence creation could deadlock with queued dispatch because the consent transaction's Trust-key foreign-key `KEY SHARE` lock conflicted with dispatch's Trust-key `FOR UPDATE` lock while dispatch held the policy advisory lock. | Resolved by using `FOR NO KEY UPDATE` for Trust-key compatibility and authority reads, preserving serialization with Trust-key lifecycle updates while avoiding conflict with envelope foreign-key locks, and adding an atomic consent envelope versus queued dispatch regression. | Phase 11B |
+| 11B-PRR-080 | MEDIUM | Pre-commit Advisor review on 2026-08-05 found documentation claimed legacy JSON-null consent tuple upgrade coverage that the verifier had not actually executed. | Resolved by seeding 0018-era JSON-null values for the consent evidence tuple fields that can persist under the 0018 trigger and requiring migration `0019` to reject those legacy rows; JSON-null `policyVersion` remains covered by the post-0019 live negative because 0018 already rejects it. | Phase 11B |
 
 ## Formal PRR Decision
 
 - Decision: `PRODUCTION_READINESS_REVIEW_PASSED`
-- Scope: PR #15 Phase 11B Communications Data Model implementation merge
-  readiness only.
-- Merge condition: final PR #15 head CI and Advisor merge approval must remain
-  green before PR #15 can merge.
+- Scope: PR #15 Phase 11B Communications Data Model implementation and the
+  post-merge Phase 11B corrective remediation.
+- Merge condition: the corrective branch must pass final local validation,
+  remote CI, and read-only Advisor merge approval before it can merge.
 - Non-closure statement: This PRR does not formally close Phase 11B.
-- Next required record after implementation merge:
-  `docs/phase-11/PHASE_11B_CLOSURE_RECORD.md` on a separate closure branch.
+- Next required record after corrective merge:
+  a recreated `docs/phase-11/PHASE_11B_CLOSURE_RECORD.md` on a separate
+  closure branch from verified `main`.

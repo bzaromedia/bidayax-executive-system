@@ -11,7 +11,21 @@ const nextConfig: NextConfig = {
       }
     ];
   },
-  transpilePackages: ["@bidayax/config", "@bidayax/tokens", "@bidayax/types", "@bidayax/ui"]
+  transpilePackages: [
+    "@bidayax/card-customization",
+    "@bidayax/communications",
+    "@bidayax/config",
+    "@bidayax/identity",
+    "@bidayax/improvement-engine",
+    "@bidayax/polyglot-receptionist",
+    "@bidayax/settings",
+    "@bidayax/telemetry",
+    "@bidayax/telephony",
+    "@bidayax/tokens",
+    "@bidayax/trust",
+    "@bidayax/types",
+    "@bidayax/ui"
+  ]
 };
 
 export default nextConfig;

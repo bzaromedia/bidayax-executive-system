@@ -81,3 +81,43 @@
   - `scripts/verify-communications-data-model-postgres.ts`
   - `docs/phase-11/PHASE_11B_PRODUCTION_READINESS_REVIEW.md`
   - `docs/phase-11/PHASE_11B_TRACEABILITY.md`
+
+## 2026-08-06 - Temporary Self-Hosted CI Continuity For PR #16
+
+- Decision: route the existing CI `verify` job temporarily to the
+  repository-scoped self-hosted runner `executive-card-ci-windows` only for
+  same-repository pull request #16 and the resulting `main` push that contains
+  `#16` in the merge commit message.
+- Reason: GitHub-hosted Actions execution for the repository is temporarily
+  blocked by billing, while PR #16 still requires real final-head CI before the
+  Phase 11B corrective remediation can be merge-ready.
+- Security posture:
+  - the runner is persistent, repository-scoped, Windows-based, and currently
+    runs as `.\bzarn`;
+  - `.\bzarn` is a member of `docker-users` and local `Administrators`, so this
+    is an accepted temporary host-security exception, not a production runner
+    model;
+  - the workflow uses `permissions: contents: read`, full-SHA action pins,
+    checkout `persist-credentials: false`, an event guard, and a job timeout;
+  - the repository is private and current collaborator evidence is limited to
+    the owner account, but any collaborator expansion, fork-policy change, or
+    unrelated PR invalidates this exception.
+- Validation posture:
+  - command and gate coverage remains mandatory: checkout, pnpm setup, Node 22,
+    frozen install, migration verification, the named Communications
+    PostgreSQL gate, typecheck, tests, and build;
+  - this is a temporary operating-system substitution from GitHub-hosted Ubuntu
+    to self-hosted Windows, so merge readiness also requires exact-head Linux
+    parity evidence or restored GitHub-hosted Linux CI;
+  - skipped, absent, manually posted, stale, or non-final-head checks cannot
+    satisfy CI for PR #16 or any later PR.
+- Boundaries:
+  - no production infrastructure, VPS, production database, production provider,
+    production voice, production calling, deployment, Phase 11C, Phase 12,
+    Wallet, UI redesign, or unrelated expansion is authorized;
+  - all CI evidence must attach to the exact PR #16 head being reviewed, and
+    any new head requires fresh CI and Advisor review.
+- Exit condition: when GitHub-hosted Actions is restored, revert the temporary
+  routing or replace it with a dedicated non-admin service account runner, then
+  stop and deregister the temporary persistent runner if it is no longer
+  needed.
